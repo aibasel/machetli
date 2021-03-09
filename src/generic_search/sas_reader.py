@@ -1,6 +1,6 @@
 import sys
 
-from fd_19_12_modules.sas_tasks import SASTask, SASVariables, SASMutexGroup, SASInit, SASGoal, SASOperator, SASAxiom
+from downward_lib.sas_tasks import SASTask, SASVariables, SASMutexGroup, SASInit, SASGoal, SASOperator, SASAxiom
 from transform_sas import SASVariableEraser, SASOperatorEraser
 
 
