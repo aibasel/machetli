@@ -4,12 +4,12 @@ import random
 from collections import Generator
 from contextlib import redirect_stdout
 
-from fd_19_12_modules import pddl_parser
-from fd_19_12_modules import timers
-from fd_19_12_modules.pddl import Task, TypedObject, Predicate, Action, Axiom, Function, Truth, Conjunction, \
+from minimizer.downward_lib import pddl_parser
+from minimizer.downward_lib import timers
+from minimizer.downward_extensions import Task, TypedObject, Predicate, Action, Axiom, Function, Truth, Conjunction, \
     Disjunction, Falsity, \
-    UniversalCondition, ExistentialCondition, Atom, NegatedAtom, Literal, Effect
-from fd_19_12_modules.pddl.conditions import Condition, ConstantCondition
+    UniversalCondition, ExistentialCondition, Atom, NegatedAtom, Effect, Condition
+from minimizer.downward_lib.pddl.conditions import Literal, ConstantCondition
 
 SEED = 42
 

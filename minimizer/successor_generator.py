@@ -1,7 +1,7 @@
 
-from visitor import TaskElementEraseActionVisitor
+from minimizer.visitor import TaskElementEraseActionVisitor
 import copy
-from downward_lib import timers
+from minimizer.downward_lib import timers
 import random
 
 class SuccessorGenerator():

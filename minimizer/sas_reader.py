@@ -1,7 +1,7 @@
 import sys
 
-from downward_lib.sas_tasks import SASTask, SASVariables, SASMutexGroup, SASInit, SASGoal, SASOperator, SASAxiom
-from transform_sas import SASVariableEraser, SASOperatorEraser
+from minimizer.downward_lib.sas_tasks import SASTask, SASVariables, SASMutexGroup, SASInit, SASGoal, SASOperator, SASAxiom
+from minimizer.transform_sas import SASVariableEraser, SASOperatorEraser
 
 
 def read_variables(sf, num_vars):

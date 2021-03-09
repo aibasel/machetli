@@ -1,5 +1,5 @@
 
-from downward_lib import pddl_parser
+from minimizer.downward_lib import pddl_parser
 import os
 import sys
 dirname = os.path.dirname(__file__)
