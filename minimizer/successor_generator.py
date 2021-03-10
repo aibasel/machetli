@@ -17,4 +17,4 @@ class RemoveActions(SuccessorGenerator):
             pre_child = copy.deepcopy(task)
             with timers.timing("Obtaining successor"):
                 child = pre_child.accept(TaskElementEraseActionVisitor(name))
-            yield child
+            yield child, name
