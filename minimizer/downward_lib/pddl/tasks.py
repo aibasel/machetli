@@ -1,8 +1,15 @@
+from minimizer.downward_lib.pddl.task_element import TaskElement
+
 from . import axioms
 from . import predicates
 
 
-class Task:
+class Task(TaskElement):
+    def accept(self, visitor):
+        return visitor.visit_task(self)
+
+
+
     def __init__(self, domain_name, task_name, requirements,
                  types, objects, predicates, functions, init, goal,
                  actions, axioms, use_metric):
@@ -56,15 +63,17 @@ class Task:
             for axiom in self.axioms:
                 axiom.dump()
 
+
 class Requirements:
     def __init__(self, requirements):
         self.requirements = requirements
         for req in requirements:
             assert req in (
-              ":strips", ":adl", ":typing", ":negation", ":equality",
-              ":negative-preconditions", ":disjunctive-preconditions",
-              ":existential-preconditions", ":universal-preconditions",
-              ":quantified-preconditions", ":conditional-effects",
-              ":derived-predicates", ":action-costs"), req
+                ":strips", ":adl", ":typing", ":negation", ":equality",
+                ":negative-preconditions", ":disjunctive-preconditions",
+                ":existential-preconditions", ":universal-preconditions",
+                ":quantified-preconditions", ":conditional-effects",
+                ":derived-predicates", ":action-costs"), req
+
     def __str__(self):
         return ", ".join(self.requirements)

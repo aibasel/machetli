@@ -4,6 +4,8 @@
 
 import itertools
 
+from minimizer.downward_lib.pddl.task_element import TaskElement
+
 
 def _get_type_predicate_name(type_name):
     # PDDL allows mixing types and predicates, but some PDDL files
@@ -32,7 +34,10 @@ class Type:
         return _get_type_predicate_name(self.name)
 
 
-class TypedObject:
+class TypedObject(TaskElement):
+    def accept(self, visitor):
+        return visitor.visit_object(self)
+
     def __init__(self, name, type_name):
         self.name = name
         self.type_name = type_name

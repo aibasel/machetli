@@ -1,7 +1,11 @@
 from . import conditions
+from minimizer.downward_lib.pddl.task_element import TaskElement
 
 
-class Axiom:
+class Axiom(TaskElement):
+    def accept(self, visitor):
+        return visitor.visit_axiom(self)
+
     def __init__(self, name, parameters, num_external_parameters, condition):
         # For an explanation of num_external_parameters, see the
         # related Action class. Note that num_external_parameters

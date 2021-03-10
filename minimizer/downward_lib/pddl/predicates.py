@@ -1,4 +1,11 @@
-class Predicate:
+from minimizer.downward_lib.pddl.task_element import TaskElement
+
+
+class Predicate(TaskElement):
+
+    def accept(self, visitor):
+        return visitor.visit_predicate(self)
+
     def __init__(self, name, arguments):
         self.name = name
         self.arguments = arguments

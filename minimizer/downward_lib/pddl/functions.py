@@ -1,4 +1,10 @@
-class Function:
+from minimizer.downward_lib.pddl.task_element import TaskElement
+
+
+class Function(TaskElement):
+    def accept(self, visitor):
+        return visitor.visit_function(self)
+
     def __init__(self, name, arguments, type_name):
         self.name = name
         self.arguments = arguments
@@ -12,3 +18,9 @@ class Function:
         if self.type_name:
             result += ": %s" % self.type_name
         return result
+
+    def dump_pddl(self, output, indent="  "):
+        output.write("%s(%s " % (indent, self.name))
+        for arg in self.arguments:
+            output.write("%s - %s " % (arg.name, arg.type_name))
+        output.write(") - %s\n" % self.type_name)

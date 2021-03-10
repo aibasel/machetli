@@ -3,6 +3,7 @@ from .pddl_types import TypedObject
 
 from .tasks import Task
 from .tasks import Requirements
+from .task_element import TaskElement
 
 from .predicates import Predicate
 

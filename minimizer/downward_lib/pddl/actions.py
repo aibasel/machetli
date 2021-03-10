@@ -1,9 +1,12 @@
 import copy
 
-from . import conditions
+from . import conditions, TaskElement
 
 
-class Action:
+class Action(TaskElement):
+    def accept(self, visitor):
+        return visitor.visit_action(self)
+
     def __init__(self, name, parameters, num_external_parameters,
                  precondition, effects, cost):
         assert 0 <= num_external_parameters <= len(parameters)
@@ -18,7 +21,7 @@ class Action:
         self.precondition = precondition
         self.effects = effects
         self.cost = cost
-        self.uniquify_variables() # TODO: uniquify variables in cost?
+        self.uniquify_variables()  # TODO: uniquify variables in cost?
 
     def __repr__(self):
         return "<Action %r at %#x>" % (self.name, id(self))
@@ -31,7 +34,7 @@ class Action:
         for eff in self.effects:
             eff.dump()
         print("Cost:")
-        if(self.cost):
+        if (self.cost):
             self.cost.dump()
         else:
             print("  None")
