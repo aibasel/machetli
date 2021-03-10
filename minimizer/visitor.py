@@ -6,10 +6,10 @@ from contextlib import redirect_stdout
 
 from minimizer.downward_lib import pddl_parser
 from minimizer.downward_lib import timers
-from minimizer.downward_extensions import Task, TypedObject, Predicate, Action, Axiom, Function, Truth, Conjunction, \
+from minimizer.downward_lib.pddl import Task, TypedObject, Predicate, Action, Axiom, Function, Truth, Conjunction, \
     Disjunction, Falsity, \
-    UniversalCondition, ExistentialCondition, Atom, NegatedAtom, Effect, Condition
-from minimizer.downward_lib.pddl.conditions import Literal, ConstantCondition
+    UniversalCondition, ExistentialCondition, Atom, NegatedAtom, Effect
+from minimizer.downward_lib.pddl.conditions import Condition, Literal, ConstantCondition
 
 SEED = 42
 
