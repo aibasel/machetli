@@ -6,13 +6,10 @@ import copy
 import subprocess
 import os
 import sys
-dirname = os.path.dirname(__file__)
-downward_lib = os.path.join(dirname, "downward_lib/")
-sys.path.append(downward_lib)
 
 
-NEW_DOMAIN_FILENAME = "minimized_domain.pddl"
-NEW_PROBLEM_FILENAME = "minimized_problem.pddl"
+NEW_DOMAIN_FILENAME = "minimized-domain.pddl"
+NEW_PROBLEM_FILENAME = "minimized-problem.pddl"
 NEW_SAS_FILENAME = "minimized.sas"
 
 
@@ -34,7 +31,8 @@ def run_tasks(state, parsers):
             results[call].update(copy.deepcopy(parser.props))
 
     for file in ["properties", "run.log", "sas_plan"]:
-        os.remove(file)
+        if os.path.isfile(file):
+            os.remove(file)
 
     return results
 
@@ -55,6 +53,7 @@ def first_choice_hill_climbing(initial_state, successor_generators, evaluator):
 
     with timers.timing("Starting first-choice hill-climbing search"):
         for succ_gen in successor_generators:
+            print()
             with timers.timing("Generating successors with class {}".format(
                     succ_gen.__name__)):
                 current_task = current_state[
@@ -69,8 +68,7 @@ def first_choice_hill_climbing(initial_state, successor_generators, evaluator):
                             .format(children, num_successors))
                     num_successors = 0
                     children += 1
-                    for successor_task, removed_element in succ_gen.get_successors(
-                            current_task):
+                    for successor_task, removed_element in succ_gen().get_successors(current_state):
                         num_successors += 1
                         write_PDDL(successor_task, NEW_DOMAIN_FILENAME,
                                    NEW_PROBLEM_FILENAME)
