@@ -28,7 +28,7 @@ def update_task(state, task):
 def update_PDDL_call_strings(state, dom_filename, prob_filename):
     for cmd in state["call_strings"]:
         positions = []
-        for pos, arg in enumerate(cmd):
+        for pos, arg in enumerate(state["call_strings"][cmd]):
             if ".pddl" in arg:
                 positions.append(pos)
         assert len(positions) == 2
