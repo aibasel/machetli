@@ -146,8 +146,6 @@ def sas_file_to_SASTask(sas_file) -> SASTask:
     return sas_task
 
 
-if __name__ == "__main__":
-    used_file = sys.argv[1]
-    sas_task = sas_file_to_SASTask(used_file)
-    with open(used_file, "w") as file:
+def write_SAS(sas_task, filename):
+    with open(filename, "w") as file:
         sas_task.output(file)
