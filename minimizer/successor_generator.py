@@ -14,7 +14,9 @@ class RemoveActions(SuccessorGenerator):
         action_names = [action.name for action in task.actions]
         random.Random().shuffle(action_names)
         for name in action_names:
-            pre_child = copy.deepcopy(task)
+            child_state = copy.deepcopy(state)
+            pre_child_task = child_state["pddl_task"]
             with timers.timing("Obtaining successor"):
-                child = pre_child.accept(TaskElementEraseActionVisitor(name))
-            yield child, name
+                child_task = pre_child_task.accept(TaskElementEraseActionVisitor(name))
+            child_state["pddl_task"] = child_task
+            yield child_state
