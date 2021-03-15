@@ -2,6 +2,7 @@
 import logging
 from lab import parser
 from lab import tools
+from collections import defaultdict
 
 
 class _Pattern(parser._Pattern):
@@ -53,7 +54,7 @@ class Parser(parser.Parser):
         
         for name, output_parser in list(self.output_parsers.items()):
             if name == cmd_name:
-                output_parser.accept_content(content)
+                output_parser.accept_content(output)
 
         for name, output_parser in list(self.output_parsers.items()):
             if name == cmd_name:
