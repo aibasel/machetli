@@ -1,48 +1,63 @@
-
+from minimizer.sas_reader import sas_file_to_SASTask
 from minimizer.downward_lib import pddl_parser
-import os
-import sys
-dirname = os.path.dirname(__file__)
-downward_lib = os.path.join(dirname, "downward_lib/")
-sys.path.append(downward_lib)
+
+NEW_DOMAIN_FILENAME = "minimized-domain.pddl"
+NEW_PROBLEM_FILENAME = "minimized-problem.pddl"
+NEW_SAS_FILENAME = "minimized.sas"
 
 
-def read_PDDL_task(dom_filename, prob_filename):
+
+def read_pddl_task(dom_filename, prob_filename):
     return pddl_parser.open(domain_filename=dom_filename,
                             task_filename=prob_filename)
 
 
-def read_SAS_task(task_filename):
+def get_pddl_file_positions(command):
+    positions = []
+    for pos, arg in enumerate(command):
+        if ".pddl" in arg:
+            positions.append(pos)
+    assert len(positions) == 2
+    return tuple(positions)
+
+
+def get_pddl_task(state):
+    assert "call_strings" in state
+    first_command = state["call_strings"].items()[0]
+    dom_position, prob_position = get_pddl_file_positions(first_command)
+    dom_file = first_command[dom_position]
+    prob_file = first_command[prob_position]
+    return read_pddl_task(dom_file, prob_file)
+
+
+def update_pddl_call_strings(state):
+    for cmd_name, cmd in list(state["call_strings"].items()):
+        dom_position, prob_position = get_pddl_file_positions(cmd)
+        state["call_strings"][cmd_name][dom_position] = NEW_DOMAIN_FILENAME
+        state["call_strings"][cmd_name][prob_position] = NEW_PROBLEM_FILENAME
+    return state
+
+
+def read_sas_task(task_filename):
     return sas_file_to_SASTask(task_filename)
 
 
-def update_task(state, task):
-    assert "pddl_task" in state or "sas_task" in state
-    if "pddl_task" in state:
-        state["pddl_task"] = task
-    elif "sas_task" in state:
-        state["sas_task"] = task
-    return state
+def get_sas_file_position(command):
+    for pos, arg in enumerate(command):
+        if ".sas" in arg:
+            return pos
 
 
-def update_PDDL_call_strings(state, dom_filename, prob_filename):
-    for cmd in state["call_strings"]:
-        positions = []
-        for pos, arg in enumerate(state["call_strings"][cmd]):
-            if ".pddl" in arg:
-                positions.append(pos)
-        assert len(positions) == 2
-        dom_position = positions[0]
-        prob_position = positions[1]
-        state["call_strings"][cmd][dom_position] = dom_filename
-        state["call_strings"][cmd][prob_position] = prob_filename
-    return state
+def get_sas_task(state):
+    assert "call_strings" in state
+    first_command = state["call_strings"].items()[0]
+    taskfile_position = get_sas_file_position(first_command)
+    sas_file = first_command[taskfile_position]
+    return read_sas_task(taskfile_position)
 
-
-def update_SAS_call_strings(state, sas_filename):
-    for cmd in state["call_strings"]:
-        for pos, arg in enumerate(cmd):
-            if ".sas" in arg:
-                state["call_strings"][cmd][pos] = sas_filename
-                break
+    
+def update_sas_call_strings(state):
+    for cmd_name, cmd in list(state["call_strings"].items()):
+        taskfile_position = get_sas_file_position(cmd)
+        state["call_strings"][cmd_name][taskfile_position] = NEW_SAS_FILENAME
     return state
