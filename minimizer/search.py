@@ -8,28 +8,6 @@ import os
 import sys
 
 
-NEW_DOMAIN_FILENAME = "minimized-domain.pddl"
-NEW_PROBLEM_FILENAME = "minimized-problem.pddl"
-NEW_SAS_FILENAME = "minimized.sas"
-
-
-def run_commands(state, parsers):
-    if not isinstance(parsers, list):
-        parsers = [parsers]
-    results = {}
-    for cmd_name, cmd in list(state["call_strings"].items()):
-        output = subprocess.run(cmd,
-                                text=True,
-                                stdout=subprocess.PIPE,
-                                stderr=subprocess.STDOUT).stdout
-
-        results[cmd_name] = {}
-        for parser in parsers:
-            results[cmd_name].update(parser.parse(cmd_name, output))
-
-    return results
-
-
 def first_choice_hill_climbing(initial_state, successor_generators, evaluator):
     if not isinstance(successor_generators, list):
         successor_generators = [successor_generators]
