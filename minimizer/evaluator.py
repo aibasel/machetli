@@ -1,6 +1,7 @@
 import minimizer.state as state_util
 from minimizer.pddl_writer import write_PDDL
 from minimizer.sas_reader import write_SAS
+from minimizer.downward_lib import timers
 import subprocess
 import os
 
@@ -14,14 +15,15 @@ def run_commands(state, parsers):
     if not isinstance(parsers, list):
         parsers = [parsers]
     results = {}
-    for cmd_name, cmd in list(state["call_strings"].items()):
-        output = subprocess.run(cmd,
-                                text=True,
-                                stdout=subprocess.PIPE,
-                                stderr=subprocess.STDOUT).stdout
-        results[cmd_name] = {}
-        for parser in parsers:
-            results[cmd_name].update(parser.parse(cmd_name, output))
+    with timers.timing("Running successor"):
+        for cmd_name, cmd in list(state["call_strings"].items()):
+            output = subprocess.run(cmd,
+                                    text=True,
+                                    stdout=subprocess.PIPE,
+                                    stderr=subprocess.STDOUT).stdout
+            results[cmd_name] = {}
+            for parser in parsers:
+                results[cmd_name].update(parser.parse(cmd_name, output))
     return results
 
 
