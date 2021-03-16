@@ -44,6 +44,11 @@ def run_sas_tasks(state, parsers):
         state["sas_task"] = state_util.get_sas_task(state)
     state_util.update_sas_call_strings(state)
     write_SAS(state["sas_task"], state_util.NEW_SAS_FILENAME)
-    return run_commands(state, parser)
+    results = run_commands(state, parsers)
+    deletable_files = []
+    for file in deletable_files:
+        if os.path.exists(file):
+            os.remove(file)
+    return results
 
 
