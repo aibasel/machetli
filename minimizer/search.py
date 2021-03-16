@@ -5,6 +5,7 @@ def first_choice_hill_climbing(initial_state, successor_generators, evaluator):
     if not isinstance(successor_generators, list):
         successor_generators = [successor_generators]
     current_state = initial_state
+    last_state = None
     print()
     with timers.timing("Starting first-choice hill-climbing search"):
         for succ_gen in successor_generators:
@@ -21,6 +22,7 @@ def first_choice_hill_climbing(initial_state, successor_generators, evaluator):
                             .format(num_children, num_successors, "s" if num_successors > 1 else ""))
                     num_successors = 0
                     num_children += 1
+                    last_state = current_state
                     for successor_state in succ_gen().get_successors(current_state):
                         num_successors += 1
                         if evaluator().evaluate(successor_state):
@@ -31,3 +33,4 @@ def first_choice_hill_climbing(initial_state, successor_generators, evaluator):
                             "\nNo successor found by evaluator, end of first-choice hill-climbing."
                         )
                         break
+        return last_state
