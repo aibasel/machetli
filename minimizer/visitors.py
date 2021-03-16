@@ -11,8 +11,6 @@ from minimizer.downward_lib.pddl import Task, TypedObject, Predicate, Action, Ax
     UniversalCondition, ExistentialCondition, Atom, NegatedAtom, Effect
 from minimizer.downward_lib.pddl.conditions import Condition, Literal, ConstantCondition
 
-SEED = 42
-
 
 class TaskElementVisitor:
     """Interface for visitor classes to visit PDDL task elements."""
@@ -47,7 +45,8 @@ class TaskElementVisitor:
         elif isinstance(condition, NegatedAtom):
             return self.visit_condition_negated_atom(condition)
         else:
-            raise NotImplementedError("No visiting function implemented for this type of condition.")
+            raise NotImplementedError(
+                "No visiting function implemented for this type of condition.")
 
     def visit_condition_falsity(self, falsity) -> Falsity:
         raise NotImplementedError
@@ -98,9 +97,11 @@ class TaskElementErasePredicateVisitor(TaskElementVisitor):
         self.predicate_name = predicate_name
 
     def visit_task(self, task):
-        new_predicates = [predicate for predicate in task.predicates if predicate.name != self.predicate_name]
+        new_predicates = [
+            predicate for predicate in task.predicates if predicate.name != self.predicate_name]
 
-        new_init = [atom for atom in task.init if atom.predicate != self.predicate_name]
+        new_init = [atom for atom in task.init if atom.predicate !=
+                    self.predicate_name]
 
         new_goal = task.goal.accept(self)
 
@@ -250,7 +251,8 @@ class TaskElementEraseActionVisitor(TaskElementVisitor):
 
     def visit_task(self, task):
         # filter out actions with name == self.action_name
-        new_actions = [action for action in task.actions if not (action.name == self.action_name)]
+        new_actions = [action for action in task.actions if not (
+            action.name == self.action_name)]
 
         return Task(task.domain_name, task.task_name, task.requirements, task.types, task.objects, task.predicates,
                     task.functions, task.init, task.goal, new_actions, task.axioms, task.use_min_cost_metric)
@@ -263,9 +265,12 @@ class TaskElementEraseObjectVisitor(TaskElementVisitor):
         self.object_name = object_name
 
     def visit_task(self, task):
-        new_objects = [obj for obj in task.objects if obj.name != self.object_name]
-        new_init = [literal for literal in task.init if not contains(literal, self.object_name)]
-        new_actions = [action for action in task.actions if not contains(action, self.object_name)]
+        new_objects = [
+            obj for obj in task.objects if obj.name != self.object_name]
+        new_init = [literal for literal in task.init if not contains(
+            literal, self.object_name)]
+        new_actions = [action for action in task.actions if not contains(
+            action, self.object_name)]
         new_goal = task.goal.accept(self)
 
         return Task(task.domain_name, task.task_name, task.requirements, task.types, new_objects, task.predicates,
