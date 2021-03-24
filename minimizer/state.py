@@ -59,5 +59,5 @@ def get_sas_task(state):
 def update_sas_call_strings(state):
     for cmd_name, cmd in list(state["call_strings"].items()):
         taskfile_position = get_sas_file_position(cmd)
-        state["call_strings"][cmd_name][taskfile_position] = NEW_SAS_FILENAME
+        state["sas_file"] = NEW_SAS_FILENAME
     return state
