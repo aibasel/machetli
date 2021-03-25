@@ -1,7 +1,7 @@
 import sys
 
-from fd_19_12_modules.sas_tasks import SASTask, SASVariables, SASMutexGroup, SASInit, SASGoal, SASOperator, SASAxiom
-from transform_sas import SASVariableEraser, SASOperatorEraser
+from minimizer.downward_lib.sas_tasks import SASTask, SASVariables, SASMutexGroup, SASInit, SASGoal, SASOperator, SASAxiom
+from minimizer.transform_sas import SASVariableEraser, SASOperatorEraser
 
 
 def read_variables(sf, num_vars):
@@ -146,8 +146,6 @@ def sas_file_to_SASTask(sas_file) -> SASTask:
     return sas_task
 
 
-if __name__ == "__main__":
-    used_file = sys.argv[1]
-    sas_task = sas_file_to_SASTask(used_file)
-    with open(used_file, "w") as file:
+def write_SAS(sas_task, filename):
+    with open(filename, "w") as file:
         sas_task.output(file)

@@ -1,4 +1,4 @@
-from fd_19_12_modules.pddl.task_element import TaskElement
+from minimizer.downward_lib.pddl.task_element import TaskElement
 
 from . import axioms
 from . import predicates

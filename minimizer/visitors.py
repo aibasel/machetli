@@ -4,14 +4,12 @@ import random
 from collections import Generator
 from contextlib import redirect_stdout
 
-from fd_19_12_modules import pddl_parser
-from fd_19_12_modules import timers
-from fd_19_12_modules.pddl import Task, TypedObject, Predicate, Action, Axiom, Function, Truth, Conjunction, \
+from minimizer.downward_lib import pddl_parser
+from minimizer.downward_lib import timers
+from minimizer.downward_lib.pddl import Task, TypedObject, Predicate, Action, Axiom, Function, Truth, Conjunction, \
     Disjunction, Falsity, \
-    UniversalCondition, ExistentialCondition, Atom, NegatedAtom, Literal, Effect
-from fd_19_12_modules.pddl.conditions import Condition, ConstantCondition
-
-SEED = 42
+    UniversalCondition, ExistentialCondition, Atom, NegatedAtom, Effect
+from minimizer.downward_lib.pddl.conditions import Condition, Literal, ConstantCondition
 
 
 class TaskElementVisitor:
@@ -47,7 +45,8 @@ class TaskElementVisitor:
         elif isinstance(condition, NegatedAtom):
             return self.visit_condition_negated_atom(condition)
         else:
-            raise NotImplementedError("No visiting function implemented for this type of condition.")
+            raise NotImplementedError(
+                "No visiting function implemented for this type of condition.")
 
     def visit_condition_falsity(self, falsity) -> Falsity:
         raise NotImplementedError
@@ -98,9 +97,11 @@ class TaskElementErasePredicateVisitor(TaskElementVisitor):
         self.predicate_name = predicate_name
 
     def visit_task(self, task):
-        new_predicates = [predicate for predicate in task.predicates if predicate.name != self.predicate_name]
+        new_predicates = [
+            predicate for predicate in task.predicates if predicate.name != self.predicate_name]
 
-        new_init = [atom for atom in task.init if atom.predicate != self.predicate_name]
+        new_init = [atom for atom in task.init if atom.predicate !=
+                    self.predicate_name]
 
         new_goal = task.goal.accept(self)
 
@@ -250,7 +251,8 @@ class TaskElementEraseActionVisitor(TaskElementVisitor):
 
     def visit_task(self, task):
         # filter out actions with name == self.action_name
-        new_actions = [action for action in task.actions if not (action.name == self.action_name)]
+        new_actions = [action for action in task.actions if not (
+            action.name == self.action_name)]
 
         return Task(task.domain_name, task.task_name, task.requirements, task.types, task.objects, task.predicates,
                     task.functions, task.init, task.goal, new_actions, task.axioms, task.use_min_cost_metric)
@@ -263,9 +265,12 @@ class TaskElementEraseObjectVisitor(TaskElementVisitor):
         self.object_name = object_name
 
     def visit_task(self, task):
-        new_objects = [obj for obj in task.objects if obj.name != self.object_name]
-        new_init = [literal for literal in task.init if not contains(literal, self.object_name)]
-        new_actions = [action for action in task.actions if not contains(action, self.object_name)]
+        new_objects = [
+            obj for obj in task.objects if obj.name != self.object_name]
+        new_init = [literal for literal in task.init if not contains(
+            literal, self.object_name)]
+        new_actions = [action for action in task.actions if not contains(
+            action, self.object_name)]
         new_goal = task.goal.accept(self)
 
         return Task(task.domain_name, task.task_name, task.requirements, task.types, new_objects, task.predicates,
@@ -310,84 +315,3 @@ class TaskElementEraseObjectVisitor(TaskElementVisitor):
 
     def visit_condition_negated_atom(self, negated_atom) -> NegatedAtom:
         return Falsity() if contains(negated_atom, self.object_name) else negated_atom
-
-
-class Transformer:
-    """Interface for PDDL transformation classes."""
-
-    def get_successors(self, task):
-        """Return task generator representing successors of input task."""
-        raise NotImplementedError("This method should be implemented.")
-
-
-class ActionEraser(Transformer):
-    """Performs PDDL task transformations by erasing task actions."""
-
-    def get_successors(self, task: Task) -> Generator:
-        """Creates and returns generator of successors of given PDDL task by deleting task actions."""
-        action_names = [action.name for action in task.actions]
-        random.Random(SEED).shuffle(action_names)
-        for name in action_names:
-            pre_child = copy.deepcopy(task)
-            with timers.timing("Obtaining successor"):
-                child = pre_child.accept(TaskElementEraseActionVisitor(name))
-            yield child, name
-
-
-class AtomTruthReplacer(Transformer):
-    """Performs PDDL task transformations by replacing atoms containing the deleted predicate with the truth value."""
-
-    def get_successors(self, task: Task) -> Generator:
-        """Creates and returns generator of successors of given task by replacing atoms containing the deleted predicate."""
-        predicate_names = [predicate.name for predicate in task.predicates if
-                           not (predicate.name == "dummy_axiom_trigger" or predicate.name == "=")]
-        random.Random(SEED).shuffle(predicate_names)
-        for name in predicate_names:
-            pre_child = copy.deepcopy(task)
-            with timers.timing("Obtaining successor"):
-                child = pre_child.accept(TaskElementErasePredicateTrueAtomVisitor(name))
-            yield child, name
-
-
-class AtomFalsityReplacer(Transformer):
-    """Performs PDDL task transformations by replacing atoms containing the deleted predicate with the falsity value."""
-
-    def get_successors(self, task: Task) -> Generator:
-        """Creates and returns generator of successors of given task by replacing atoms containing the deleted predicate."""
-        predicate_names = [predicate.name for predicate in task.predicates if
-                           not (predicate.name == "dummy_axiom_trigger" or predicate.name == "=")]
-        random.Random(SEED).shuffle(predicate_names)
-        for name in predicate_names:
-            pre_child = copy.deepcopy(task)
-            with timers.timing("Obtaining successor"):
-                child = pre_child.accept(TaskElementErasePredicateFalseAtomVisitor(name))
-            yield child, name
-
-
-class LiteralTruthReplacer(Transformer):
-    """Performs PDDL task transformations by replacing literals containing the deleted predicate with the truth value."""
-
-    def get_successors(self, task: Task) -> Generator:
-        """Creates and returns generator of successors of given task by replacing literals containing the deleted predicate."""
-        predicate_names = [predicate.name for predicate in task.predicates if
-                           not (predicate.name == "dummy_axiom_trigger" or predicate.name == "=")]
-        random.Random(SEED).shuffle(predicate_names)
-        for name in predicate_names:
-            pre_child = copy.deepcopy(task)
-            with timers.timing("Obtaining successor"):
-                child = pre_child.accept(TaskElementErasePredicateTrueLiteralVisitor(name))
-            yield child, name
-
-
-class ObjectEraser(Transformer):
-    """Performs PDDL task transformations by deleting task objects."""
-
-    def get_successors(self, task) -> Generator:
-        """Creates and returns generator of successors of given task by deleting task objects."""
-        object_names = [obj.name for obj in task.objects]
-        random.Random(SEED).shuffle(object_names)
-        for name in object_names:
-            pre_child = copy.deepcopy(task)
-            with timers.timing("Obtaining successor"):
-                child = pre_child.accept(TaskElementEraseObjectVisitor(name))
-            yield child, name

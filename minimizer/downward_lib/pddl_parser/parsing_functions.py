@@ -1,7 +1,7 @@
 import sys
 
-from fd_19_12_modules import pddl
-from fd_19_12_modules import graph
+from minimizer.downward_lib import pddl
+from minimizer.downward_lib import graph
 
 
 def parse_typed_list(alist, only_variables=False,

@@ -3,7 +3,7 @@
 # based on a precomputed hash value.
 #
 # Careful: Most other classes (e.g. Effects, Axioms, Actions) are not!
-from fd_19_12_modules.pddl.task_element import TaskElement
+from minimizer.downward_lib.pddl.task_element import TaskElement
 
 
 class Condition(TaskElement):

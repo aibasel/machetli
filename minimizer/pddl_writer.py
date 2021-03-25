@@ -1,5 +1,5 @@
-from fd_19_12_modules.pddl import Task, Truth, Assign, PrimitiveNumericExpression
-from fd_19_12_modules.pddl.conditions import ConstantCondition, Atom
+from minimizer.downward_lib.pddl import Task, Truth, Assign, PrimitiveNumericExpression
+from minimizer.downward_lib.pddl.conditions import ConstantCondition, Atom
 
 CLOSING_BRACKET = ")"
 SIN = " "  # single indentation
