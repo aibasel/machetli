@@ -4,12 +4,60 @@ from minimizer.sas_reader import write_SAS
 from minimizer.downward_lib import timers
 import subprocess
 import os
+from lab.calls.call import set_limit
 
 
-class Evaluator():
+class Evaluator:
     def evaluate(self, state):
         raise NotImplementedError()
 
+
+class Call:
+    def __init__(
+        self,
+        args,
+        name,
+        time_limit=None,
+        memory_limit=None,
+        ipt=None,
+        **kwargs
+    ):
+
+        def get_bytes(limit):
+            return None if limit is None else int(limit * 1024)
+
+        def prepare_call():
+            # When the soft time limit is reached, SIGXCPU is emitted. Once we
+            # reach the higher hard time limit, SIGKILL is sent. Having some
+            # padding between the two limits allows programs to handle SIGXCPU.
+            if time_limit is not None:
+                set_limit(resource.RLIMIT_CPU, time_limit, time_limit + 5)
+            if memory_limit is not None:
+                _, hard_mem_limit = resource.getrlimit(resource.RLIMIT_AS)
+                # Convert memory from MiB to Bytes.
+                set_limit(
+                    resource.RLIMIT_AS, memory_limit * 1024 * 1024, hard_mem_limit
+                )
+            set_limit(resource.RLIMIT_CORE, 0, 0)
+
+        try:
+            process = subprocess.Popen(args,
+                                       preexec_fn=prepare_call,
+                                       stdout=subprocess.PIPE,
+                                       stderr=subprocess.PIPE,
+                                       text=True,
+                                       **kwargs)
+        except OSError as err:
+            if err.errno == errno.ENOENT:
+                sys.exit(f'Error: Call {name} failed. "{args[0]}" not found.')
+            else:
+                raise
+        
+        out_str, err_str = process.communicate(input=ipt)
+
+        self.stdout = out_str
+        self.stderr = err_str
+        self.returncode = process.returncode
 
 def run_call_string(state, call_string, parsers, ipt=None):
     if not isinstance(parsers, list):
