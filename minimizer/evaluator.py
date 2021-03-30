@@ -5,6 +5,7 @@ from minimizer.downward_lib import timers
 import subprocess
 import os
 from lab.calls.call import set_limit
+import resource
 
 
 class Evaluator:
@@ -45,6 +46,7 @@ class Call:
                                        preexec_fn=prepare_call,
                                        stdout=subprocess.PIPE,
                                        stderr=subprocess.PIPE,
+                                       stdin=subprocess.PIPE if ipt else None,
                                        text=True,
                                        **kwargs)
         except OSError as err:
@@ -52,6 +54,8 @@ class Call:
                 sys.exit(f'Error: Call {name} failed. "{args[0]}" not found.')
             else:
                 raise
+        except subprocess.SubprocessError as sErr:
+            raise
         
         out_str, err_str = process.communicate(input=ipt)
 
@@ -59,37 +63,42 @@ class Call:
         self.stderr = err_str
         self.returncode = process.returncode
 
-def run_call_string(state, call_string, parsers, ipt=None):
+
+def run_call_string(state, name, parsers, ipt=None):
     if not isinstance(parsers, list):
         parsers = [parsers]
-    result = {}
+    result = {"stderr": {}}
     with timers.timing("Running successor"):
-        cmd = state["call_strings"][call_string]
-        output = subprocess.run(cmd,
-                                text=True,
-                                stdout=subprocess.PIPE,
-                                stderr=subprocess.STDOUT,
-                                input=ipt).stdout
+        run = state["call_strings"][name]
+        tl = run["time_limit"] if "time_limit" in run else None
+        ml = run["memory_limit"] if "memory_limit" in run else None
+        call = Call(run["args"],
+                    name,
+                    time_limit=tl,
+                    memory_limit=ml,
+                    ipt=ipt)
         for parser in parsers:
-            result.update(parser.parse(call_string, output))
+            result.update(parser.parse(name, call.stdout))
+            result["stderr"].update(parser.parse(name, call.stderr))
+        result["returncode"] = call.returncode
     return result
 
 
-def run_pddl_task(state, call_string, parsers):
+def run_pddl_task(state, name, parsers):
     assert "pddl_task" in state, "State must contain \"pddl_task\" entry."
     state_util.update_pddl_call_strings(state)
     write_PDDL(state["pddl_task"], state_util.NEW_DOMAIN_FILENAME,
                state_util.NEW_PROBLEM_FILENAME)
-    result = run_call_string(state, call_string, parsers)
+    result = run_call_string(state, name, parsers)
     return result
 
 
-def run_sas_task(state, call_string, parsers):
+def run_sas_task(state, name, parsers):
     assert "sas_task" in state, "State must contain \"sas_task\" entry."
     state_util.update_sas_call_strings(state)
     write_SAS(state["sas_task"], state_util.NEW_SAS_FILENAME)
     f = open(state["sas_file"], "r")
     sas_content = f.read()
     f.close()
-    result = run_call_string(state, call_string, parsers, ipt=sas_content)
+    result = run_call_string(state, name, parsers, ipt=sas_content)
     return result
