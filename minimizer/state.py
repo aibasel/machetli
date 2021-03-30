@@ -31,10 +31,10 @@ def get_pddl_task(state):
 
 
 def update_pddl_call_strings(state):
-    for cmd_name, cmd in list(state["call_strings"].items()):
-        dom_position, prob_position = get_pddl_file_positions(cmd)
-        state["call_strings"][cmd_name][dom_position] = NEW_DOMAIN_FILENAME
-        state["call_strings"][cmd_name][prob_position] = NEW_PROBLEM_FILENAME
+    for name, run in list(state["call_strings"].items()):
+        dom_position, prob_position = get_pddl_file_positions(run["args"])
+        state["call_strings"][name]["args"][dom_position] = NEW_DOMAIN_FILENAME
+        state["call_strings"][name]["args"][prob_position] = NEW_PROBLEM_FILENAME
     return state
 
 
@@ -57,7 +57,5 @@ def get_sas_task(state):
 
     
 def update_sas_call_strings(state):
-    for cmd_name, cmd in list(state["call_strings"].items()):
-        taskfile_position = get_sas_file_position(cmd)
-        state["sas_file"] = NEW_SAS_FILENAME
+    state["sas_file"] = NEW_SAS_FILENAME
     return state
