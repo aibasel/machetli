@@ -5,7 +5,9 @@ NEW_DOMAIN_FILENAME = "minimized-domain.pddl"
 NEW_PROBLEM_FILENAME = "minimized-problem.pddl"
 NEW_SAS_FILENAME = "minimized.sas"
 
-
+# TODO: Remove unused functions
+# TODO: Handle temp files
+# TODO: Implement function run_all(state) that starts all runs
 
 def read_pddl_task(dom_filename, prob_filename):
     return pddl_parser.open(domain_filename=dom_filename,
