@@ -4,8 +4,6 @@ import sys
 import errno
 
 from lab.calls.call import set_limit
-from minimizer.downward_lib import pddl_parser
-from minimizer.sas_reader import sas_file_to_SASTask
 
 
 class Run:

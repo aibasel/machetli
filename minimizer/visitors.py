@@ -1,11 +1,6 @@
-import copy
 import io
-import random
-from collections import Generator
 from contextlib import redirect_stdout
 
-from minimizer.downward_lib import pddl_parser
-from minimizer.downward_lib import timers
 from minimizer.downward_lib.pddl import Task, TypedObject, Predicate, Action, Axiom, Function, Truth, Conjunction, \
     Disjunction, Falsity, \
     UniversalCondition, ExistentialCondition, Atom, NegatedAtom, Effect
