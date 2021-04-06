@@ -8,21 +8,6 @@ from minimizer.downward_lib import pddl_parser
 from minimizer.sas_reader import sas_file_to_SASTask
 
 
-def _prepare_call():
-    # When the soft time limit is reached, SIGXCPU is emitted. Once we
-    # reach the higher hard time limit, SIGKILL is sent. Having some
-    # padding between the two limits allows programs to handle SIGXCPU.
-    if time_limit is not None:
-        set_limit(resource.RLIMIT_CPU, time_limit, time_limit + 5)
-    if memory_limit is not None:
-        _, hard_mem_limit = resource.getrlimit(resource.RLIMIT_AS)
-        # Convert memory from MiB to Bytes.
-        set_limit(
-            resource.RLIMIT_AS, memory_limit * 1024 * 1024, hard_mem_limit
-        )
-    set_limit(resource.RLIMIT_CORE, 0, 0)
-
-
 class Run:
     """
     Stores a command and its optional time and memory limits.
@@ -42,16 +27,30 @@ class Run:
         time_limit = self.time_limit
         memory_limit = self.memory_limit
 
+        def _prepare_call():
+            # When the soft time limit is reached, SIGXCPU is emitted. Once we
+            # reach the higher hard time limit, SIGKILL is sent. Having some
+            # padding between the two limits allows programs to handle SIGXCPU.
+            if time_limit is not None:
+                set_limit(resource.RLIMIT_CPU, time_limit, time_limit + 5)
+            if memory_limit is not None:
+                _, hard_mem_limit = resource.getrlimit(resource.RLIMIT_AS)
+                # Convert memory from MiB to Bytes.
+                set_limit(resource.RLIMIT_AS, memory_limit * 1024 * 1024, hard_mem_limit)
+            set_limit(resource.RLIMIT_CORE, 0, 0)
+
+        formatted_command = [part.format(**state) for part in self.command]
+
         try:
-            process = subprocess.Popen([part.format(**state) for part in command],
+            process = subprocess.Popen(formatted_command,
                                        preexec_fn=_prepare_call,
                                        stdout=subprocess.PIPE,
                                        stderr=subprocess.PIPE,
                                        text=True)
         except OSError as err:
             if err.errno == errno.ENOENT:
-                sys.exit('Error: Call "{}" failed. "{}" not found.'.format(
-                    ' '.join(command), command[0]))
+                sys.exit('Error: Call "{}" failed. One of the files was not found.'.format(
+                    ' '.join(formatted_command)))
             else:
                 raise
 
@@ -74,6 +73,18 @@ class RunWithInputFile(Run):
         time_limit = self.time_limit
         memory_limit = self.memory_limit
 
+        def _prepare_call():
+            # When the soft time limit is reached, SIGXCPU is emitted. Once we
+            # reach the higher hard time limit, SIGKILL is sent. Having some
+            # padding between the two limits allows programs to handle SIGXCPU.
+            if time_limit is not None:
+                set_limit(resource.RLIMIT_CPU, time_limit, time_limit + 5)
+            if memory_limit is not None:
+                _, hard_mem_limit = resource.getrlimit(resource.RLIMIT_AS)
+                # Convert memory from MiB to Bytes.
+                set_limit(resource.RLIMIT_AS, memory_limit * 1024 * 1024, hard_mem_limit)
+            set_limit(resource.RLIMIT_CORE, 0, 0)
+
         formatted_command = [part.format(**state) for part in self.command]
 
         try:
@@ -85,8 +96,8 @@ class RunWithInputFile(Run):
                                        text=True)
         except OSError as err:
             if err.errno == errno.ENOENT:
-                sys.exit('Error: Call "{}" failed. "{}" not found.'.format(
-                    ' '.join(formatted_command), formatted_command[0]))
+                sys.exit('Error: Call "{}" failed. One of the files was not found.'.format(
+                    ' '.join(formatted_command)))
             else:
                 raise
 
