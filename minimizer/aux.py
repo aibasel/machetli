@@ -6,6 +6,13 @@ from minimizer.sas_reader import sas_file_to_SASTask
 from minimizer.pddl_writer import write_PDDL
 from minimizer.downward_lib import pddl_parser
 
+GENERATED_PDDL_DOMAIN_FILENAME = "generated_pddl_domain_filename"
+GENERATED_PDDL_PROBLEM_FILENAME = "generated_pddl_problem_filename"
+PDDL_TASK = "pddl_task"
+
+GENERATED_SAS_FILENAME = "generated_sas_filename"
+SAS_TASK = "sas_task"
+
 
 def parse_pddl_task(dom_filename, prob_filename):
     """
@@ -60,7 +67,7 @@ def run_and_parse_all(state, parsers):
     return parsed_results
 
 
-def generate_sas_file(state, sas_task_key="sas_task"):
+def generate_sas_file(state):
     """
     Generates a temporary file containing the dump of the SAS+ task from 
     *state[sas_task_key]* and returns its full path. When the temporary 
@@ -68,12 +75,12 @@ def generate_sas_file(state, sas_task_key="sas_task"):
     (it is not removed automatically).
     """
     f = tempfile.NamedTemporaryFile(mode="w+t", suffix=".sas", delete=False)
-    state[sas_task_key].output(f)
+    state[SAS_TASK].output(f)
     f.close()
     return f.name
 
 
-def generate_pddl_files(state, pddl_task_key="pddl_task"):
+def generate_pddl_files(state):
     """
     Generates temporary files containing the dumps of the domain and problem
     description of the PDDL task from *state[pddl_task_key]* and returns a
@@ -87,41 +94,36 @@ def generate_pddl_files(state, pddl_task_key="pddl_task"):
     problem_f = tempfile.NamedTemporaryFile(
         mode="w+t", suffix=".pddl", delete=False)
     problem_f.close()
-    write_PDDL(state[pddl_task_key], domain_filename=domain_f.name,
+    write_PDDL(state[PDDL_TASK], domain_filename=domain_f.name,
                problem_filename=problem_f.name)
     return (domain_f.name, problem_f.name)
 
 
 @contextlib.contextmanager
-def state_with_generated_sas_file(state, sas_file_key="generated_sas_filename", sas_task_key="sas_task"):
+def state_with_generated_sas_file(state):
     """
     Context manager that adds an entry for the temporary generated sas file
     to *state* and removes it afterwards.
     """
-    # TODO: not sure if modifying the state object directly is a good idea
-    state[sas_file_key] = generate_sas_file(state, sas_task_key)
+    state[GENERATED_SAS_FILENAME] = generate_sas_file(state)
     yield state
     # delete temporary file and delete entry from state
-    os.remove(state[sas_file_key])
-    del state[sas_file_key]
+    os.remove(state[GENERATED_SAS_FILENAME])
+    del state[GENERATED_SAS_FILENAME]
 
 
 @contextlib.contextmanager
-def state_with_generated_pddl_files(state,
-                                    pddl_domain_key="generated_pddl_domain_filename",
-                                    pddl_problem_key="generated_pddl_problem_filename",
-                                    pddl_task_key="pddl_task"):
+def state_with_generated_pddl_files(state):
     """
     Context manager that adds entries for the temporary generated domain
-    and problem file to *state* and removes it afterwards.
+    and problem file to *state* and removes them afterwards.
     """
-    domain_filename, problem_filename = generate_pddl_files(state, pddl_task_key)
-    # TODO: not sure if modifying the state object directly is a good idea
-    state[pddl_domain_key] = domain_filename
-    state[pddl_problem_key] = problem_filename
+    domain_filename, problem_filename = generate_pddl_files(state)
+    state[GENERATED_PDDL_DOMAIN_FILENAME] = domain_filename
+    state[GENERATED_PDDL_PROBLEM_FILENAME] = problem_filename
     yield state
     # delete temporary files and delete entries from state
-    os.remove(state[pddl_domain_key])
-    os.remove(state[pddl_problem_key])
-    del state[pddl_domain_key]
-    del state[pddl_problem_key]
+    os.remove(state[GENERATED_PDDL_DOMAIN_FILENAME])
+    os.remove(state[GENERATED_PDDL_PROBLEM_FILENAME])
+    del state[GENERATED_PDDL_DOMAIN_FILENAME]
+    del state[GENERATED_PDDL_PROBLEM_FILENAME]
