@@ -1,0 +1,34 @@
+#! /bin/bash -l
+### Set name.
+#SBATCH --job-name=%(name)s
+### Redirect stdout and stderr.
+#SBATCH --output=%(logfile)s
+#SBATCH --error=%(errfile)s
+### Let later steps append their logs to the output and error files.
+#SBATCH --open-mode=append
+### Set partition.
+#SBATCH --partition=%(partition)s
+### Set quality-of-service group.
+#SBATCH --qos=%(qos)s
+### Set memory limit.
+#SBATCH --mem-per-cpu=%(memory_per_cpu)s
+### Number of tasks.
+#SBATCH --array=1-%(num_tasks)d
+### Adjustment to priority ([-2147483645, 2147483645]).
+#SBATCH --nice=%(nice)s
+### Send mail? Mail type can be e.g. NONE, END, FAIL, ARRAY_TASKS.
+#SBATCH --mail-type=%(mailtype)s
+#SBATCH --mail-user=%(mailuser)s
+
+declare -a DUMP_PATHS=(%(dump_paths)s)
+
+function print_run_dir {
+    local RUN_ID=${SHUFFLED_TASK_IDS[$1 - 1]}
+    let "LOWER=((RUN_ID - 1) / 100) * 100 + 1"
+    let "UPPER=((RUN_ID + 100 - 1) / 100) * 100"
+    printf "runs-%05d-%05d/%05d" $LOWER $UPPER $RUN_ID
+}
+
+DUMP_PATH=$(print_run_dir $SLURM_ARRAY_TASK_ID)
+
+"%(python)s" grid_test.py --evaluate "$DUMP_PATH/dump"
