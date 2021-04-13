@@ -1,5 +1,14 @@
 #! /usr/bin/env python
 
+from lab import tools
+import sys
+import os
+script_path = tools.get_script_path()
+script_dir = os.path.dirname(script_path)
+minimizer_dir = os.path.dirname(os.path.dirname(os.path.dirname(script_path)))
+sys.path.append(minimizer_dir)
+
+from minimizer.grid import slurm_tools
 import time
 import random
 import argparse
@@ -36,24 +45,26 @@ def search_local():
             break
     return state
 
-# print(search_local())
+print(search_local())
 
-# def search_grid():
-#     state = create_initial_state()
-#     while True:
-#         successor_generator = successors(state)
-#         batch_of_successors = get_next_batch(successor_generator)
-#         if no more successors:
-#             break
+def search_grid():
+    state = create_initial_state()
+    batch_num = 0
+    while True:
+        batch_num += 1
+        successor_generator = successors(state)
+        batch_of_successors = slurm_tools.get_next_batch(successor_generator, batch_num)
+        if not batch_of_successors:
+            break
 
-#         job_id = submit_batch(batch_of_successors)
-#         wait_for_grid(job_id)
-#         for succ in batch_of_successors:
-#             result = get_result(succ)
-#             if result:
-#                 state = succ
-#                 break
-#     return state
+        job_id = slurm_tools.submit_array_job(batch_of_successors)
+        wait_for_grid(job_id)
+        for succ in batch_of_successors:
+            result = get_result(succ)
+            if result:
+                state = succ
+                break
+    return state
 
 
 def parse_args():
