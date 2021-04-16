@@ -53,12 +53,11 @@ def search_grid():
     while True:
         batch_num += 1
         successor_generator = successors(state)
-        batch_of_successors = slurm_tools.get_next_batch(successor_generator, batch_num)
+        batch_of_successors = slurm_tools.get_next_batch(successor_generator)
         if not batch_of_successors:
             break
-
-        job_id = slurm_tools.submit_array_job(batch_of_successors)
-        wait_for_grid(job_id)
+        job_id, dump_dirs = slurm_tools.submit_array_job(batch_of_successors)
+        slurm_tools.let_job_finish(job_id)
         for succ in batch_of_successors:
             result = get_result(succ)
             if result:
@@ -76,7 +75,8 @@ def parse_args():
 
 def main():
     args = parse_args()
-    print(args)
+    if args.evaluate:
+        print(" ".join(sys.argv))
 
 
 if __name__ == "__main__":
