@@ -1,5 +1,8 @@
 #! /usr/bin/env python
 
+import argparse
+import random
+import time
 from lab import tools
 import sys
 import os
@@ -7,11 +10,8 @@ script_path = tools.get_script_path()
 script_dir = os.path.dirname(script_path)
 minimizer_dir = os.path.dirname(os.path.dirname(os.path.dirname(script_path)))
 sys.path.append(minimizer_dir)
-
 from minimizer.grid import slurm_tools
-import time
-import random
-import argparse
+
 
 def successors(state):
     print(f"expanding {state}")
@@ -26,7 +26,7 @@ def successors(state):
 
 def evaluate(state):
     print(f"evaluating {state}")
-    time.sleep(random.randint(1, 6)) # seconds
+    time.sleep(random.randint(1, 6))  # seconds
     return state["level"] <= 3 and state["id"] == 2
 
 
@@ -45,7 +45,6 @@ def search_local():
             break
     return state
 
-print(search_local())
 
 def search_grid():
     state = create_initial_state()
@@ -56,10 +55,14 @@ def search_grid():
         batch_of_successors = slurm_tools.get_next_batch(successor_generator)
         if not batch_of_successors:
             break
-        job_id, dump_dirs = slurm_tools.submit_array_job(batch_of_successors)
+        job_id, dump_dirs = slurm_tools.submit_array_job(batch_of_successors, batch_num)
         slurm_tools.let_job_finish(job_id)
-        for succ in batch_of_successors:
-            result = get_result(succ)
+
+        assert len(batch_of_successors) == len(
+            dump_dirs), "Something went wrong, batch size and number of dump directories should be the same."
+        for succ, dump_dir in zip(batch_of_successors, dump_dirs):
+            dump_path = os.path.join(dump_dir, slurm_tools.DUMP_FILENAME)
+            result = slurm_tools.get_result(dump_path)
             if result:
                 state = succ
                 break
@@ -76,14 +79,21 @@ def parse_args():
 def main():
     args = parse_args()
     if args.evaluate:
-        print(" ".join(sys.argv))
+        dump_file_path = args.evaluate
+        state = slurm_tools.read_and_unpickle_state(dump_file_path)
+        result = evaluate(state)
+        slurm_tools.write_result(result, dump_file_path)
+    elif args.grid:
+        print(search_grid())
+    else:
+        print(search_local())
 
 
 if __name__ == "__main__":
     main()
 
 
-#run_search()
+# run_search()
 # ./grid_test.py --> search_local
 # ./grid_test.py --grid --> search_grid
 # ./grid_test.py --evaluate directory_14 --> evaluate(load(directory_14/state))
