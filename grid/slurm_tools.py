@@ -64,7 +64,7 @@ def build_batch_directories(batch, batch_num):
         dump_dir_name = f"{rank:05}"
         dump_dir_path = os.path.join(batch_dir_path, dump_dir_name)
         tools.makedirs(dump_dir_path)
-        dump_file_path = os.path.join(dump_dir_name, DUMP_FILENAME)
+        dump_file_path = os.path.join(dump_dir_path, DUMP_FILENAME)
         pickle_and_dump_state(state, dump_file_path)
         dump_dirs.append(dump_dir_path)
     # Give the NFS time to write the paths
