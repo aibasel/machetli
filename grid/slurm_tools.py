@@ -4,8 +4,10 @@ import os
 import sys
 import subprocess
 import re
+import time
 
 EVAL_DIR = "eval_dir"
+DUMP_FILENAME = "dump"
 
 DEFAULT_ARRAY_SIZE = 3
 DEFAULT_PARTITION = "infai_1"
@@ -19,9 +21,38 @@ ARRAY_JOB_FILE = "slurm-array-job.sbatch"
 ARRAY_JOB_TEMPLATE = "slurm-array-job.template"
 
 
-def write_pickled_state_to_dir(state, dir):
-    with open(os.path.join(dir, "dump"), "wb") as dump:
-        pickle.dump(state, dump)
+def pickle_and_dump_state(state, file_path):
+    with open(file_path, "wb") as dump_file:
+        pickle.dump(state, dump_file)
+
+
+def read_and_unpickle_state(file_path):
+    with open(file_path, "rb") as dump_file:
+        return pickle.load(dump_file)
+
+
+def add_result_to_state(result, file_path):
+    state = read_and_unpickle_state(file_path)
+    state["result"] = result
+    pickle_and_dump_state(state, file_path)
+
+
+def get_result(file_path):
+    state = read_and_unpickle_state(file_path)
+    return state["result"]
+
+
+def wait_for_NFS(paths):
+    for _ in range(20):
+        present = True
+        for path in paths:
+            present = present and os.path.exists(path)
+        if present:
+            return
+        else:
+            time.sleep(3)
+    paths_with_newlines = "\n".join(paths) + "\n"
+    sys.exit(f"Failure. One of the following paths was not written:\n{paths_with_newlines}")
 
 
 def build_batch_directories(batch, batch_num):
@@ -33,8 +64,11 @@ def build_batch_directories(batch, batch_num):
         dump_dir_name = f"{rank:05}"
         dump_dir_path = os.path.join(batch_dir_path, dump_dir_name)
         tools.makedirs(dump_dir_path)
-        write_pickled_state_to_dir(state, dump_dir_path)
+        dump_file_path = os.path.join(dump_dir_name, DUMP_FILENAME)
+        pickle_and_dump_state(state, dump_file_path)
         dump_dirs.append(dump_dir_path)
+    # Give the NFS time to write the paths
+    wait_for_NFS(dump_dirs)
     return dump_dirs
 
 
@@ -76,11 +110,6 @@ def submit_array_job(batch, batch_num):
     paths = build_batch_directories(batch, batch_num)
     batchfile_path = fill_template(dump_paths=" ".join(paths))
     submission_command = ["sbatch", batchfile_path]
-    # ____________________
-    # for testing purposes
-    print(submission_command)
-    sys.exit(0)
-    # ____________________
     output = subprocess.check_output(submission_command).decode()
     match = re.match(r"Submitted batch job (\d*)", output)
     assert match, f"Submitting job with sbatch failed: '{output}'"
@@ -99,8 +128,9 @@ def get_next_batch(successor_generator, batch_size=DEFAULT_ARRAY_SIZE):
 
 
 def let_job_finish(job_id):
-    pass
-
-# for testing purposes
-batch = [{str(i): i} for i in range(10)]
-submit_array_job(batch, 12)
+    while True:
+        output = subprocess.check_output(["seff", str(job_id)])
+        match = re.search("State: COMPLETED", output)
+        if match:
+            break
+        time.sleep(5)
