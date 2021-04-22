@@ -35,9 +35,11 @@ def add_result_to_state(result, file_path):
     state = read_and_unpickle_state(file_path)
     state["result"] = result
     pickle_and_dump_state(state, file_path)
+    print(f'Result "{result}" was written to state.')
 
 
 def get_result(file_path):
+    time.sleep(5)
     state = read_and_unpickle_state(file_path)
     return state["result"]
 
@@ -69,6 +71,7 @@ def build_batch_directories(batch, batch_num):
         dump_dirs.append(dump_dir_path)
     # Give the NFS time to write the paths
     wait_for_NFS(dump_dirs)
+    print("Batch directories were built.")
     return dump_dirs
 
 
@@ -96,6 +99,7 @@ def fill_template(**kwargs):
     g = open(batchfile_path, "w")
     g.write(filled_text)
     g.close()
+    print("Template was filled.")
     return batchfile_path
 
 
@@ -112,6 +116,7 @@ def submit_array_job(batch, batch_num):
     submission_command = ["sbatch", batchfile_path]
     output = subprocess.check_output(submission_command).decode()
     match = re.match(r"Submitted batch job (\d*)", output)
+    print(match.group(0))
     assert match, f"Submitting job with sbatch failed: '{output}'"
     return (match.group(1), paths)
 
@@ -128,9 +133,16 @@ def get_next_batch(successor_generator, batch_size=DEFAULT_ARRAY_SIZE):
 
 
 def let_job_finish(job_id):
+    # Let job be created
+    time.sleep(5)
     while True:
-        output = subprocess.check_output(["seff", str(job_id)])
-        match = re.search("State: COMPLETED", output)
-        if match:
-            break
+        try:
+            output = subprocess.check_output(["seff", str(job_id)]).decode()
+            match = re.search("State: COMPLETED", output)
+            if match:
+                print(f"Completed job {job_id}.")
+                break
+        except subprocess.CalledProcessError as cpe:
+            print(cpe)
+            print("Continuing...")
         time.sleep(5)

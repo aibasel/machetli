@@ -26,7 +26,7 @@ def successors(state):
 
 def evaluate(state):
     print(f"evaluating {state}")
-    time.sleep(random.randint(1, 6))  # seconds
+    time.sleep(2)  # seconds
     return state["level"] <= 3 and state["id"] == 2
 
 
@@ -56,6 +56,7 @@ def search_grid():
         if not batch_of_successors:
             break
         job_id, dump_dirs = slurm_tools.submit_array_job(batch_of_successors, batch_num)
+        print("Let job finish...")
         slurm_tools.let_job_finish(job_id)
 
         assert len(batch_of_successors) == len(
@@ -66,6 +67,8 @@ def search_grid():
             if result:
                 state = succ
                 break
+        else:
+            break
     return state
 
 
@@ -82,7 +85,7 @@ def main():
         dump_file_path = args.evaluate
         state = slurm_tools.read_and_unpickle_state(dump_file_path)
         result = evaluate(state)
-        slurm_tools.write_result(result, dump_file_path)
+        slurm_tools.add_result_to_state(result, dump_file_path)
     elif args.grid:
         print(search_grid())
     else:
