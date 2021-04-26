@@ -20,6 +20,8 @@
 #SBATCH --mail-type=%(mailtype)s
 #SBATCH --mail-user=%(mailuser)s
 
+ulimit -Sv %(soft_memory_limit)d
+
 declare -a DUMP_PATHS=( %(dump_paths)s )
 
 DUMP_PATH=${DUMP_PATHS[$SLURM_ARRAY_TASK_ID]}

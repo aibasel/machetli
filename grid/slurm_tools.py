@@ -13,6 +13,7 @@ DEFAULT_ARRAY_SIZE = 3
 DEFAULT_PARTITION = "infai_1"
 DEFAULT_QOS = "normal"
 DEFAULT_MEMORY_PER_CPU = "3872M"
+DEFAULT_SOFT_MEMORY_LIMIT = int(0.98 * 3872)
 DEFAULT_NICE = 5000
 # DEFAULT_MAIL_TYPE = "END,FAIL,REQUEUE,STAGE_OUT"
 # ARRAY_JOB_HEADER_TEMPLATE_FILE = "slurm-array-job-header"
@@ -91,7 +92,8 @@ def fill_template(**kwargs):
         "num_tasks": DEFAULT_ARRAY_SIZE - 1,
         "nice": str(DEFAULT_NICE),
         "mailtype": "NONE",
-        "mailuser": ""
+        "mailuser": "",
+        "soft_memory_limit": DEFAULT_SOFT_MEMORY_LIMIT
     }
     values_dict.update(**kwargs)
     filled_text = template_text % values_dict
