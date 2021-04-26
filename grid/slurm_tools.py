@@ -13,7 +13,7 @@ DEFAULT_ARRAY_SIZE = 3
 DEFAULT_PARTITION = "infai_1"
 DEFAULT_QOS = "normal"
 DEFAULT_MEMORY_PER_CPU = "3872M"
-DEFAULT_SOFT_MEMORY_LIMIT = int(0.98 * 3872)
+DEFAULT_SOFT_MEMORY_LIMIT = int(0.98 * 3872 * 1024)
 DEFAULT_NICE = 5000
 # DEFAULT_MAIL_TYPE = "END,FAIL,REQUEUE,STAGE_OUT"
 # ARRAY_JOB_HEADER_TEMPLATE_FILE = "slurm-array-job-header"
@@ -84,8 +84,8 @@ def fill_template(**kwargs):
     f.close()
     values_dict = {
         "name": "test",
-        "logfile": "out.log",
-        "errfile": "out.err",
+        "logfile": "slurm.log",
+        "errfile": "slurm.err",
         "partition": DEFAULT_PARTITION,
         "qos": DEFAULT_QOS,
         "memory_per_cpu": DEFAULT_MEMORY_PER_CPU,
