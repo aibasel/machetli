@@ -63,7 +63,18 @@ def search_grid():
             dump_dirs), "Something went wrong, batch size and number of dump directories should be the same."
         for succ, dump_dir in zip(batch_of_successors, dump_dirs):
             dump_path = os.path.join(dump_dir, slurm_tools.DUMP_FILENAME)
-            result = slurm_tools.get_result(dump_path)
+            try:
+                result = slurm_tools.get_result(dump_path)
+            except KeyError as kerr:
+                err_message = None
+                err_logfile = os.path.join(dump_dir, "driver.err")
+                if os.path.exists(err_logfile):
+                    with open(err_logfile, "r") as file:
+                        err_message = file.read()
+                err_info = f"\nError message:\n{err_message}" if err_message else ""
+                truncated_dir = os.path.join(*dump_dir.split(os.sep)[-2:])
+                print(f"Evaluation result for state in {truncated_dir} not present.\n{err_info}")
+                result = False
             if result:
                 state = succ
                 break

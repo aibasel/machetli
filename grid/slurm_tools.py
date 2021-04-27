@@ -116,7 +116,10 @@ def submit_array_job(batch, batch_num):
     paths = build_batch_directories(batch, batch_num)
     batchfile_path = fill_template(dump_paths=" ".join(paths))
     submission_command = ["sbatch", batchfile_path]
-    output = subprocess.check_output(submission_command).decode()
+    try:
+        output = subprocess.check_output(submission_command).decode()
+    except subprocess.CalledProcessError as cpe:
+        sys.exit(cpe)
     match = re.match(r"Submitted batch job (\d*)", output)
     print(match.group(0))
     assert match, f"Submitting job with sbatch failed: '{output}'"
