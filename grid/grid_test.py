@@ -11,13 +11,14 @@ script_dir = os.path.dirname(script_path)
 minimizer_dir = os.path.dirname(os.path.dirname(os.path.dirname(script_path)))
 sys.path.append(minimizer_dir)
 from minimizer.grid import slurm_tools
+from minimizer.minimizer.run import Run
 
 
 def successors(state):
     print(f"expanding {state}")
     if state["level"] > 4:
         return
-    for i in range(4):
+    for i in range(10):
         succ = dict(state)
         succ["level"] = state["level"] + 1
         succ["id"] = i
@@ -27,11 +28,11 @@ def successors(state):
 def evaluate(state):
     print(f"evaluating {state}")
     time.sleep(2)  # seconds
-    return state["level"] <= 3 and state["id"] == 2
+    return state["level"] <= 3 and state["id"] == 8
 
 
 def create_initial_state():
-    return {"level": 1, "id": 3}
+    return {"level": 1, "id": 3, "runs": Run(["echo", "hello"], time_limit=10)}
 
 
 def search_local():
@@ -47,17 +48,15 @@ def search_local():
 
 
 def search_grid():
+    env = slurm_tools.MinimizerSlurmEnvironment()
     state = create_initial_state()
     batch_num = 0
     while True:
-        batch_num += 1
         successor_generator = successors(state)
         batch_of_successors = slurm_tools.get_next_batch(successor_generator)
         if not batch_of_successors:
             break
-        job_id, dump_dirs = slurm_tools.submit_array_job(batch_of_successors, batch_num)
-        print("Let job finish...")
-        slurm_tools.let_job_finish(job_id)
+        dump_dirs = slurm_tools.submit_array_job(batch_of_successors, batch_num)
 
         assert len(batch_of_successors) == len(
             dump_dirs), "Something went wrong, batch size and number of dump directories should be the same."
@@ -80,6 +79,7 @@ def search_grid():
                 break
         else:
             break
+        batch_num += 1
     return state
 
 
@@ -91,13 +91,16 @@ def parse_args():
 
 
 def main():
+    tools.configure_logging()
     args = parse_args()
     if args.evaluate:
+        print(tools.get_python_executable())
         dump_file_path = args.evaluate
         state = slurm_tools.read_and_unpickle_state(dump_file_path)
         result = evaluate(state)
         slurm_tools.add_result_to_state(result, dump_file_path)
     elif args.grid:
+        print(tools.get_python_executable())
         print(search_grid())
     else:
         print(search_local())

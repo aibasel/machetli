@@ -1,4 +1,4 @@
-#! /bin/bash -l
+#! /bin/bash
 ### Set name.
 #SBATCH --job-name=%(name)s
 ### Redirect stdout and stderr.
@@ -19,8 +19,16 @@
 ### Send mail? Mail type can be e.g. NONE, END, FAIL, ARRAY_TASKS.
 #SBATCH --mail-type=%(mailtype)s
 #SBATCH --mail-user=%(mailuser)s
+### Extra options
+%(extra_options)s
+
+%(environment_setup)s
 
 ulimit -Sv %(soft_memory_limit)d
+
+which python
+echo $PATH
+sleep 120
 
 declare -a DUMP_PATHS=( %(dump_paths)s )
 
