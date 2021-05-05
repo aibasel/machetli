@@ -13,6 +13,8 @@ import pprint
 EVAL_DIR = "eval_dir"
 DUMP_FILENAME = "dump"
 DEFAULT_ARRAY_SIZE = 10
+FILESYSTEM_TIME_INTERVAL = 3
+FILESYSTEM_TIME_LIMIT = 60
 WAITING_SECONDS_FOR_PATH = 10
 TIME_LIMIT_FACTOR = 1.5
 # The following are sets of slurm job state codes
@@ -77,18 +79,15 @@ class MinimizerSlurmEnvironment(BaselSlurmEnvironment):
         return job_params
 
     def wait_for_filesystem(self, paths):
-        for _ in paths:
-            present = True
-            logging.debug("Waiting for filesystem.")
-            time.sleep(WAITING_SECONDS_FOR_PATH)
-            for path in paths:
-                present = present and os.path.exists(path)
-            if present:
-                logging.info("No path missing.")
+        attempts = int(FILESYSTEM_TIME_LIMIT / FILESYSTEM_TIME_INTERVAL)
+        for _ in range(attempts):
+            time.sleep(FILESYSTEM_TIME_INTERVAL)
+            paths = [path for path in paths if not os.path.exists(path)]
+            if not paths:
+                logging.debug("No path missing.")
                 return
-        paths_with_newlines = "\n".join(paths) + "\n"
         logging.critical(
-            f"One of the following paths is missing:\n{paths_with_newlines}")
+            f"The following paths are missing:\n{pprint.pformat(paths)}")
 
     def build_batch_directories(self, batch, batch_num):
         batch_dir_path = os.path.join(
