@@ -8,6 +8,7 @@ import time
 from lab.environments import BaselSlurmEnvironment, SlurmEnvironment
 import logging
 import statistics
+import pprint
 
 EVAL_DIR = "eval_dir"
 DUMP_FILENAME = "dump"
@@ -23,7 +24,7 @@ class MinimizerSlurmEnvironment(BaselSlurmEnvironment):
     DEFAULT_NICE = 5000
     ARRAY_JOB_TEMPLATE_FILE = "slurm-array-job.template"
     ARRAY_JOB_FILE = "slurm-array-job.sbatch"
-    MAX_MEM_INFAI_BASEL = {"infai_1": "3871M", "infai_2": "6354M"}
+    MAX_MEM_INFAI_BASEL = {"infai_1": "3872M", "infai_2": "6354M"}
 
     def __init__(self, email=None, extra_options=None, partition=None, qos=None, memory_per_cpu=None, nice=None, export=None, setup=None):
         self.email = email
@@ -43,7 +44,7 @@ class MinimizerSlurmEnvironment(BaselSlurmEnvironment):
                 self.MAX_MEM_INFAI_BASEL[self.partition])
             if mem_per_cpu_in_kb > max_mem_per_cpu_in_kb:
                 logging.critical(
-                    f"Memory limit {self.mem_per_cpu} surpassing the maximum amount allowed for partition {self.partition}: {self.MAX_MEM_INFAI_BASEL[self.partition]}.")
+                    f"Memory limit {self.memory_per_cpu} surpassing the maximum amount allowed for partition {self.partition}: {self.MAX_MEM_INFAI_BASEL[self.partition]}.")
 
         eval_root_dir = os.path.dirname(tools.get_script_path())
         template_dir = os.path.dirname(os.path.abspath(__file__))
@@ -65,6 +66,7 @@ class MinimizerSlurmEnvironment(BaselSlurmEnvironment):
         job_params["soft_memory_limit"] = int(
             0.98 * SlurmEnvironment._get_memory_in_kb(self.memory_per_cpu))
         job_params["nice"] = self.nice
+        job_params["extra_options"] = self.extra_options
         job_params["environment_setup"] = self.setup
         if is_last and self.email:
             job_params["mailtype"] = "END,FAIL,REQUEUE,STAGE_OUT"
@@ -77,8 +79,9 @@ class MinimizerSlurmEnvironment(BaselSlurmEnvironment):
     def wait_for_filesystem(self, paths):
         for _ in paths:
             present = True
+            logging.debug("Waiting for filesystem.")
+            time.sleep(WAITING_SECONDS_FOR_PATH)
             for path in paths:
-                time.sleep(WAITING_SECONDS_FOR_PATH)
                 present = present and os.path.exists(path)
             if present:
                 logging.info("No path missing.")
@@ -99,7 +102,7 @@ class MinimizerSlurmEnvironment(BaselSlurmEnvironment):
             pickle_and_dump_state(state, dump_file_path)
             run_dirs.append(run_dir_path)
         # Give the NFS time to write the paths
-        self.wait_for_filesysyrm(run_dirs)
+        self.wait_for_filesystem(run_dirs)
         return run_dirs
 
     def fill_template(self, is_last=False, **kwargs):
@@ -107,7 +110,9 @@ class MinimizerSlurmEnvironment(BaselSlurmEnvironment):
             template_text = f.read()
         dictionary = self.get_job_params(is_last)
         dictionary.update(kwargs)
-        filled_text = template_text % self.get_job_params(is_last)
+        logging.debug(
+            f"Dictionary before filling:\n{pprint.pformat(dictionary)}")
+        filled_text = template_text % dictionary
         with open(self.batchfile_path, "w") as g:
             g.write(filled_text)
         # TODO: Implement check whether file was updated
@@ -121,17 +126,21 @@ class MinimizerSlurmEnvironment(BaselSlurmEnvironment):
         # full_runs_path = os.join(tools.get_script_path(), RUNS_DIR
         # tools.makedirs(full_runs_path)
         paths = self.build_batch_directories(batch, batch_num)
-        self.fill_template(dump_paths=" ".join(paths))
-        submission_command = ["sbatch", batchfile_path]
+        batch_name = f"batch_{batch_num:03}"
+        self.fill_template(dump_paths=" ".join(paths), name=batch_name, num_tasks=len(
+            batch)-1, python=tools.get_python_executable())
+        submission_command = ["sbatch", self.batchfile_path]
         try:
             output = subprocess.check_output(submission_command).decode()
         except subprocess.CalledProcessError as cpe:
             logging.critical(
-                f"Submission of batch {batch_num:03} was not successful.")
+                f"Submission of batch {batch_name} was not successful.")
         match = re.match(r"Submitted batch job (\d*)", output)
         if not match:
             logging.critical(
                 "Something went wrong, no job ID printed after job submission.")
+        else:
+            logging.info(match.group(0))
         job_id = match.group(1)
         self._poll_job(job_id, batch)
         return paths
@@ -160,28 +169,32 @@ class MinimizerSlurmEnvironment(BaselSlurmEnvironment):
                     else:
                         critical.append(detailed_job_id)
                 if critical:
-                    sub_ids = [parts[1] for parts in (i.split("_") for i in job_state_dict.keys())]
-                    logging.critical(f"Evaluation failed for states {', '.join(sub_ids)} in last batch.")
+                    sub_ids = [parts[1] for parts in (
+                        i.split("_") for i in job_state_dict.keys())]
+                    logging.critical(
+                        f"Evaluation failed for states {', '.join(sub_ids)} in last batch.")
                 elif busy:
-                    items_stacked = "\n".join(job_state_dict.items())
-                    logging.debug(f"Some sub-jobs are still busy:\n{items_stacked}")
+                    logging.debug(
+                        f"Some sub-jobs are still busy:\n{pprint.pformat(job_state_dict)}")
                 else:
                     logging.debug("All sub-jobs are done!")
-                    break
+                    return
             except subprocess.CalledProcessError as cpe:
-                logging.critical(f"The following error occurred while polling array job {job_id}:\n{cpe}")
+                logging.critical(
+                    f"The following error occurred while polling array job {job_id}:\n{cpe}")
             time.sleep(WAITING_SECONDS_FOR_PATH)
-        logging.critical(f"The allowed time limit of {job_time_limit} s is up and the job did not finish.")
+        logging.critical(
+            f"The allowed time limit of {job_time_limit} s is up and the job did not finish.")
 
     def _build_job_state_dict(self, sacct_output):
-       unclean_job_state_list =  sacct_output.strip("\n").split("\n")
-       stripped_job_state_list = [pair.strip("+ ") for pair in unclean_job_state_list]
-       return {k: v for k, v in (pair.split() for pair in stripped_job_state_list)}
-       
+        unclean_job_state_list = sacct_output.strip("\n").split("\n")
+        stripped_job_state_list = [pair.strip(
+            "+ ") for pair in unclean_job_state_list]
+        return {k: v for k, v in (pair.split() for pair in stripped_job_state_list)}
 
 
 def sum_of_time_limits(state):
-    return sum({run.time_limit for run in state["runs"].values()})
+    return sum({run.time_limit for run in state["runs"]})
 
 
 def pickle_and_dump_state(state, file_path):
