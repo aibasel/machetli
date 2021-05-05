@@ -26,16 +26,12 @@
 
 ulimit -Sv %(soft_memory_limit)d
 
-which python
-echo $PATH
-sleep 120
-
 declare -a DUMP_PATHS=( %(dump_paths)s )
 
 DUMP_PATH=${DUMP_PATHS[$SLURM_ARRAY_TASK_ID]}
 
 (
-./grid_test.py --evaluate "$DUMP_PATH/dump"
+%(python)s grid_test.py --evaluate "$DUMP_PATH/dump"
 RETCODE=$?
 if [[ $RETCODE != 0 ]]; then
     >&2 echo "The run script finished with exit code $RETCODE"
