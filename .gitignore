@@ -2,3 +2,6 @@ __pycache__/
 *.venv*/
 .vscode/
 examples/
+eval_dir/
+slurm.err
+slurm.log
