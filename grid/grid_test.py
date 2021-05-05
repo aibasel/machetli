@@ -12,9 +12,11 @@ minimizer_dir = os.path.dirname(os.path.dirname(os.path.dirname(script_path)))
 sys.path.append(minimizer_dir)
 from minimizer.grid import slurm_tools
 from minimizer.minimizer.run import Run
+import logging
 
 
 def successors(state):
+    logging.debug(f"Python interpreter: {tools.get_python_executable()}")
     print(f"expanding {state}")
     if state["level"] > 4:
         return
@@ -32,7 +34,7 @@ def evaluate(state):
 
 
 def create_initial_state():
-    return {"level": 1, "id": 3, "runs": Run(["echo", "hello"], time_limit=10)}
+    return {"level": 1, "id": 3, "runs": [Run(["echo", "hello"], time_limit=60)]}
 
 
 def search_local():
@@ -56,7 +58,7 @@ def search_grid():
         batch_of_successors = slurm_tools.get_next_batch(successor_generator)
         if not batch_of_successors:
             break
-        dump_dirs = slurm_tools.submit_array_job(batch_of_successors, batch_num)
+        dump_dirs = env.submit_array_job(batch_of_successors, batch_num)
 
         assert len(batch_of_successors) == len(
             dump_dirs), "Something went wrong, batch size and number of dump directories should be the same."
@@ -94,13 +96,12 @@ def main():
     tools.configure_logging()
     args = parse_args()
     if args.evaluate:
-        print(tools.get_python_executable())
+        logging.debug(f"Python interpreter: {tools.get_python_executable()}")
         dump_file_path = args.evaluate
         state = slurm_tools.read_and_unpickle_state(dump_file_path)
         result = evaluate(state)
         slurm_tools.add_result_to_state(result, dump_file_path)
     elif args.grid:
-        print(tools.get_python_executable())
         print(search_grid())
     else:
         print(search_local())
