@@ -5,3 +5,4 @@ examples/
 eval_dir/
 slurm.err
 slurm.log
+minimizer.egg-info/
