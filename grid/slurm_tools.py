@@ -10,6 +10,7 @@ import logging
 import statistics
 import pprint
 
+DRIVER_ERR = "driver.err"
 EVAL_DIR = "eval_dir"
 DUMP_FILENAME = "dump"
 DEFAULT_ARRAY_SIZE = 10
@@ -20,6 +21,32 @@ TIME_LIMIT_FACTOR = 1.5
 # The following are sets of slurm job state codes
 DONE_STATE = {"COMPLETED"}
 BUSY_STATES = {"PENDING", "RUNNING"}
+
+
+class SubmissionError(Exception):
+    def __init__(self, cpe):
+        self.returncode = cpe.returncode
+        self.cmd = cpe.command
+        self.stdout = cpe.stdout
+        self.stderr = cpe.stderr
+
+    def __str__(self):
+        return pprint.pformat(
+            {
+                "Submission command": self.cmd,
+                "Returncode": self.returncode,
+                "Stdout": self.stdout,
+                "Stderr": self.stderr
+            }
+        )
+
+
+class TaskError(Exception):
+    def __init(self, critical_tasks):
+        self.critical_tasks = critical_tasks
+
+    def __str__(self):
+        return pprint.pformat(self.critical_tasks)
 
 
 class MinimizerSlurmEnvironment(BaselSlurmEnvironment):
@@ -132,8 +159,7 @@ class MinimizerSlurmEnvironment(BaselSlurmEnvironment):
         try:
             output = subprocess.check_output(submission_command).decode()
         except subprocess.CalledProcessError as cpe:
-            logging.critical(
-                f"Submission of batch {batch_name} was not successful.")
+            raise SubmissionError(cpe)
         match = re.match(r"Submitted batch job (\d*)", output)
         if not match:
             logging.critical(
@@ -141,18 +167,18 @@ class MinimizerSlurmEnvironment(BaselSlurmEnvironment):
         else:
             logging.info(match.group(0))
         job_id = match.group(1)
-        self._poll_job(job_id, batch)
-        return paths
+        return job_id, paths
 
-    def _poll_job(self, job_id, states):
-        avg_sum_of_time_limits = statistics.mean(
-            {sum_of_time_limits(s) for s in states})
-        job_time_limit = int(TIME_LIMIT_FACTOR * avg_sum_of_time_limits)
+    def poll_job(self, job_id, states):
+        # TODO: Probably delete the lines concerning time limitation
+        # avg_sum_of_time_limits = statistics.mean(
+        #     {sum_of_time_limits(s) for s in states})
+        # job_time_limit = int(TIME_LIMIT_FACTOR * avg_sum_of_time_limits)
         # Let's cut slurm some slack
         time.sleep(2 * WAITING_SECONDS_FOR_PATH)
 
         start = time.time()
-        while (time.time() - start < job_time_limit):
+        while True:
             try:
                 output = subprocess.check_output(
                     ["sacct", "-j", str(job_id), "--format=jobid,state", "--noheader", "--allocations"]).decode()
@@ -160,18 +186,16 @@ class MinimizerSlurmEnvironment(BaselSlurmEnvironment):
                 done = []
                 busy = []
                 critical = []
-                for detailed_job_id, job_state in job_state_dict.items():
-                    if job_state in DONE_STATE:
-                        done.append(detailed_job_id)
-                    elif job_state in BUSY_STATES:
-                        busy.append(detailed_job_id)
+                for task_id, task_state in job_state_dict.items():
+                    if task_state in DONE_STATE:
+                        done.append(task_id)
+                    elif task_state in BUSY_STATES:
+                        busy.append(task_id)
                     else:
-                        critical.append(detailed_job_id)
+                        critical.append(task_id)
                 if critical:
-                    sub_ids = [parts[1] for parts in (
-                        i.split("_") for i in job_state_dict.keys())]
-                    logging.critical(
-                        f"Evaluation failed for states {', '.join(sub_ids)} in last batch.")
+                    critical_tasks = {task for task in job_state_dict if task in critical}
+                    raise TaskError(critical_tasks)
                 elif busy:
                     logging.debug(
                         f"Some sub-jobs are still busy:\n{pprint.pformat(job_state_dict)}")

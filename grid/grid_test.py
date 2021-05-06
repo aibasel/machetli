@@ -1,17 +1,14 @@
-#! /usr/bin/env python
+#!/usr/bin/env python3
 
 import argparse
 import random
 import time
-from lab import tools
 import sys
 import os
-script_path = tools.get_script_path()
-script_dir = os.path.dirname(script_path)
-minimizer_dir = os.path.dirname(os.path.dirname(os.path.dirname(script_path)))
-sys.path.append(minimizer_dir)
-from minimizer.grid import slurm_tools
-from minimizer.minimizer.run import Run
+
+from lab import tools
+from grid import slurm_tools
+from minimizer.run import Run
 import logging
 
 
@@ -49,7 +46,7 @@ def search_local():
     return state
 
 
-def search_grid():
+def search_grid(enforce_order=False):
     env = slurm_tools.MinimizerSlurmEnvironment()
     state = create_initial_state()
     batch_num = 0
@@ -58,24 +55,51 @@ def search_grid():
         batch_of_successors = slurm_tools.get_next_batch(successor_generator)
         if not batch_of_successors:
             break
-        dump_dirs = env.submit_array_job(batch_of_successors, batch_num)
+        try:
+            job_id, run_dirs = env.submit_array_job(
+                batch_of_successors, batch_num)
+            env.poll_job(job_id, batch_of_successors)
+        except slurm_tools.SubmissionError as e:
+            if not enforce_order:
+                logging.warning(
+                    f"The following batch submission failed but is ignored:\n{e}")
+            else:
+                logging.critical(
+                    f"Order cannot be kept because the following batch submission failed:\n{e}")
+        except slurm_tools.TaskError as e:
+            indices_critical_tasks = [parts[1] for parts in (
+                job_id.split("_") for job_id in e.critical_tasks)]
+            if not enforce_order:
+                # remove successors and their directories if their task entered a critical state
+                for task_index in indices_critical_tasks:
+                    del batch_of_successors[task_index]
+                    del run_dirs[task_index]
+                logging.warning(
+                    f"At least one task from job {job_id} entered a critical state but is ignored:\n{e}")
+            else:
+                # since order needs to be enforced, only consider successors before first successor with failed task
+                first_failed_index = indices_critical_tasks[0]
+                batch_of_successors = batch_of_successors[:first_failed_index]
+                run_dirs = run_dirs[:first_failed_index]
+                if first_failed_index == 0:  # the task of the first successor entered a critical state
+                    logging.critical(
+                        f"At least the first task from job {job_id} entered a critical state and the search is aborted.\n{e}")
+                else:
+                    logging.warning(f"""At least one task from job {job_id} entered a critical state.
+                    The successors before the first one whose task entered the critical state are still considered.\n{e}""")
 
-        assert len(batch_of_successors) == len(
-            dump_dirs), "Something went wrong, batch size and number of dump directories should be the same."
-        for succ, dump_dir in zip(batch_of_successors, dump_dirs):
-            dump_path = os.path.join(dump_dir, slurm_tools.DUMP_FILENAME)
-            try:
-                result = slurm_tools.get_result(dump_path)
-            except KeyError as kerr:
-                err_message = None
-                err_logfile = os.path.join(dump_dir, "driver.err")
-                if os.path.exists(err_logfile):
-                    with open(err_logfile, "r") as file:
-                        err_message = file.read()
-                err_info = f"\nError message:\n{err_message}" if err_message else ""
-                truncated_dir = os.path.join(*dump_dir.split(os.sep)[-2:])
-                print(f"Evaluation result for state in {truncated_dir} not present.\n{err_info}")
-                result = False
+        for succ, run_dir in zip(batch_of_successors, run_dirs):
+            driver_err_file = os.path.join(run_dir, slurm_tools.DRIVER_ERR)
+            if os.path.exists(driver_err_file):
+                if enforce_order:
+                    logging.warning(f"Evaluation failed for state in {run_dir}. No further successor is considered.")
+                    break
+                else:
+                    logging.warning(f"Evaluation failed for state in {run_dir}. Continuing search.")
+                    result = False
+            else:
+                dump_file = os.path.join(run_dir, slurm_tools.DUMP_FILENAME)
+                result = slurm_tools.get_result(dump_file)
             if result:
                 state = succ
                 break
