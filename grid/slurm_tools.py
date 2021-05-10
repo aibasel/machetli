@@ -16,7 +16,7 @@ DUMP_FILENAME = "dump"
 DEFAULT_ARRAY_SIZE = 10
 FILESYSTEM_TIME_INTERVAL = 3
 FILESYSTEM_TIME_LIMIT = 60
-WAITING_SECONDS_FOR_PATH = 10
+POLLING_TIME_INTERVAL = 15
 TIME_LIMIT_FACTOR = 1.5
 # The following are sets of slurm job state codes
 DONE_STATE = {"COMPLETED"}
@@ -170,23 +170,17 @@ class MinimizerSlurmEnvironment(BaselSlurmEnvironment):
         return job_id, paths
 
     def poll_job(self, job_id, states):
-        # TODO: Probably delete the lines concerning time limitation
-        # avg_sum_of_time_limits = statistics.mean(
-        #     {sum_of_time_limits(s) for s in states})
-        # job_time_limit = int(TIME_LIMIT_FACTOR * avg_sum_of_time_limits)
-        # Let's cut slurm some slack
-        time.sleep(2 * WAITING_SECONDS_FOR_PATH)
+        time.sleep(POLLING_TIME_INTERVAL)
 
-        start = time.time()
         while True:
             try:
                 output = subprocess.check_output(
                     ["sacct", "-j", str(job_id), "--format=jobid,state", "--noheader", "--allocations"]).decode()
-                job_state_dict = self._build_job_state_dict(output)
+                task_states = self._build_task_state_dict(output)
                 done = []
                 busy = []
                 critical = []
-                for task_id, task_state in job_state_dict.items():
+                for task_id, task_state in task_states.items():
                     if task_state in DONE_STATE:
                         done.append(task_id)
                     elif task_state in BUSY_STATES:
@@ -194,22 +188,20 @@ class MinimizerSlurmEnvironment(BaselSlurmEnvironment):
                     else:
                         critical.append(task_id)
                 if critical:
-                    critical_tasks = {task for task in job_state_dict if task in critical}
+                    critical_tasks = {task for task in task_states if task in critical}
                     raise TaskError(critical_tasks)
                 elif busy:
                     logging.debug(
-                        f"Some sub-jobs are still busy:\n{pprint.pformat(job_state_dict)}")
+                        f"Some sub-jobs are still busy:\n{pprint.pformat(task_states)}")
                 else:
                     logging.debug("All sub-jobs are done!")
                     return
             except subprocess.CalledProcessError as cpe:
                 logging.critical(
                     f"The following error occurred while polling array job {job_id}:\n{cpe}")
-            time.sleep(WAITING_SECONDS_FOR_PATH)
-        logging.critical(
-            f"The allowed time limit of {job_time_limit} s is up and the job did not finish.")
+            time.sleep(POLLING_TIME_INTERVAL)
 
-    def _build_job_state_dict(self, sacct_output):
+    def _build_task_state_dict(self, sacct_output):
         unclean_job_state_list = sacct_output.strip("\n").split("\n")
         stripped_job_state_list = [pair.strip(
             "+ ") for pair in unclean_job_state_list]
