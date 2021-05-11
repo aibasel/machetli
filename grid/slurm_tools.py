@@ -1,14 +1,17 @@
-from lab import tools
-import pickle
-import os
-import sys
-import subprocess
-import re
-import time
-from lab.environments import BaselSlurmEnvironment, SlurmEnvironment
+import argparse
 import logging
-import statistics
+import os
+import pickle
 import pprint
+import re
+import subprocess
+import sys 
+import time
+
+from grid import slurm_tools
+from lab import tools
+from lab.environments import BaselSlurmEnvironment, SlurmEnvironment
+# import statistics TODO: import can probably be deleted
 
 DRIVER_ERR = "driver.err"
 EVAL_DIR = "eval_dir"
@@ -21,6 +24,100 @@ TIME_LIMIT_FACTOR = 1.5
 # The following are sets of slurm job state codes
 DONE_STATE = {"COMPLETED"}
 BUSY_STATES = {"PENDING", "RUNNING"}
+
+
+def search_grid(initial_state, successor_generators, environment, enforce_order=False):
+    # tools.configure_logging()
+    if not isinstance(successor_generators, list):
+        successor_generators = [successor_generators]
+    env = environment
+    state = initial_state
+    batch_num = 0
+    for succ_gen in successor_generators:
+        while True:
+            successor_generator = succ_gen().get_successors(state)
+            batch_of_successors = slurm_tools.get_next_batch(successor_generator)
+            if not batch_of_successors:
+                break
+            try:
+                job_id, run_dirs = env.submit_array_job(
+                    batch_of_successors, batch_num)
+                env.poll_job(job_id, batch_of_successors)
+            except slurm_tools.SubmissionError as e:
+                if not enforce_order:
+                    logging.warning(
+                        f"The following batch submission failed but is ignored:\n{e}")
+                else:
+                    logging.critical(
+                        f"Order cannot be kept because the following batch submission failed:\n{e}")
+            except slurm_tools.TaskError as e:
+                indices_critical_tasks = [int(parts[1]) for parts in (
+                    job_id.split("_") for job_id in e.critical_tasks)]
+                if not enforce_order:
+                    # remove successors and their directories if their task entered a critical state
+                    for task_index in indices_critical_tasks:
+                        del batch_of_successors[task_index]
+                        del run_dirs[task_index]
+                    logging.warning(
+                        f"At least one task from job {job_id} entered a critical state but is ignored:\n{e}")
+                else:
+                    # since order needs to be enforced, only consider successors before first successor with failed task
+                    first_failed_index = indices_critical_tasks[0]
+                    batch_of_successors = batch_of_successors[:first_failed_index]
+                    run_dirs = run_dirs[:first_failed_index]
+                    if first_failed_index == 0:  # the task of the first successor entered a critical state
+                        logging.critical(
+                            f"At least the first task from job {job_id} entered a critical state and the search is aborted.\n{e}")
+                    else:
+                        logging.warning(f"""At least one task from job {job_id} entered a critical state.
+                        The successors before the first one whose task entered the critical state are still considered.\n{e}""")
+            logging.debug(f"Batch of successors:\n{pprint.pformat(batch_of_successors)}")
+            logging.debug(f"Run dirs:\n{pprint.pformat(run_dirs)}")
+            for succ, run_dir in zip(batch_of_successors, run_dirs):
+                driver_err_file = os.path.join(run_dir, slurm_tools.DRIVER_ERR)
+                if os.path.exists(driver_err_file):
+                    if enforce_order:
+                        logging.warning(f"Evaluation failed for state in {run_dir}. No further successor is considered.")
+                        break
+                    else:
+                        logging.warning(f"Evaluation failed for state in {run_dir}. Continuing search.")
+                        result = False
+                else:
+                    dump_file = os.path.join(run_dir, slurm_tools.DUMP_FILENAME)
+                    result = slurm_tools.get_result(dump_file)
+                if result:
+                    state = succ
+                    break
+            else:
+                break
+            batch_num += 1
+    return state
+
+
+def get_arg_parser():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--grid", action="store_true")
+    parser.add_argument("--evaluate", type=str, metavar="PATH_TO_STATE_DUMP")
+    parser.add_argument("--debug", action="store_true")
+    return parser
+
+
+def main(initial_state, successor_generators, evaluator, environment, enforce_order=False):
+    arg_parser = get_arg_parser()
+    args = arg_parser.parse_args()
+
+    tools.configure_logging() if not args.debug else tools.configure_logging(level=logging.DEBUG)
+
+    if args.evaluate:
+        logging.debug(f"Python interpreter: {tools.get_python_executable()}")
+        dump_file_path = args.evaluate
+        state = slurm_tools.read_and_unpickle_state(dump_file_path)
+        result = evaluator().evaluate(state)
+        slurm_tools.add_result_to_state(result, dump_file_path)
+    elif args.grid:
+        print(search_grid(initial_state, successor_generators, environment,))
+    else:
+        arg_parser.print_usage()
 
 
 class SubmissionError(Exception):
@@ -42,7 +139,7 @@ class SubmissionError(Exception):
 
 
 class TaskError(Exception):
-    def __init(self, critical_tasks):
+    def __init__(self, critical_tasks):
         self.critical_tasks = critical_tasks
 
     def __str__(self):
@@ -170,9 +267,8 @@ class MinimizerSlurmEnvironment(BaselSlurmEnvironment):
         return job_id, paths
 
     def poll_job(self, job_id, states):
-        time.sleep(POLLING_TIME_INTERVAL)
-
         while True:
+            time.sleep(POLLING_TIME_INTERVAL)
             try:
                 output = subprocess.check_output(
                     ["sacct", "-j", str(job_id), "--format=jobid,state", "--noheader", "--allocations"]).decode()
@@ -180,6 +276,7 @@ class MinimizerSlurmEnvironment(BaselSlurmEnvironment):
                 done = []
                 busy = []
                 critical = []
+                logging.debug(f"Task states:\n{pprint.pformat(task_states)}")
                 for task_id, task_state in task_states.items():
                     if task_state in DONE_STATE:
                         done.append(task_id)
@@ -187,19 +284,19 @@ class MinimizerSlurmEnvironment(BaselSlurmEnvironment):
                         busy.append(task_id)
                     else:
                         critical.append(task_id)
+                if busy:
+                    logging.debug(
+                        f"Some tasks are still busy:\n{pprint.pformat(task_states)}")
+                    continue
                 if critical:
                     critical_tasks = {task for task in task_states if task in critical}
                     raise TaskError(critical_tasks)
-                elif busy:
-                    logging.debug(
-                        f"Some sub-jobs are still busy:\n{pprint.pformat(task_states)}")
                 else:
-                    logging.debug("All sub-jobs are done!")
+                    logging.debug("All tasks are done!")
                     return
             except subprocess.CalledProcessError as cpe:
                 logging.critical(
                     f"The following error occurred while polling array job {job_id}:\n{cpe}")
-            time.sleep(POLLING_TIME_INTERVAL)
 
     def _build_task_state_dict(self, sacct_output):
         unclean_job_state_list = sacct_output.strip("\n").split("\n")
