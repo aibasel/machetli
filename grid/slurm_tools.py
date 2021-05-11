@@ -27,7 +27,6 @@ BUSY_STATES = {"PENDING", "RUNNING"}
 
 
 def search_grid(initial_state, successor_generators, environment, enforce_order=False):
-    # tools.configure_logging()
     if not isinstance(successor_generators, list):
         successor_generators = [successor_generators]
     env = environment
@@ -91,6 +90,7 @@ def search_grid(initial_state, successor_generators, environment, enforce_order=
                         run_dir, slurm_tools.DUMP_FILENAME)
                     result = slurm_tools.get_result(dump_file)
                 if result:
+                    logging.info("Found successor!")
                     state = succ
                     break
             else:
@@ -120,8 +120,9 @@ def main(initial_state, successor_generators, evaluator, environment, enforce_or
         state = slurm_tools.read_and_unpickle_state(dump_file_path)
         result = evaluator().evaluate(state)
         slurm_tools.add_result_to_state(result, dump_file_path)
+        sys.exit(0)
     elif args.grid:
-        print(search_grid(initial_state, successor_generators, environment,))
+        return search_grid(initial_state, successor_generators, environment)
     else:
         arg_parser.print_usage()
 
@@ -159,6 +160,7 @@ class MinimizerSlurmEnvironment(BaselSlurmEnvironment):
     MAX_MEM_INFAI_BASEL = {"infai_1": "3872M", "infai_2": "6354M"}
 
     def __init__(self, email=None, extra_options=None, partition=None, qos=None, memory_per_cpu=None, nice=None, export=None, setup=None):
+        self.script_path = tools.get_script_path()
         self.email = email
         self.extra_options = extra_options or "## (not used)"
         self.partition = partition or self.DEFAULT_PARTITION
@@ -180,6 +182,8 @@ class MinimizerSlurmEnvironment(BaselSlurmEnvironment):
 
         eval_root_dir = os.path.dirname(tools.get_script_path())
         template_dir = os.path.dirname(os.path.abspath(__file__))
+        logging.debug(f"Eval root dir:{eval_root_dir}")
+        logging.debug(f"Template dir:{template_dir}")
         self.template_path = os.path.join(
             template_dir, self.ARRAY_JOB_TEMPLATE_FILE)
         self.eval_dir = os.path.join(eval_root_dir, EVAL_DIR)
@@ -207,6 +211,7 @@ class MinimizerSlurmEnvironment(BaselSlurmEnvironment):
         job_params["soft_memory_limit"] = int(
             0.98 * SlurmEnvironment._get_memory_in_kb(self.memory_per_cpu))
         job_params["python"] = tools.get_python_executable()
+        job_params["script_path"] = self.script_path
         return job_params
 
     def wait_for_filesystem(self, paths):
@@ -259,7 +264,8 @@ class MinimizerSlurmEnvironment(BaselSlurmEnvironment):
         batch_name = f"batch_{batch_num:03}"
         self.fill_template(dump_paths=" ".join(paths), name=batch_name,
                            num_tasks=len(batch)-1, hard_time_limit=evaluation_time_limit(batch))
-        submission_command = ["sbatch", self.batchfile_path]
+        submission_command = ["sbatch", "--export",
+                              ",".join(self.export), self.batchfile_path]
         try:
             output = subprocess.check_output(submission_command).decode()
         except subprocess.CalledProcessError as cpe:
@@ -353,5 +359,5 @@ def get_next_batch(successor_generator, batch_size=DEFAULT_ARRAY_SIZE):
 
 def evaluation_time_limit(states):
     max_limit_sum = max(
-        [sum([run.time_limit for run in state["runs"]]) for state in states])
+        [sum([run.time_limit for run in state["runs"].values()]) for state in states])
     return int(TIME_LIMIT_FACTOR * max_limit_sum)
