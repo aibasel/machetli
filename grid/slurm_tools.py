@@ -5,7 +5,7 @@ import pickle
 import pprint
 import re
 import subprocess
-import sys 
+import sys
 import time
 
 from grid import slurm_tools
@@ -36,7 +36,8 @@ def search_grid(initial_state, successor_generators, environment, enforce_order=
     for succ_gen in successor_generators:
         while True:
             successor_generator = succ_gen().get_successors(state)
-            batch_of_successors = slurm_tools.get_next_batch(successor_generator)
+            batch_of_successors = slurm_tools.get_next_batch(
+                successor_generator)
             if not batch_of_successors:
                 break
             try:
@@ -71,19 +72,23 @@ def search_grid(initial_state, successor_generators, environment, enforce_order=
                     else:
                         logging.warning(f"""At least one task from job {job_id} entered a critical state.
                         The successors before the first one whose task entered the critical state are still considered.\n{e}""")
-            logging.debug(f"Batch of successors:\n{pprint.pformat(batch_of_successors)}")
+            logging.debug(
+                f"Batch of successors:\n{pprint.pformat(batch_of_successors)}")
             logging.debug(f"Run dirs:\n{pprint.pformat(run_dirs)}")
             for succ, run_dir in zip(batch_of_successors, run_dirs):
                 driver_err_file = os.path.join(run_dir, slurm_tools.DRIVER_ERR)
                 if os.path.exists(driver_err_file):
                     if enforce_order:
-                        logging.warning(f"Evaluation failed for state in {run_dir}. No further successor is considered.")
+                        logging.warning(
+                            f"Evaluation failed for state in {run_dir}. No further successor is considered.")
                         break
                     else:
-                        logging.warning(f"Evaluation failed for state in {run_dir}. Continuing search.")
+                        logging.warning(
+                            f"Evaluation failed for state in {run_dir}. Continuing search.")
                         result = False
                 else:
-                    dump_file = os.path.join(run_dir, slurm_tools.DUMP_FILENAME)
+                    dump_file = os.path.join(
+                        run_dir, slurm_tools.DUMP_FILENAME)
                     result = slurm_tools.get_result(dump_file)
                 if result:
                     state = succ
@@ -106,7 +111,8 @@ def main(initial_state, successor_generators, evaluator, environment, enforce_or
     arg_parser = get_arg_parser()
     args = arg_parser.parse_args()
 
-    tools.configure_logging() if not args.debug else tools.configure_logging(level=logging.DEBUG)
+    tools.configure_logging() if not args.debug else tools.configure_logging(
+        level=logging.DEBUG)
 
     if args.evaluate:
         logging.debug(f"Python interpreter: {tools.get_python_executable()}")
@@ -189,8 +195,6 @@ class MinimizerSlurmEnvironment(BaselSlurmEnvironment):
         job_params["partition"] = self.partition
         job_params["qos"] = self.qos
         job_params["memory_per_cpu"] = self.memory_per_cpu
-        job_params["soft_memory_limit"] = int(
-            0.98 * SlurmEnvironment._get_memory_in_kb(self.memory_per_cpu))
         job_params["nice"] = self.nice
         job_params["extra_options"] = self.extra_options
         job_params["environment_setup"] = self.setup
@@ -200,6 +204,9 @@ class MinimizerSlurmEnvironment(BaselSlurmEnvironment):
         else:
             job_params["mailtype"] = "NONE"
             job_params["mailuser"] = ""
+        job_params["soft_memory_limit"] = int(
+            0.98 * SlurmEnvironment._get_memory_in_kb(self.memory_per_cpu))
+        job_params["python"] = tools.get_python_executable()
         return job_params
 
     def wait_for_filesystem(self, paths):
@@ -250,8 +257,8 @@ class MinimizerSlurmEnvironment(BaselSlurmEnvironment):
         # tools.makedirs(full_runs_path)
         paths = self.build_batch_directories(batch, batch_num)
         batch_name = f"batch_{batch_num:03}"
-        self.fill_template(dump_paths=" ".join(paths), name=batch_name, num_tasks=len(
-            batch)-1, python=tools.get_python_executable())
+        self.fill_template(dump_paths=" ".join(paths), name=batch_name,
+                           num_tasks=len(batch)-1, hard_time_limit=evaluation_time_limit(batch))
         submission_command = ["sbatch", self.batchfile_path]
         try:
             output = subprocess.check_output(submission_command).decode()
@@ -289,7 +296,8 @@ class MinimizerSlurmEnvironment(BaselSlurmEnvironment):
                         f"Some tasks are still busy:\n{pprint.pformat(task_states)}")
                     continue
                 if critical:
-                    critical_tasks = {task for task in task_states if task in critical}
+                    critical_tasks = {
+                        task for task in task_states if task in critical}
                     raise TaskError(critical_tasks)
                 else:
                     logging.debug("All tasks are done!")
@@ -341,3 +349,9 @@ def get_next_batch(successor_generator, batch_size=DEFAULT_ARRAY_SIZE):
         except StopIteration:
             return batch
     return batch
+
+
+def evaluation_time_limit(states):
+    max_limit_sum = max(
+        [sum([run.time_limit for run in state["runs"]]) for state in states])
+    return int(TIME_LIMIT_FACTOR * max_limit_sum)

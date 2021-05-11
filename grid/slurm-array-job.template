@@ -24,7 +24,7 @@
 
 %(environment_setup)s
 
-ulimit -Sv %(soft_memory_limit)d
+ulimit -Sv %(soft_memory_limit)d -Ht %(hard_time_limit)d
 
 declare -a DUMP_PATHS=( %(dump_paths)s )
 

@@ -10,7 +10,7 @@ class Run:
     """
     Stores a command and its optional time and memory limits.
     """
-    def __init__(self, command, time_limit=None, memory_limit=None):
+    def __init__(self, command, time_limit, memory_limit=None):
         self.command = command
         self.time_limit = time_limit
         self.memory_limit = memory_limit
@@ -62,7 +62,7 @@ class RunWithInputFile(Run):
     Extends the *Run* class by adding the option of sending the content of a file to stdin,
     e.g., in a command like *path/to/./my_executable < my_input_file*.
     """
-    def __init__(self, command, input_file, time_limit=None, memory_limit=None):
+    def __init__(self, command, input_file, time_limit, memory_limit=None):
         super().__init__(command, time_limit=time_limit, memory_limit=memory_limit)
         self.input_file = input_file
 
