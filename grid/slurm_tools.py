@@ -265,7 +265,7 @@ class MinimizerSlurmEnvironment(BaselSlurmEnvironment):
         paths = self.build_batch_directories(batch, batch_num)
         batch_name = f"batch_{batch_num:03}"
         self.fill_template(dump_paths=" ".join(paths), name=batch_name,
-                           num_tasks=len(batch)-1, hard_time_limit=evaluation_time_limit(batch))
+                           num_tasks=len(batch)-1)
         submission_command = ["sbatch", "--export",
                               ",".join(self.export), self.batchfile_path]
         try:
@@ -357,9 +357,3 @@ def get_next_batch(successor_generator, batch_size=DEFAULT_ARRAY_SIZE):
         except StopIteration:
             return batch
     return batch
-
-
-def evaluation_time_limit(states):
-    max_limit_sum = max(
-        [sum([run.time_limit for run in state["runs"].values()]) for state in states])
-    return int(TIME_LIMIT_FACTOR * max_limit_sum)
