@@ -55,9 +55,11 @@ def search_grid(initial_state, successor_generators, environment, enforce_order=
                     job_id.split("_") for job_id in e.critical_tasks)]
                 if not enforce_order:
                     # remove successors and their directories if their task entered a critical state
-                    for task_index in indices_critical_tasks:
-                        del batch_of_successors[task_index]
-                        del run_dirs[task_index]
+                    batch_of_successors = [b for i, b in enumerate(
+                        batch_of_successors) if i not in indices_critical_tasks]
+                    run_dirs = [r for i, r in enumerate(
+                        run_dirs) if not i in indices_critical_tasks]
+
                     logging.warning(
                         f"At least one task from job {job_id} entered a critical state but is ignored:\n{e}")
                 else:
