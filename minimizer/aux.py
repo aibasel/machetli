@@ -39,6 +39,11 @@ def run_all(state):
     results = {}
     for name, run in state["runs"].items():
         stdout, stderr, returncode = run.start(state)
+        if run.log_always or run.log_on_fail and returncode != 0:
+            with open(os.path.join(state["cwd"], f"{name}.err"), "w") as errfile:
+                with open(os.path.join(state["cwd"], f"{name}.log"), "w") as logfile:
+                    logfile.write(stdout)
+                    errfile.write(stderr)
         results.update(
             {name: {"stdout": stdout, "stderr": stderr, "returncode": returncode}}
         )

@@ -120,7 +120,9 @@ def main(initial_state, successor_generators, evaluator, environment, enforce_or
         logging.debug(f"Python interpreter: {tools.get_python_executable()}")
         dump_file_path = args.evaluate
         state = slurm_tools.read_and_unpickle_state(dump_file_path)
+        state["cwd"] = os.path.dirname(dump_file_path)
         result = evaluator().evaluate(state)
+        del state["cwd"]
         slurm_tools.add_result_to_state(result, dump_file_path)
         sys.exit(0)
     elif args.grid:
