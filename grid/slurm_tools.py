@@ -2,6 +2,7 @@ import argparse
 import logging
 import os
 import pickle
+import platform
 import pprint
 import re
 import subprocess
@@ -73,9 +74,6 @@ def search_grid(initial_state, successor_generators, environment, enforce_order=
                     else:
                         logging.warning(f"""At least one task from job {job_id} entered a critical state.
                         The successors before the first one whose task entered the critical state are still considered.\n{e}""")
-            logging.debug(
-                f"Batch of successors:\n{pprint.pformat(batch_of_successors)}")
-            logging.debug(f"Run dirs:\n{pprint.pformat(run_dirs)}")
             for succ, run_dir in zip(batch_of_successors, run_dirs):
                 driver_err_file = os.path.join(run_dir, slurm_tools.DRIVER_ERR)
                 if os.path.exists(driver_err_file):
@@ -124,6 +122,7 @@ def main(initial_state, successor_generators, evaluator, environment, enforce_or
         result = evaluator().evaluate(state)
         del state["cwd"]
         slurm_tools.add_result_to_state(result, dump_file_path)
+        logging.info(f"Node: {platform.node()}")
         sys.exit(0)
     elif args.grid:
         return search_grid(initial_state, successor_generators, environment)
@@ -174,6 +173,14 @@ class MinimizerSlurmEnvironment(BaselSlurmEnvironment):
         self.export = export or self.DEFAULT_EXPORT
         self.setup = setup or self.DEFAULT_SETUP
 
+        # Number of cores is used to determine the soft memory limit
+        self.cpus_per_task = 1  # This is the default
+        if "--cpus-per-task" in self.extra_options:
+            rexpr = r"--cpus-per-task=(\d+)"
+            match = re.search(rexpr, self.extra_options)
+            assert match, f"{self.extra_options} should have matched {rexpr}."
+            self.cpus_per_task = int(match.group(1))
+
         # Abort if mem_per_cpu too high for Basel partitions
         if self.partition in {"infai_1", "infai_2"}:
             mem_per_cpu_in_kb = SlurmEnvironment._get_memory_in_kb(
@@ -213,7 +220,7 @@ class MinimizerSlurmEnvironment(BaselSlurmEnvironment):
             job_params["mailtype"] = "NONE"
             job_params["mailuser"] = ""
         job_params["soft_memory_limit"] = int(
-            0.98 * SlurmEnvironment._get_memory_in_kb(self.memory_per_cpu))
+            0.98 * self.cpus_per_task * SlurmEnvironment._get_memory_in_kb(self.memory_per_cpu))
         job_params["python"] = tools.get_python_executable()
         job_params["script_path"] = self.script_path
         return job_params
@@ -302,8 +309,6 @@ class MinimizerSlurmEnvironment(BaselSlurmEnvironment):
                     else:
                         critical.append(task_id)
                 if busy:
-                    logging.debug(
-                        f"Some tasks are still busy:\n{pprint.pformat(task_states)}")
                     continue
                 if critical:
                     critical_tasks = {
