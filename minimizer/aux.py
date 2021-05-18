@@ -40,9 +40,11 @@ def run_all(state):
     for name, run in state["runs"].items():
         stdout, stderr, returncode = run.start(state)
         if run.log_always or run.log_on_fail and returncode != 0:
-            with open(os.path.join(state["cwd"], f"{name}.err"), "w") as errfile:
+            if stdout:
                 with open(os.path.join(state["cwd"], f"{name}.log"), "w") as logfile:
                     logfile.write(stdout)
+            if stderr:
+                with open(os.path.join(state["cwd"], f"{name}.err"), "w") as errfile:
                     errfile.write(stderr)
         results.update(
             {name: {"stdout": stdout, "stderr": stderr, "returncode": returncode}}
@@ -69,6 +71,7 @@ def run_and_parse_all(state, parsers):
                 parser.parse(name, result["stdout"]))
             parsed_results[name]["stderr"].update(
                 parser.parse(name, result["stderr"]))
+    parsed_results["raw_results"] = results
     return parsed_results
 
 
