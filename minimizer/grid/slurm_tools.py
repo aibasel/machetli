@@ -9,7 +9,7 @@ import subprocess
 import sys
 import time
 
-from grid import slurm_tools
+from minimizer.grid import slurm_tools
 from lab import tools
 from lab.environments import BaselSlurmEnvironment, SlurmEnvironment
 # import statistics TODO: import can probably be deleted
@@ -17,7 +17,7 @@ from lab.environments import BaselSlurmEnvironment, SlurmEnvironment
 DRIVER_ERR = "driver.err"
 EVAL_DIR = "eval_dir"
 DUMP_FILENAME = "dump"
-DEFAULT_ARRAY_SIZE = 10
+DEFAULT_ARRAY_SIZE = 200
 FILESYSTEM_TIME_INTERVAL = 3
 FILESYSTEM_TIME_LIMIT = 60
 POLLING_TIME_INTERVAL = 15
@@ -32,14 +32,11 @@ def search_grid(initial_state, successor_generators, environment, enforce_order=
         successor_generators = [successor_generators]
     env = environment
     state = initial_state
-    batch_num = 0
-    for succ_gen in successor_generators:
-        while True:
-            successor_generator = succ_gen().get_successors(state)
-            batch_of_successors = slurm_tools.get_next_batch(
-                successor_generator)
-            if not batch_of_successors:
-                break
+    batch_num = -1
+    for s in successor_generators:
+        gen = s().get_successors(state)
+        for batch_of_successors in slurm_tools.get_next_batch(gen):
+            batch_num += 1
             try:
                 job_id, run_dirs = env.submit_array_job(
                     batch_of_successors, batch_num)
@@ -48,9 +45,12 @@ def search_grid(initial_state, successor_generators, environment, enforce_order=
                 if not enforce_order:
                     logging.warning(
                         f"The following batch submission failed but is ignored:\n{e}")
+                    continue  # Continue with next batch
                 else:
-                    logging.critical(
-                        f"Order cannot be kept because the following batch submission failed:\n{e}")
+                    logging.warning(
+                        f"""Order cannot be kept because the following batch submission failed:\n{e}\n
+                        Aborting search.""")
+                    return state
             except slurm_tools.TaskError as e:
                 indices_critical_tasks = [int(parts[1]) for parts in (
                     job_id.split("_") for job_id in e.critical_tasks)]
@@ -95,7 +95,6 @@ def search_grid(initial_state, successor_generators, environment, enforce_order=
                     break
             else:
                 break
-            batch_num += 1
     return state
 
 
@@ -125,27 +124,28 @@ def main(initial_state, successor_generators, evaluator, environment, enforce_or
         logging.info(f"Node: {platform.node()}")
         sys.exit(0)
     elif args.grid:
-        return search_grid(initial_state, successor_generators, environment)
+        return search_grid(initial_state, successor_generators, environment, enforce_order)
     else:
         arg_parser.print_usage()
 
 
 class SubmissionError(Exception):
     def __init__(self, cpe):
+        print(cpe)
         self.returncode = cpe.returncode
-        self.cmd = cpe.command
+        self.cmd = cpe.cmd
+        self.output = cpe.output
         self.stdout = cpe.stdout
         self.stderr = cpe.stderr
 
     def __str__(self):
-        return pprint.pformat(
-            {
-                "Submission command": self.cmd,
-                "Returncode": self.returncode,
-                "Stdout": self.stdout,
-                "Stderr": self.stderr
-            }
-        )
+        return f"""\
+                Error during job submission:
+                Submission command: {self.cmd}
+                Returncode: {self.returncode}
+                Output: {self.output}
+                Captured stdout: {self.stdout}
+                Captured stderr: {self.stderr}"""
 
 
 class TaskError(Exception):
@@ -356,11 +356,15 @@ def get_result(file_path):
 
 
 def get_next_batch(successor_generator, batch_size=DEFAULT_ARRAY_SIZE):
-    batch = []
-    for _ in range(batch_size):
-        try:
-            next_state = next(successor_generator)
-            batch.append(next_state)
-        except StopIteration:
-            return batch
-    return batch
+    while True:
+        batch = []
+        for _ in range(batch_size):
+            try:
+                next_state = next(successor_generator)
+                batch.append(next_state)
+            except StopIteration:
+                if batch:
+                    yield batch
+                else:
+                    return
+        yield batch
