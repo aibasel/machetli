@@ -17,6 +17,7 @@ from lab.environments import BaselSlurmEnvironment, SlurmEnvironment
 DRIVER_ERR = "driver.err"
 EVAL_DIR = "eval_dir"
 DUMP_FILENAME = "dump"
+RESULT = "result"
 DEFAULT_ARRAY_SIZE = 200
 FILESYSTEM_TIME_INTERVAL = 3
 FILESYSTEM_TIME_LIMIT = 60
@@ -36,6 +37,8 @@ def search_grid(initial_state, successor_generators, environment, enforce_order=
     for s in successor_generators:
         gen = s().get_successors(state)
         for batch_of_successors in slurm_tools.get_next_batch(gen):
+            #TODO:  Implement this as loop over all successors releasing batches when size is right,
+            #       should be easier...
             batch_num += 1
             try:
                 job_id, run_dirs = env.submit_array_job(
@@ -74,25 +77,31 @@ def search_grid(initial_state, successor_generators, environment, enforce_order=
                     else:
                         logging.warning(f"""At least one task from job {job_id} entered a critical state.
                         The successors before the first one whose task entered the critical state are still considered.\n{e}""")
+            except slurm_tools.PollingError:
+                logging.error(
+                    f"Polling of job {job_id} caused an error. Aborting search.")
+                return state
             for succ, run_dir in zip(batch_of_successors, run_dirs):
-                driver_err_file = os.path.join(run_dir, slurm_tools.DRIVER_ERR)
-                if os.path.exists(driver_err_file):
-                    if enforce_order:
+                result_file = os.path.join(run_dir, slurm_tools.RESULT)
+                if not env.wait_for_filesystem(result_file):
+                    if not enforce_order:
                         logging.warning(
-                            f"Evaluation failed for state in {run_dir}. No further successor is considered.")
-                        break
+                            f"Result file {result_file} does not exist. Continuing.")
+                        continue
                     else:
                         logging.warning(
-                            f"Evaluation failed for state in {run_dir}. Continuing search.")
-                        result = False
-                else:
-                    dump_file = os.path.join(
-                        run_dir, slurm_tools.DUMP_FILENAME)
-                    result = slurm_tools.get_result(dump_file)
-                if result:
-                    logging.info("Found successor!")
-                    state = succ
-                    break
+                            f"Aborting search because evaluation in {run_dir} failed.")
+                        return state
+                else:  # Result file is present
+                    rf = open(result_file, "r")
+                    match = re.match(r"The evaluation finished with exit code (0|1)", rf.read())
+                    rf.close()
+                    exitcode = int(match.group(1))
+                    result = True if exitcode == 0 else False
+                    if result:
+                        logging.info("Found successor!")
+                        state = succ
+                        break
             else:
                 break
     return state
@@ -119,10 +128,11 @@ def main(initial_state, successor_generators, evaluator, environment, enforce_or
         state = slurm_tools.read_and_unpickle_state(dump_file_path)
         state["cwd"] = os.path.dirname(dump_file_path)
         result = evaluator().evaluate(state)
-        del state["cwd"]
-        slurm_tools.add_result_to_state(result, dump_file_path)
         logging.info(f"Node: {platform.node()}")
-        sys.exit(0)
+        sys.exit(0) if result else sys.exit(1)
+        # del state["cwd"]
+        # exit(1) if False
+        # slurm_tools.add_result_to_state(result, dump_file_path)
     elif args.grid:
         return search_grid(initial_state, successor_generators, environment, enforce_order)
     else:
@@ -154,6 +164,10 @@ class TaskError(Exception):
 
     def __str__(self):
         return pprint.pformat(self.critical_tasks)
+
+
+class PollingError(Exception):
+    pass
 
 
 class MinimizerSlurmEnvironment(BaselSlurmEnvironment):
@@ -200,7 +214,7 @@ class MinimizerSlurmEnvironment(BaselSlurmEnvironment):
         self.eval_dir = os.path.join(eval_root_dir, EVAL_DIR)
         tools.makedirs(self.eval_dir)
         self.batchfile_path = os.path.join(self.eval_dir, self.ARRAY_JOB_FILE)
-        self.wait_for_filesystem([self.eval_dir])
+        self.wait_for_filesystem(self.eval_dir)
 
     def get_job_params(self, name, is_last=False):
         job_params = dict()
@@ -225,16 +239,14 @@ class MinimizerSlurmEnvironment(BaselSlurmEnvironment):
         job_params["script_path"] = self.script_path
         return job_params
 
-    def wait_for_filesystem(self, paths):
+    def wait_for_filesystem(self, *paths):
         attempts = int(FILESYSTEM_TIME_LIMIT / FILESYSTEM_TIME_INTERVAL)
         for _ in range(attempts):
             time.sleep(FILESYSTEM_TIME_INTERVAL)
             paths = [path for path in paths if not os.path.exists(path)]
             if not paths:
-                logging.debug("No path missing.")
-                return
-        logging.critical(
-            f"The following paths are missing:\n{pprint.pformat(paths)}")
+                return True
+        return False  # At least one path from paths does not exist
 
     def build_batch_directories(self, batch, batch_num):
         batch_dir_path = os.path.join(
@@ -248,7 +260,8 @@ class MinimizerSlurmEnvironment(BaselSlurmEnvironment):
             pickle_and_dump_state(state, dump_file_path)
             run_dirs.append(run_dir_path)
         # Give the NFS time to write the paths
-        self.wait_for_filesystem(run_dirs)
+        if not self.wait_for_filesystem(*run_dirs):
+            logging.critical(f"One of the following paths is missing:\n{pprint.pformat(run_dirs)}")
         return run_dirs
 
     def fill_template(self, is_last=False, **kwargs):
@@ -318,8 +331,7 @@ class MinimizerSlurmEnvironment(BaselSlurmEnvironment):
                     logging.debug("All tasks are done!")
                     return
             except subprocess.CalledProcessError as cpe:
-                logging.critical(
-                    f"The following error occurred while polling array job {job_id}:\n{cpe}")
+                raise PollingError
 
     def _build_task_state_dict(self, sacct_output):
         unclean_job_state_list = sacct_output.strip("\n").split("\n")
@@ -342,17 +354,19 @@ def read_and_unpickle_state(file_path):
         return pickle.load(dump_file)
 
 
-def add_result_to_state(result, file_path):
-    state = read_and_unpickle_state(file_path)
-    state["result"] = result
-    pickle_and_dump_state(state, file_path)
-    print(f'Result "{result}" was written to state.')
+# TODO: Probably obsolete function
+# def add_result_to_state(result, file_path):
+#     state = read_and_unpickle_state(file_path)
+#     state["result"] = result
+#     pickle_and_dump_state(state, file_path)
+#     print(f'Result "{result}" was written to state.')
 
 
-def get_result(file_path):
-    time.sleep(5)
-    state = read_and_unpickle_state(file_path)
-    return state["result"]
+# TODO: Probably obsolete function
+# def get_result(file_path):
+#     time.sleep(5)
+#     state = read_and_unpickle_state(file_path)
+#     return state["result"]
 
 
 def get_next_batch(successor_generator, batch_size=DEFAULT_ARRAY_SIZE):
