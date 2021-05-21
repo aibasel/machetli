@@ -26,22 +26,22 @@
 
 ulimit -Sv %(soft_memory_limit)d
 
-declare -a DUMP_PATHS=( %(dump_paths)s )
+declare -a RUN_DIRS=( %(run_dirs)s )
 
-DUMP_PATH=${DUMP_PATHS[$SLURM_ARRAY_TASK_ID]}
+RUN_DIR=${RUN_DIRS[$SLURM_ARRAY_TASK_ID]}
 
 (
-%(python)s %(script_path)s --evaluate "$DUMP_PATH/dump"
+%(python)s %(script_path)s --evaluate "$RUN_DIR/dump"
 RETCODE=$?
 
-echo "The evaluation finished with exit code $RETCODE" > $DUMP_PATH/result
+echo "The evaluation finished with exit code $RETCODE" > $RUN_DIR/result
 # redirect output of grid_test to dump directory
-) > "$DUMP_PATH/driver.log" 2> "$DUMP_PATH/driver.err"
+) > "$RUN_DIR/driver.log" 2> "$RUN_DIR/driver.err"
 
 # Delete empty driver files.
-if [[ ! -s "$DUMP_PATH/driver.log" ]]; then
-    rm "$DUMP_PATH/driver.log"
+if [[ ! -s "$RUN_DIR/driver.log" ]]; then
+    rm "$RUN_DIR/driver.log"
 fi
-if [[ ! -s "$DUMP_PATH/driver.err" ]]; then
-    rm "$DUMP_PATH/driver.err"
+if [[ ! -s "$RUN_DIR/driver.err" ]]; then
+    rm "$RUN_DIR/driver.err"
 fi
