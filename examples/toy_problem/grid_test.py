@@ -57,12 +57,11 @@ parser.add_function(facts_tracker, "memory-failer")
 class MyEvaluator(Evaluator):
     def evaluate(self, state):
         logging.info(f"Evaluating:\n{pprint.pformat(state)}")
-        eyedee = state["id"]
-        if eyedee == 1:
+        if state["id"] == 1:
             state["runs"]["succeeder"].start(state)
-        elif eyedee == 2:
+        elif state["id"] == 2:
             state["runs"]["time-failer"].start(state)
-        elif eyedee == 3:
+        elif state["id"] == 3:
             state["runs"]["memory-failer"].start(state)
         else:
             results = run_and_parse_all(state, parser)
@@ -76,7 +75,8 @@ problem1 = os.path.join(DOWNWARD_BENCHMARKS, "tpp/p05.pddl")
 problem2 = os.path.join(DOWNWARD_BENCHMARKS, "tpp/p07.pddl")
 # problem3 = os.path.join(DOWNWARD_BENCHMARKS, "tpp/p30.pddl")
 search_arguments = ["--search", "astar(lmcut())"]
-planner = [tools.get_python_executable(), os.path.join(DOWNWARD_ROOT, "fast-downward.py")]
+planner = [tools.get_python_executable(), os.path.join(
+    DOWNWARD_ROOT, "fast-downward.py")]
 planner_and_domain = planner + [domain]
 
 # run1 succeeds, run2 fails on time limit, run3 fails on memory limit
@@ -103,8 +103,13 @@ def create_initial_state():
 my_environment = slurm_tools.MinimizerSlurmEnvironment(
     extra_options="#SBATCH --cpus-per-task=2",)
 
-print(
-    f"Search result:\n{pprint.pformat(slurm_tools.main(create_initial_state(), MyGenerator, MyEvaluator, my_environment, enforce_order=True))}")
+search_result = slurm_tools.main(create_initial_state(),
+                                 MyGenerator,
+                                 MyEvaluator,
+                                 my_environment,
+                                 enforce_order=True)
+
+print(f"Search result:\n{pprint.pformat(search_result)}")
 
 
 # run_search()
