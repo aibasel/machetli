@@ -1,4 +1,5 @@
 import argparse
+from collections.abc import Iterable
 import logging
 import os
 import pickle
@@ -12,7 +13,6 @@ import time
 from minimizer.grid import slurm_tools
 from lab import tools
 from lab.environments import BaselSlurmEnvironment, SlurmEnvironment
-# import statistics TODO: import can probably be deleted
 
 DRIVER_ERR = "driver.err"
 EVAL_DIR = "eval_dir"
@@ -23,88 +23,74 @@ FILESYSTEM_TIME_INTERVAL = 3
 FILESYSTEM_TIME_LIMIT = 60
 POLLING_TIME_INTERVAL = 15
 TIME_LIMIT_FACTOR = 1.5
-# The following are sets of slurm job state codes
+# Sets of slurm job state codes
 DONE_STATE = {"COMPLETED"}
 BUSY_STATES = {"PENDING", "RUNNING"}
 
 
-def search_grid(initial_state, successor_generators, environment, enforce_order=False):
-    if not isinstance(successor_generators, list):
+def search_grid(initial_state, successor_generators, environment, enforce_order, batch_size):
+    if not isinstance(successor_generators, Iterable):
         successor_generators = [successor_generators]
-    env = environment
-    state = initial_state
+    current_state = initial_state
     batch_num = -1
-    for s in successor_generators:
-        gen = s().get_successors(state)
-        for batch_of_successors in slurm_tools.get_next_batch(gen):
-            #TODO:  Implement this as loop over all successors releasing batches when size is right,
-            #       should be easier...
-            batch_num += 1
-            try:
-                job_id, run_dirs = env.submit_array_job(
-                    batch_of_successors, batch_num)
-                env.poll_job(job_id, batch_of_successors)
-            except slurm_tools.SubmissionError as e:
-                if not enforce_order:
-                    logging.warning(
-                        f"The following batch submission failed but is ignored:\n{e}")
-                    continue  # Continue with next batch
-                else:
-                    logging.warning(
-                        f"""Order cannot be kept because the following batch submission failed:\n{e}\n
-                        Aborting search.""")
-                    return state
-            except slurm_tools.TaskError as e:
-                indices_critical_tasks = [int(parts[1]) for parts in (
-                    job_id.split("_") for job_id in e.critical_tasks)]
-                if not enforce_order:
-                    # remove successors and their directories if their task entered a critical state
-                    batch_of_successors = [b for i, b in enumerate(
-                        batch_of_successors) if i not in indices_critical_tasks]
-                    run_dirs = [r for i, r in enumerate(
-                        run_dirs) if not i in indices_critical_tasks]
+    for SG in successor_generators:
+        while True:
+            sg = SG().get_successors(current_state)
 
-                    logging.warning(
-                        f"At least one task from job {job_id} entered a critical state but is ignored:\n{e}")
-                else:
-                    # since order needs to be enforced, only consider successors before first successor with failed task
-                    first_failed_index = indices_critical_tasks[0]
-                    batch_of_successors = batch_of_successors[:first_failed_index]
-                    run_dirs = run_dirs[:first_failed_index]
-                    if first_failed_index == 0:  # the task of the first successor entered a critical state
-                        logging.critical(
-                            f"At least the first task from job {job_id} entered a critical state and the search is aborted.\n{e}")
-                    else:
-                        logging.warning(f"""At least one task from job {job_id} entered a critical state.
-                        The successors before the first one whose task entered the critical state are still considered.\n{e}""")
-            except slurm_tools.PollingError:
-                logging.error(
-                    f"Polling of job {job_id} caused an error. Aborting search.")
-                return state
-            for succ, run_dir in zip(batch_of_successors, run_dirs):
-                result_file = os.path.join(run_dir, slurm_tools.RESULT)
-                if not env.wait_for_filesystem(result_file):
+            for state_batch in get_next_batch(sg, batch_size):
+                batch_num += 1
+
+                # Submit batch
+                try:
+                    job = environment.submit_array_job(state_batch, batch_num)
+                except SubmissionError as se:
                     if not enforce_order:
-                        logging.warning(
-                            f"Result file {result_file} does not exist. Continuing.")
-                        continue
+                        se.warn()
+                        continue  # Continue with next batch
                     else:
-                        logging.warning(
-                            f"Aborting search because evaluation in {run_dir} failed.")
-                        return state
-                else:  # Result file is present
-                    rf = open(result_file, "r")
-                    match = re.match(r"The evaluation finished with exit code (0|1)", rf.read())
-                    rf.close()
-                    exitcode = int(match.group(1))
-                    result = True if exitcode == 0 else False
-                    if result:
-                        logging.info("Found successor!")
-                        state = succ
-                        break
-            else:
+                        se.warn_abort()
+                        return current_state
+
+                # Poll job state
+                try:
+                    environment.poll_job(job["id"])
+                except TaskError as te:
+                    if not enforce_order:
+                        te.remove_critical_tasks(job)
+                        if not job["tasks"]:
+                            continue
+                    else:  # only consider successors before first successor with failed task
+                        te.remove_tasks_after_first_critical(job)
+                        if not job["tasks"]:
+                            return current_state
+                except PollingError as pe:
+                    pe.warn_abort(job)
+                    return current_state
+
+                # Check evaluated successor states
+                for task in job["tasks"]:
+                    result_file = os.path.join(task["dir"], RESULT)
+                    if not environment.wait_for_filesystem(result_file):
+                        if not enforce_order:
+                            logging.warning(
+                                f"Result file {result_file} does not exist. Continuing with next task.")
+                            continue
+                        else:
+                            logging.warning(
+                                f"Aborting search because evaluation in {task['dir']} failed.")
+                            return current_state
+                    else:  # Result file is present
+                        result = parse_result(result_file)
+                        if result:
+                            logging.info("Found successor!")
+                            current_state = task["curr"]
+                            break
+                if result:  # Leave batch loop and continue with new successor generator
+                    break
+
+            else:  # Exhausted all batches of current_state, leave while loop
                 break
-    return state
+    return current_state
 
 
 def get_arg_parser():
@@ -115,7 +101,7 @@ def get_arg_parser():
     return parser
 
 
-def main(initial_state, successor_generators, evaluator, environment, enforce_order=False):
+def main(initial_state, successor_generators, evaluator, environment, enforce_order=False, batch_size=DEFAULT_ARRAY_SIZE):
     arg_parser = get_arg_parser()
     args = arg_parser.parse_args()
 
@@ -130,11 +116,12 @@ def main(initial_state, successor_generators, evaluator, environment, enforce_or
         result = evaluator().evaluate(state)
         logging.info(f"Node: {platform.node()}")
         sys.exit(0) if result else sys.exit(1)
-        # del state["cwd"]
-        # exit(1) if False
-        # slurm_tools.add_result_to_state(result, dump_file_path)
     elif args.grid:
-        return search_grid(initial_state, successor_generators, environment, enforce_order)
+        return search_grid(initial_state=initial_state,
+                           successor_generators=successor_generators,
+                           environment=environment,
+                           enforce_order=enforce_order,
+                           batch_size=batch_size)
     else:
         arg_parser.print_usage()
 
@@ -149,7 +136,7 @@ class SubmissionError(Exception):
         self.stderr = cpe.stderr
 
     def __str__(self):
-        return f"""\
+        return f"""
                 Error during job submission:
                 Submission command: {self.cmd}
                 Returncode: {self.returncode}
@@ -157,17 +144,49 @@ class SubmissionError(Exception):
                 Captured stdout: {self.stdout}
                 Captured stderr: {self.stderr}"""
 
+    def warn(self):
+        logging.warning(f"""The following batch submission failed but is ignored:
+                        {self}""")
+
+    def warn_abort(self):
+        logging.warning(f"""Task order cannot be kept because the following batch submission failed:
+                        {self}
+                        Aborting search.""")
+
 
 class TaskError(Exception):
     def __init__(self, critical_tasks):
         self.critical_tasks = critical_tasks
+        self.indices_critical = [int(parts[1]) for parts in (
+            task_id.split("_") for task_id in self.critical_tasks)]
 
-    def __str__(self):
+    def __repr__(self):
         return pprint.pformat(self.critical_tasks)
+
+    def remove_critical_tasks(self, job):
+        """Remove tasks from job that entered a critical state."""
+        job["tasks"] = [t for i, t in enumerate(
+            job["tasks"]) if i not in self.indices_critical]
+        logging.warning(
+            f"Some tasks from job {job['id']} entered a critical state but the search is continued.")
+
+    def remove_tasks_after_first_critical(self, job):
+        """Remove all tasks from job after the first one that entered a critical state."""
+        first_failed = self.indices_critical[0]
+        job["tasks"] = job["tasks"][:first_failed]
+        if not job["tasks"]:
+            logging.warning(f"""Since the first task failed, the order cannot be kept.
+                            Aborting search.""")
+        else:
+            logging.warning(f"""At least one task from job {job['id']} entered a critical state:
+                            {self}
+                            The tasks before the first critical one are still considered.""")
 
 
 class PollingError(Exception):
-    pass
+    def warn_abort(self, job):
+        logging.error(
+            f"Polling job {job['id']} caused an error. Aborting search.")
 
 
 class MinimizerSlurmEnvironment(BaselSlurmEnvironment):
@@ -261,7 +280,8 @@ class MinimizerSlurmEnvironment(BaselSlurmEnvironment):
             run_dirs.append(run_dir_path)
         # Give the NFS time to write the paths
         if not self.wait_for_filesystem(*run_dirs):
-            logging.critical(f"One of the following paths is missing:\n{pprint.pformat(run_dirs)}")
+            logging.critical(
+                f"One of the following paths is missing:\n{pprint.pformat(run_dirs)}")
         return run_dirs
 
     def fill_template(self, is_last=False, **kwargs):
@@ -282,11 +302,9 @@ class MinimizerSlurmEnvironment(BaselSlurmEnvironment):
         Then, submits a slurm array job which will evaluate each state
         in parallel. Returns the array job ID of the submitted array job.
         """
-        # full_runs_path = os.join(tools.get_script_path(), RUNS_DIR
-        # tools.makedirs(full_runs_path)
-        paths = self.build_batch_directories(batch, batch_num)
+        run_dirs = self.build_batch_directories(batch, batch_num)
         batch_name = f"batch_{batch_num:03}"
-        self.fill_template(dump_paths=" ".join(paths), name=batch_name,
+        self.fill_template(run_dirs=" ".join(run_dirs), name=batch_name,
                            num_tasks=len(batch)-1)
         submission_command = ["sbatch", "--export",
                               ",".join(self.export), self.batchfile_path]
@@ -301,9 +319,11 @@ class MinimizerSlurmEnvironment(BaselSlurmEnvironment):
         else:
             logging.info(match.group(0))
         job_id = match.group(1)
-        return job_id, paths
+        job = {"id": job_id}
+        job["tasks"] = [{"curr": c, "dir": d} for c, d in zip(batch, run_dirs)]
+        return job
 
-    def poll_job(self, job_id, states):
+    def poll_job(self, job_id):
         while True:
             time.sleep(POLLING_TIME_INTERVAL)
             try:
@@ -322,13 +342,15 @@ class MinimizerSlurmEnvironment(BaselSlurmEnvironment):
                     else:
                         critical.append(task_id)
                 if busy:
+                    logging.info(
+                        f"{len(busy)} task{'s are' if len(busy) > 1 else ' is'} still busy.")
                     continue
                 if critical:
-                    critical_tasks = {
-                        task for task in task_states if task in critical}
+                    critical_tasks = [
+                        task for task in task_states if task in critical]
                     raise TaskError(critical_tasks)
                 else:
-                    logging.debug("All tasks are done!")
+                    logging.info("All tasks are done!")
                     return
             except subprocess.CalledProcessError as cpe:
                 raise PollingError
@@ -354,31 +376,26 @@ def read_and_unpickle_state(file_path):
         return pickle.load(dump_file)
 
 
-# TODO: Probably obsolete function
-# def add_result_to_state(result, file_path):
-#     state = read_and_unpickle_state(file_path)
-#     state["result"] = result
-#     pickle_and_dump_state(state, file_path)
-#     print(f'Result "{result}" was written to state.')
+def parse_result(result_file):
+    rf = open(result_file, "r")
+    match = re.match(
+        r"The evaluation finished with exit code (0|1)", rf.read())
+    rf.close()
+    exitcode = int(match.group(1))
+    result = True if exitcode == 0 else False
+    return result
 
 
-# TODO: Probably obsolete function
-# def get_result(file_path):
-#     time.sleep(5)
-#     state = read_and_unpickle_state(file_path)
-#     return state["result"]
-
-
-def get_next_batch(successor_generator, batch_size=DEFAULT_ARRAY_SIZE):
+def get_next_batch(successor_generator, batch_size):
     while True:
         batch = []
         for _ in range(batch_size):
             try:
                 next_state = next(successor_generator)
                 batch.append(next_state)
-            except StopIteration:
+            except StopIteration:  # generator exhausted, exit function
                 if batch:
                     yield batch
-                else:
-                    return
-        yield batch
+                return
+        else:
+            yield batch
