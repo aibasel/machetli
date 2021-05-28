@@ -21,11 +21,10 @@ import time
 
 from minimizer.grid import slurm_tools
 from lab import tools
-from minimizer.aux import run_and_parse_all, run_all
 from minimizer.evaluator import Evaluator
 from minimizer.parser import Parser
-from minimizer.run import Run
-from minimizer.successor_generator import SuccessorGenerator
+from minimizer.run import Run, run_and_parse_all, run_all
+from minimizer.planning.generators import SuccessorGenerator
 
 
 DOWNWARD_ROOT = os.environ["DOWNWARD_ROOT"]
