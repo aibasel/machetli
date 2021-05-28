@@ -1,8 +1,8 @@
-
+from collections import defaultdict
 import logging
+
 from lab import parser
 from lab import tools
-from collections import defaultdict
 
 
 class _Pattern(parser._Pattern):
@@ -51,7 +51,7 @@ class Parser(parser.Parser):
 
     def parse(self, cmd_name, output):
         self.props = dict()
-        
+
         for name, output_parser in list(self.output_parsers.items()):
             if name == cmd_name:
                 output_parser.accept_content(output)

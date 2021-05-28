@@ -1,8 +1,9 @@
-from minimizer.downward_lib.sas_tasks import SASTask, SASMutexGroup, SASInit, SASGoal, SASOperator, SASAxiom
-from minimizer import visitors
 import copy
-from minimizer.downward_lib import timers
 import random
+
+from minimizer.planning import pddl_visitors
+from minimizer.planning.downward_lib import timers
+from minimizer.planning.downward_lib.sas_tasks import SASTask, SASMutexGroup, SASInit, SASGoal, SASOperator, SASAxiom
 
 
 class SuccessorGenerator():
@@ -20,7 +21,7 @@ class RemoveActions(SuccessorGenerator):
             pre_child_task = child_state["pddl_task"]
             with timers.timing("Obtaining successor"):
                 child_task = pre_child_task.accept(
-                    visitors.TaskElementEraseActionVisitor(name))
+                    pddl_visitors.TaskElementEraseActionVisitor(name))
             child_state["pddl_task"] = child_task
             yield child_state
 
@@ -36,7 +37,7 @@ class ReplaceAtomsWithTruth(SuccessorGenerator):
             pre_child_task = child_state["pddl_task"]
             with timers.timing("Obtaining successor"):
                 child_task = pre_child_task.accept(
-                    visitors.TaskElementErasePredicateTrueAtomVisitor(name))
+                    pddl_visitors.TaskElementErasePredicateTrueAtomVisitor(name))
             child_state["pddl_task"] = child_task
             yield child_state
 
@@ -52,7 +53,7 @@ class ReplaceAtomsWithFalsity(SuccessorGenerator):
             pre_child_task = child_state["pddl_task"]
             with timers.timing("Obtaining successor"):
                 child_task = pre_child_task.accept(
-                    visitors.TaskElementErasePredicateFalseAtomVisitor(name))
+                    pddl_visitors.TaskElementErasePredicateFalseAtomVisitor(name))
             child_state["pddl_task"] = child_task
             yield child_state
 
@@ -68,7 +69,7 @@ class ReplaceLiteralsWithTruth(SuccessorGenerator):
             pre_child_task = child_state["pddl_task"]
             with timers.timing("Obtaining successor"):
                 child_task = pre_child_task.accept(
-                    visitors.TaskElementErasePredicateTrueLiteralVisitor(name))
+                    pddl_visitors.TaskElementErasePredicateTrueLiteralVisitor(name))
             child_state["pddl_task"] = child_task
             yield child_state
 
@@ -83,7 +84,7 @@ class RemoveObjects(SuccessorGenerator):
             pre_child_task = child_state["pddl_task"]
             with timers.timing("Obtaining successor"):
                 child_task = pre_child_task.accept(
-                    visitors.TaskElementEraseObjectVisitor(name))
+                    pddl_visitors.TaskElementEraseObjectVisitor(name))
             child_state["pddl_task"] = child_task
             yield child_state
 

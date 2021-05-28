@@ -70,7 +70,7 @@ def search_grid(initial_state, successor_generators, environment, enforce_order,
                 # Check evaluated successor states
                 for task in job["tasks"]:
                     result_file = os.path.join(task["dir"], RESULT)
-                    if not environment.wait_for_filesystem(result_file):
+                    if not environment.wait_for_filesystem(result_file):  # Result file is not present
                         if not enforce_order:
                             logging.warning(
                                 f"Result file {result_file} does not exist. Continuing with next task.")

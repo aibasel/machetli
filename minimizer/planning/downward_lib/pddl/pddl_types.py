@@ -4,7 +4,7 @@
 
 import itertools
 
-from minimizer.downward_lib.pddl.task_element import TaskElement
+from minimizer.planning.downward_lib.pddl.task_element import TaskElement
 
 
 def _get_type_predicate_name(type_name):

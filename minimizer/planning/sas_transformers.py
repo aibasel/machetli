@@ -1,9 +1,9 @@
+from collections import Generator
 import copy
 import random
-from collections import Generator
 
-from minimizer.downward_lib import timers
-from minimizer.downward_lib.sas_tasks import SASTask, SASMutexGroup, SASGoal, SASOperator, SASInit, SASAxiom
+from minimizer.planning.downward_lib import timers
+from minimizer.planning.downward_lib.sas_tasks import SASTask, SASMutexGroup, SASGoal, SASOperator, SASInit, SASAxiom
 
 SEED = 42
 

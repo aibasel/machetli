@@ -49,13 +49,15 @@ class Run:
         formatted_command = [part.format(**state) for part in self.command]
         logging.debug(f"Formatted command:\n{formatted_command}")
 
+        cwd = state["cwd"] if "cwd" in state else None
+
         try:
             process = subprocess.Popen(formatted_command,
                                        preexec_fn=_prepare_call,
                                        stdout=subprocess.PIPE,
                                        stderr=subprocess.PIPE,
                                        text=True,
-                                       cwd=state["cwd"])
+                                       cwd=cwd)
         except OSError as err:
             if err.errno == errno.ENOENT:
                 sys.exit('Error: Call "{}" failed. One of the files was not found.'.format(
@@ -99,6 +101,8 @@ class RunWithInputFile(Run):
 
         formatted_command = [part.format(**state) for part in self.command]
 
+        cwd = state["cwd"] if "cwd" in state else None
+
         try:
             process = subprocess.Popen(formatted_command,
                                        preexec_fn=_prepare_call,
@@ -106,7 +110,7 @@ class RunWithInputFile(Run):
                                        stderr=subprocess.PIPE,
                                        stdin=subprocess.PIPE,
                                        text=True,
-                                       cwd=state["cwd"])
+                                       cwd=cwd)
         except OSError as err:
             if err.errno == errno.ENOENT:
                 sys.exit('Error: Call "{}" failed. One of the files was not found.'.format(
@@ -121,3 +125,49 @@ class RunWithInputFile(Run):
         out_str, err_str = process.communicate(input=input_text)
 
         return (out_str, err_str, process.returncode)
+
+
+def run_all(state):
+    """
+    Starts all runs in *state["runs"]* and returns a dictionary where run outputs
+    can be accessed the following ways: *results[run_name]["stdout]*, 
+    *results[run_name]["stderr]* or *results[run_name]["returncode]*.
+    """
+    assert "runs" in state, "Could not find entry \"runs\" in state."
+    results = {}
+    for name, run in state["runs"].items():
+        stdout, stderr, returncode = run.start(state)
+        if run.log_always or run.log_on_fail and returncode != 0:
+            if stdout:
+                with open(os.path.join(state["cwd"], f"{name}.log"), "w") as logfile:
+                    logfile.write(stdout)
+            if stderr:
+                with open(os.path.join(state["cwd"], f"{name}.err"), "w") as errfile:
+                    errfile.write(stderr)
+        results.update(
+            {name: {"stdout": stdout, "stderr": stderr, "returncode": returncode}}
+        )
+    return results
+
+
+def run_and_parse_all(state, parsers):
+    """
+    Executes *run_all(state)* and returns an updated version of the results
+    dictionary containing the parsing results in place of the actual stdout
+    and stderr outputs.
+    """
+    results = run_all(state)
+    parsed_results = {}
+    parsers = [parsers] if not isinstance(parsers, list) else parsers
+    for name, result in results.items():
+        parsed_results.update(
+            {name: {"stdout": {}, "stderr": {},
+                    "returncode": result["returncode"]}}
+        )
+        for parser in parsers:
+            parsed_results[name]["stdout"].update(
+                parser.parse(name, result["stdout"]))
+            parsed_results[name]["stderr"].update(
+                parser.parse(name, result["stderr"]))
+    parsed_results["raw_results"] = results
+    return parsed_results

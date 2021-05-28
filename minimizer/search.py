@@ -1,4 +1,4 @@
-from minimizer.downward_lib import timers
+from minimizer.planning.downward_lib import timers
 
 
 def first_choice_hill_climbing(initial_state, successor_generators, evaluator):

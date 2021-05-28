@@ -1,14 +1,15 @@
+#!/usr/bin/env python
 import os
 import sys
 
 from lab import tools
-from minimizer.parser import Parser
 from minimizer.evaluator import Evaluator
+from minimizer.parser import Parser
 from minimizer.search import first_choice_hill_climbing
-from minimizer.successor_generator import RemoveObjects, ReplaceLiteralsWithTruth
-from minimizer.pddl_writer import write_PDDL
-from minimizer.run import Run
-from minimizer import aux
+from minimizer.planning.generators import RemoveObjects, ReplaceLiteralsWithTruth
+from minimizer.planning.pddl_writer import write_PDDL
+from minimizer.run import Run, run_and_parse_all
+from minimizer.planning import auxiliary
 
 script_path = tools.get_script_path()
 script_dir = os.path.dirname(script_path)
@@ -34,7 +35,7 @@ command = [interpreter, planner,
            "{generated_pddl_domain_filename}", "{generated_pddl_problem_filename}"]
 
 initial_state = {
-    "pddl_task": aux.parse_pddl_task(domain_filename, problem_filename),
+    "pddl_task": auxiliary.parse_pddl_task(domain_filename, problem_filename),
     "runs": {
         "issue335": Run(command, time_limit=20, memory_limit=3338)
     }
@@ -49,8 +50,8 @@ parser.add_function(assertion_error, "issue335")
 
 class MyEvaluator(Evaluator):
     def evaluate(self, state):
-        with aux.state_with_generated_pddl_files(state) as local_state:
-            results = aux.run_and_parse_all(local_state, parser)
+        with auxiliary.state_with_generated_pddl_files(state) as local_state:
+            results = run_and_parse_all(local_state, parser)
         return results["issue335"]["stderr"]["assertion_error"]
 
 result = first_choice_hill_climbing(
