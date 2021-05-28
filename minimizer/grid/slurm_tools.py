@@ -3,6 +3,7 @@ from collections.abc import Iterable
 import logging
 import os
 import pickle
+import pkgutil
 import platform
 import pprint
 import re
@@ -18,11 +19,14 @@ DRIVER_ERR = "driver.err"
 EVAL_DIR = "eval_dir"
 DUMP_FILENAME = "dump"
 RESULT = "result"
+TEMPLATE_FILE = "slurm-array-job.template"
+SBATCH_FILE = "slurm-array-job.sbatch"
 DEFAULT_ARRAY_SIZE = 200
 FILESYSTEM_TIME_INTERVAL = 3
 FILESYSTEM_TIME_LIMIT = 60
 POLLING_TIME_INTERVAL = 15
 TIME_LIMIT_FACTOR = 1.5
+
 # Sets of slurm job state codes
 DONE_STATE = {"COMPLETED"}
 BUSY_STATES = {"PENDING", "RUNNING"}
@@ -70,7 +74,8 @@ def search_grid(initial_state, successor_generators, environment, enforce_order,
                 # Check evaluated successor states
                 for task in job["tasks"]:
                     result_file = os.path.join(task["dir"], RESULT)
-                    if not environment.wait_for_filesystem(result_file):  # Result file is not present
+                    # Result file is not present
+                    if not environment.wait_for_filesystem(result_file):
                         if not enforce_order:
                             logging.warning(
                                 f"Result file {result_file} does not exist. Continuing with next task.")
@@ -189,15 +194,38 @@ class PollingError(Exception):
             f"Polling job {job['id']} caused an error. Aborting search.")
 
 
-class MinimizerSlurmEnvironment(BaselSlurmEnvironment):
-    DEFAULT_NICE = 5000
-    ARRAY_JOB_TEMPLATE_FILE = "slurm-array-job.template"
-    ARRAY_JOB_FILE = "slurm-array-job.sbatch"
-    MAX_MEM_INFAI_BASEL = {"infai_1": "3872M", "infai_2": "6354M"}
-
-    def __init__(self, email=None, extra_options=None, partition=None, qos=None, memory_per_cpu=None, nice=None, export=None, setup=None):
-        self.script_path = tools.get_script_path()
+class Environment:
+    def __init__(self, email=None):
         self.email = email
+
+
+class LocalEnvironment(Environment):
+    pass
+
+
+class SlurmEnvironment(Environment):
+    # Must be overridden in derived classes.
+    DEFAULT_PARTITION = None
+    DEFAULT_QOS = None
+    DEFAULT_MEMORY_PER_CPU = None
+
+    # Can be overridden in derived classes.
+    DEFAULT_EXPORT = ["PATH"]
+    DEFAULT_SETUP = ""
+    DEFAULT_NICE = 0  # TODO: Check if this makes sense
+
+    def __init__(
+        self,
+        partition=None,
+        qos=None,
+        memory_per_cpu=None,
+        nice=None,
+        export=None,
+        setup=None,
+        **kwargs,
+    ):
+        Environment.__init__(self, **kwargs)
+
         self.extra_options = extra_options or "## (not used)"
         self.partition = partition or self.DEFAULT_PARTITION
         self.qos = qos or self.DEFAULT_QOS
@@ -205,6 +233,7 @@ class MinimizerSlurmEnvironment(BaselSlurmEnvironment):
         self.nice = nice or self.DEFAULT_NICE
         self.export = export or self.DEFAULT_EXPORT
         self.setup = setup or self.DEFAULT_SETUP
+        self.script_path = tools.get_script_path()
 
         # Number of cores is used to determine the soft memory limit
         self.cpus_per_task = 1  # This is the default
@@ -214,30 +243,14 @@ class MinimizerSlurmEnvironment(BaselSlurmEnvironment):
             assert match, f"{self.extra_options} should have matched {rexpr}."
             self.cpus_per_task = int(match.group(1))
 
-        # Abort if mem_per_cpu too high for Basel partitions
-        if self.partition in {"infai_1", "infai_2"}:
-            mem_per_cpu_in_kb = SlurmEnvironment._get_memory_in_kb(
-                self.memory_per_cpu)
-            max_mem_per_cpu_in_kb = SlurmEnvironment._get_memory_in_kb(
-                self.MAX_MEM_INFAI_BASEL[self.partition])
-            if mem_per_cpu_in_kb > max_mem_per_cpu_in_kb:
-                logging.critical(
-                    f"Memory limit {self.memory_per_cpu} surpassing the maximum amount allowed for partition {self.partition}: {self.MAX_MEM_INFAI_BASEL[self.partition]}.")
-
-        eval_root_dir = os.path.dirname(tools.get_script_path())
-        template_dir = os.path.dirname(os.path.abspath(__file__))
-        logging.debug(f"Eval root dir:{eval_root_dir}")
-        logging.debug(f"Template dir:{template_dir}")
-        self.template_path = os.path.join(
-            template_dir, self.ARRAY_JOB_TEMPLATE_FILE)
-        self.eval_dir = os.path.join(eval_root_dir, EVAL_DIR)
+        script_dir = os.path.dirname(self.script_path)
+        self.eval_dir = os.path.join(script_dir, EVAL_DIR)
         tools.makedirs(self.eval_dir)
-        self.batchfile_path = os.path.join(self.eval_dir, self.ARRAY_JOB_FILE)
+        self.sbatch_file = os.path.join(script_dir, SBATCH_FILE)
         self.wait_for_filesystem(self.eval_dir)
 
-    def get_job_params(self, name, is_last=False):
+    def get_job_params(self):
         job_params = dict()
-        job_params["name"] = name
         job_params["logfile"] = "slurm.log"
         job_params["errfile"] = "slurm.err"
         job_params["partition"] = self.partition
@@ -246,12 +259,8 @@ class MinimizerSlurmEnvironment(BaselSlurmEnvironment):
         job_params["nice"] = self.nice
         job_params["extra_options"] = self.extra_options
         job_params["environment_setup"] = self.setup
-        if is_last and self.email:
-            job_params["mailtype"] = "END,FAIL,REQUEUE,STAGE_OUT"
-            job_params["mailuser"] = self.email
-        else:
-            job_params["mailtype"] = "NONE"
-            job_params["mailuser"] = ""
+        job_params["mailtype"] = "NONE"
+        job_params["mailuser"] = ""
         job_params["soft_memory_limit"] = int(
             0.98 * self.cpus_per_task * SlurmEnvironment._get_memory_in_kb(self.memory_per_cpu))
         job_params["python"] = tools.get_python_executable()
@@ -284,16 +293,14 @@ class MinimizerSlurmEnvironment(BaselSlurmEnvironment):
                 f"One of the following paths is missing:\n{pprint.pformat(run_dirs)}")
         return run_dirs
 
-    def fill_template(self, is_last=False, **kwargs):
-        with open(self.template_path, "r") as f:
-            template_text = f.read()
-        dictionary = self.get_job_params(is_last)
+    def write_sbatch_file(self, **kwargs):
+        dictionary = self.get_job_params()
         dictionary.update(kwargs)
         logging.debug(
             f"Dictionary before filling:\n{pprint.pformat(dictionary)}")
-        filled_text = template_text % dictionary
-        with open(self.batchfile_path, "w") as g:
-            g.write(filled_text)
+        filled_text = fill_template(**dictionary)
+        with open(self.sbatch_file, "w") as f:
+            f.write(filled_text)
         # TODO: Implement check whether file was updated
 
     def submit_array_job(self, batch, batch_num):
@@ -304,10 +311,10 @@ class MinimizerSlurmEnvironment(BaselSlurmEnvironment):
         """
         run_dirs = self.build_batch_directories(batch, batch_num)
         batch_name = f"batch_{batch_num:03}"
-        self.fill_template(run_dirs=" ".join(run_dirs), name=batch_name,
+        self.write_sbatch_file(run_dirs=" ".join(run_dirs), name=batch_name,
                            num_tasks=len(batch)-1)
         submission_command = ["sbatch", "--export",
-                              ",".join(self.export), self.batchfile_path]
+                              ",".join(self.export), self.sbatch_file]
         try:
             output = subprocess.check_output(submission_command).decode()
         except subprocess.CalledProcessError as cpe:
@@ -362,8 +369,26 @@ class MinimizerSlurmEnvironment(BaselSlurmEnvironment):
         return {k: v for k, v in (pair.split() for pair in stripped_job_state_list)}
 
 
-def sum_of_time_limits(state):
-    return sum({run.time_limit for run in state["runs"]})
+class BaselSlurmEnvironment(SlurmEnvironment):
+    """Environment for Basel's AI group."""
+    DEFAULT_PARTITION = "infai_1"
+    DEFAULT_QOS = "normal"
+    DEFAULT_MEMORY_PER_CPU = "3872M"
+    MAX_MEM_INFAI_BASEL = {"infai_1": "3872M", "infai_2": "6354M"}
+    DEFAULT_NICE = 5000
+
+    def __init__(self, **kwargs):
+        SlurmEnvironment.__init__(self, **kwargs)
+
+        # Abort if mem_per_cpu too high for Basel partitions
+        if self.partition in {"infai_1", "infai_2"}:
+            mem_per_cpu_in_kb = SlurmEnvironment._get_memory_in_kb(
+                self.memory_per_cpu)
+            max_mem_per_cpu_in_kb = SlurmEnvironment._get_memory_in_kb(
+                self.MAX_MEM_INFAI_BASEL[self.partition])
+            if mem_per_cpu_in_kb > max_mem_per_cpu_in_kb:
+                logging.critical(
+                    f"Memory limit {self.memory_per_cpu} surpassing the maximum amount allowed for partition {self.partition}: {self.MAX_MEM_INFAI_BASEL[self.partition]}.")
 
 
 def pickle_and_dump_state(state, file_path):
@@ -399,3 +424,9 @@ def get_next_batch(successor_generator, batch_size):
                 return
         else:
             yield batch
+
+
+def fill_template(**parameters):
+    template = tools.get_string(pkgutil.get_data(
+        "minimizer", os.path.join("grid", TEMPLATE_FILE)))
+    return template % parameters
