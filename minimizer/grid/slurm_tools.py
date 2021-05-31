@@ -214,6 +214,7 @@ class SlurmEnvironment(Environment):
         script_dir = os.path.dirname(self.script_path)
         self.eval_dir = os.path.join(script_dir, EVAL_DIR)
         tools.makedirs(self.eval_dir)
+        check_for_whitespace(self.eval_dir)
         self.sbatch_file = os.path.join(script_dir, SBATCH_FILE)
         self.wait_for_filesystem(self.eval_dir)
 
@@ -398,3 +399,7 @@ def fill_template(**parameters):
     template = tools.get_string(pkgutil.get_data(
         "minimizer", os.path.join("grid", TEMPLATE_FILE)))
     return template % parameters
+
+
+def check_for_whitespace(path):
+    assert not re.search(r"\s+", path), "The script path must not contain any whitespace characters."
