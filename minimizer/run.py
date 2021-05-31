@@ -5,6 +5,7 @@ import subprocess
 import sys
 import errno
 
+from lab import tools
 from lab.calls.call import set_limit
 
 
@@ -138,11 +139,12 @@ def run_all(state):
     for name, run in state["runs"].items():
         stdout, stderr, returncode = run.start(state)
         if run.log_always or run.log_on_fail and returncode != 0:
+            cwd = state["cwd"] if "cwd" in state else tools.get_script_path()
             if stdout:
-                with open(os.path.join(state["cwd"], f"{name}.log"), "w") as logfile:
+                with open(os.path.join(cwd, f"{name}.log"), "w") as logfile:
                     logfile.write(stdout)
             if stderr:
-                with open(os.path.join(state["cwd"], f"{name}.err"), "w") as errfile:
+                with open(os.path.join(cwd, f"{name}.err"), "w") as errfile:
                     errfile.write(stderr)
         results.update(
             {name: {"stdout": stdout, "stderr": stderr, "returncode": returncode}}

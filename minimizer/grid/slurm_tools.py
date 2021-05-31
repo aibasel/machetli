@@ -98,47 +98,6 @@ def search_grid(initial_state, successor_generators, environment, enforce_order,
     return current_state
 
 
-def get_arg_parser():
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--grid", action="store_true")
-    parser.add_argument("--evaluate", type=str, metavar="PATH_TO_STATE_DUMP")
-    parser.add_argument("--debug", action="store_true")
-    return parser
-
-
-def main(
-    initial_state,
-    successor_generators,
-    evaluator,
-    environment,
-    enforce_order=False,
-    batch_size=DEFAULT_ARRAY_SIZE
-):
-
-    arg_parser = get_arg_parser()
-    args = arg_parser.parse_args()
-
-    tools.configure_logging() if not args.debug else tools.configure_logging(
-        level=logging.DEBUG)
-
-    if args.evaluate:
-        logging.debug(f"Python interpreter: {tools.get_python_executable()}")
-        dump_file_path = args.evaluate
-        state = slurm_tools.read_and_unpickle_state(dump_file_path)
-        state["cwd"] = os.path.dirname(dump_file_path)
-        result = evaluator().evaluate(state)
-        logging.info(f"Node: {platform.node()}")
-        sys.exit(0) if result else sys.exit(1)
-    elif args.grid:
-        return search_grid(initial_state=initial_state,
-                           successor_generators=successor_generators,
-                           environment=environment,
-                           enforce_order=enforce_order,
-                           batch_size=batch_size)
-    else:
-        arg_parser.print_usage()
-
-
 class SubmissionError(Exception):
     def __init__(self, cpe):
         print(cpe)

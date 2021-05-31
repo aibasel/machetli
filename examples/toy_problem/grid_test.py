@@ -22,6 +22,7 @@ import time
 from minimizer.grid import slurm_tools
 from lab import tools
 from minimizer.evaluator import Evaluator
+from minimizer.main import main
 from minimizer.parser import Parser
 from minimizer.run import Run, run_and_parse_all, run_all
 from minimizer.planning.generators import SuccessorGenerator
@@ -102,16 +103,10 @@ def create_initial_state():
 my_environment = slurm_tools.BaselSlurmEnvironment(
     extra_options="#SBATCH --cpus-per-task=2",)
 
-search_result = slurm_tools.main(create_initial_state(),
-                                 MyGenerator,
-                                 MyEvaluator,
-                                 my_environment,
-                                 enforce_order=True)
+search_result = main(create_initial_state(),
+                     MyGenerator,
+                     MyEvaluator,
+                     my_environment,
+                     enforce_order=True)
 
 print(f"Search result:\n{pprint.pformat(search_result)}")
-
-
-# run_search()
-# ./grid_test.py --> search_local
-# ./grid_test.py --grid --> search_grid
-# ./grid_test.py --evaluate directory_14 --> evaluate(load(directory_14/state))
