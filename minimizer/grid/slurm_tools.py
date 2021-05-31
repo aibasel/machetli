@@ -398,3 +398,16 @@ def fill_template(**parameters):
     template = tools.get_string(pkgutil.get_data(
         "minimizer", os.path.join("grid", TEMPLATE_FILE)))
     return template % parameters
+
+
+def launch_email_job(environment):
+    if environment.email:
+        try:
+            subprocess.run(["sbatch",
+                            "--job-name='Search terminated'",
+                            "--mail-type=BEGIN",
+                            f"--mail-user={environment.email}"],
+                           input=b"#! /bin/bash\n")
+        except:
+            logging.warning("Something went wrong while trying to send the notification email.")
+    return

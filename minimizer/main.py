@@ -47,10 +47,12 @@ def main(
                                           evaluator=evaluator)
 
     elif isinstance(environment, slurm_tools.SlurmEnvironment):
-        return slurm_tools.search_grid(initial_state=initial_state,
+        result = slurm_tools.search_grid(initial_state=initial_state,
                                        successor_generators=successor_generators,
                                        environment=environment,
                                        enforce_order=enforce_order,
                                        batch_size=batch_size)
+        slurm_tools.launch_email_job(environment)
+        return result
     else:
         arg_parser.print_usage()
