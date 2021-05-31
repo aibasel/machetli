@@ -18,7 +18,7 @@ import pprint
 import re
 import time
 
-from minimizer.grid import slurm_tools
+from minimizer.grid import environments
 from lab import tools
 from minimizer.evaluator import Evaluator
 from minimizer.main import main
@@ -99,7 +99,7 @@ def create_initial_state():
     }
 
 
-my_environment = slurm_tools.BaselSlurmEnvironment(
+my_environment = environments.BaselSlurmEnvironment(
     extra_options="#SBATCH --cpus-per-task=2",)
 
 search_result = main(create_initial_state(),

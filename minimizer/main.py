@@ -5,8 +5,8 @@ import platform
 import sys
 
 from lab import tools
-from minimizer.grid import slurm_tools
-from minimizer.grid.slurm_tools import DEFAULT_ARRAY_SIZE
+from minimizer.grid import environments, search
+from minimizer.grid import slurm_tools as st
 from minimizer.search import first_choice_hill_climbing
 
 
@@ -22,9 +22,9 @@ def main(
     initial_state,
     successor_generators,
     evaluator,
-    environment=slurm_tools.LocalEnvironment(),
+    environment=environments.LocalEnvironment(),
     enforce_order=False,
-    batch_size=DEFAULT_ARRAY_SIZE
+    batch_size=st.DEFAULT_ARRAY_SIZE
 ):
 
     arg_parser = get_arg_parser()
@@ -35,24 +35,24 @@ def main(
 
     if args.evaluate:
         dump_file_path = args.evaluate
-        state = slurm_tools.read_and_unpickle_state(dump_file_path)
+        state = st.read_and_unpickle_state(dump_file_path)
         state["cwd"] = os.path.dirname(dump_file_path)
         result = evaluator().evaluate(state)
         logging.info(f"Node: {platform.node()}")
         sys.exit(0) if result else sys.exit(1)
 
-    elif isinstance(environment, slurm_tools.LocalEnvironment):
+    elif isinstance(environment, environments.LocalEnvironment):
         return first_choice_hill_climbing(initial_state=initial_state,
                                           successor_generators=successor_generators,
                                           evaluator=evaluator)
 
-    elif isinstance(environment, slurm_tools.SlurmEnvironment):
-        result = slurm_tools.search_grid(initial_state=initial_state,
+    elif isinstance(environment, environments.SlurmEnvironment):
+        result = search.search_grid(initial_state=initial_state,
                                        successor_generators=successor_generators,
                                        environment=environment,
                                        enforce_order=enforce_order,
                                        batch_size=batch_size)
-        slurm_tools.launch_email_job(environment)
+        st.launch_email_job(environment)
         return result
     else:
         arg_parser.print_usage()
