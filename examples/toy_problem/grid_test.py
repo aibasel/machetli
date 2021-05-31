@@ -99,7 +99,7 @@ def create_initial_state():
     }
 
 
-my_environment = slurm_tools.MinimizerSlurmEnvironment(
+my_environment = slurm_tools.BaselSlurmEnvironment(
     extra_options="#SBATCH --cpus-per-task=2",)
 
 search_result = slurm_tools.main(create_initial_state(),

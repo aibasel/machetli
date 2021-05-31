@@ -13,7 +13,7 @@ import time
 
 from minimizer.grid import slurm_tools
 from lab import tools
-from lab.environments import BaselSlurmEnvironment, SlurmEnvironment
+from lab.environments import SlurmEnvironment as lab_slurm_env
 
 DRIVER_ERR = "driver.err"
 EVAL_DIR = "eval_dir"
@@ -106,7 +106,15 @@ def get_arg_parser():
     return parser
 
 
-def main(initial_state, successor_generators, evaluator, environment, enforce_order=False, batch_size=DEFAULT_ARRAY_SIZE):
+def main(
+    initial_state,
+    successor_generators,
+    evaluator,
+    environment,
+    enforce_order=False,
+    batch_size=DEFAULT_ARRAY_SIZE
+):
+
     arg_parser = get_arg_parser()
     args = arg_parser.parse_args()
 
@@ -216,13 +224,14 @@ class SlurmEnvironment(Environment):
 
     def __init__(
         self,
+        extra_options=None,
         partition=None,
         qos=None,
         memory_per_cpu=None,
         nice=None,
         export=None,
         setup=None,
-        **kwargs,
+        **kwargs
     ):
         Environment.__init__(self, **kwargs)
 
@@ -262,7 +271,7 @@ class SlurmEnvironment(Environment):
         job_params["mailtype"] = "NONE"
         job_params["mailuser"] = ""
         job_params["soft_memory_limit"] = int(
-            0.98 * self.cpus_per_task * SlurmEnvironment._get_memory_in_kb(self.memory_per_cpu))
+            0.98 * self.cpus_per_task * lab_slurm_env._get_memory_in_kb(self.memory_per_cpu))
         job_params["python"] = tools.get_python_executable()
         job_params["script_path"] = self.script_path
         return job_params
@@ -312,7 +321,7 @@ class SlurmEnvironment(Environment):
         run_dirs = self.build_batch_directories(batch, batch_num)
         batch_name = f"batch_{batch_num:03}"
         self.write_sbatch_file(run_dirs=" ".join(run_dirs), name=batch_name,
-                           num_tasks=len(batch)-1)
+                               num_tasks=len(batch)-1)
         submission_command = ["sbatch", "--export",
                               ",".join(self.export), self.sbatch_file]
         try:
@@ -382,9 +391,9 @@ class BaselSlurmEnvironment(SlurmEnvironment):
 
         # Abort if mem_per_cpu too high for Basel partitions
         if self.partition in {"infai_1", "infai_2"}:
-            mem_per_cpu_in_kb = SlurmEnvironment._get_memory_in_kb(
+            mem_per_cpu_in_kb = lab_slurm_env._get_memory_in_kb(
                 self.memory_per_cpu)
-            max_mem_per_cpu_in_kb = SlurmEnvironment._get_memory_in_kb(
+            max_mem_per_cpu_in_kb = lab_slurm_env._get_memory_in_kb(
                 self.MAX_MEM_INFAI_BASEL[self.partition])
             if mem_per_cpu_in_kb > max_mem_per_cpu_in_kb:
                 logging.critical(
