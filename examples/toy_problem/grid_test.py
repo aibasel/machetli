@@ -6,8 +6,7 @@ _____________________
 
 Before running this script, please make sure to have the following environment variables set:
 
-DOWNWARD_ROOT           (path to the root directory of the Fast Downward planner, at the revision
-                        with commit hash 09ccef5fd)
+DOWNWARD_ROOT           (path to the root directory of the Fast Downward planner, at a recent revision)
 
 DOWNWARD_BENCHMARKS      (path to the benchmarks root directory from https://github.com/aibasel/downward-benchmarks)
 """

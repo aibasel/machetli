@@ -139,7 +139,7 @@ def run_all(state):
     for name, run in state["runs"].items():
         stdout, stderr, returncode = run.start(state)
         if run.log_always or run.log_on_fail and returncode != 0:
-            cwd = state["cwd"] if "cwd" in state else tools.get_script_path()
+            cwd = state["cwd"] if "cwd" in state else os.path.dirname(tools.get_script_path())
             if stdout:
                 with open(os.path.join(cwd, f"{name}.log"), "w") as logfile:
                     logfile.write(stdout)
