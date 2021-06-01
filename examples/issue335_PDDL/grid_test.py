@@ -19,7 +19,7 @@ import sys
 
 from minimizer.grid import environments
 from lab import tools
-from minimizer import planning
+from minimizer.planning import auxiliary
 from minimizer.parser import Parser
 from minimizer.evaluator import Evaluator
 from minimizer.search import first_choice_hill_climbing
@@ -45,7 +45,7 @@ command = [interpreter, planner,
            "{generated_pddl_domain_filename}", "{generated_pddl_problem_filename}"]
 
 initial_state = {
-    "pddl_task": planning.parse_pddl_task(domain_filename, problem_filename),
+    "pddl_task": auxiliary.parse_pddl_task(domain_filename, problem_filename),
     "runs": {
         "issue335": Run(command, time_limit=20, memory_limit=3338)
     }
@@ -63,12 +63,12 @@ parser.add_function(assertion_error, "issue335")
 
 class MyEvaluator(Evaluator):
     def evaluate(self, state):
-        with planning.state_with_generated_pddl_files(state) as local_state:
+        with auxiliary.state_with_generated_pddl_files(state) as local_state:
             results = run_and_parse_all(local_state, parser)
         return results["issue335"]["stderr"]["assertion_error"]
 
 
-my_environment = environments.MinimizerSlurmEnvironment(
+my_environment = environments.BaselSlurmEnvironment(
     export=["PATH", "PYTHON_3_7", "DOWNWARD_ROOT"])
 
 result = main(initial_state, [
