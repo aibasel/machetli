@@ -1,10 +1,10 @@
 import io
 from contextlib import redirect_stdout
 
-from minimizer.downward_lib.pddl import Task, TypedObject, Predicate, Action, Axiom, Function, Truth, Conjunction, \
+from minimizer.planning.downward_lib.pddl import Task, TypedObject, Predicate, Action, Axiom, Function, Truth, Conjunction, \
     Disjunction, Falsity, \
     UniversalCondition, ExistentialCondition, Atom, NegatedAtom, Effect
-from minimizer.downward_lib.pddl.conditions import Condition, Literal, ConstantCondition
+from minimizer.planning.downward_lib.pddl.conditions import Condition, Literal, ConstantCondition
 
 
 class TaskElementVisitor:

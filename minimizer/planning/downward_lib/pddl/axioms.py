@@ -1,5 +1,5 @@
 from . import conditions
-from minimizer.downward_lib.pddl.task_element import TaskElement
+from minimizer.planning.downward_lib.pddl.task_element import TaskElement
 
 
 class Axiom(TaskElement):
