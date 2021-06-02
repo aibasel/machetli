@@ -48,7 +48,7 @@ parser = Parser()
 def facts_tracker(content, props):
     props["translator_facts"] = re.findall(r"Translator facts: (\d+)", content)
 
-parser.add_function(facts_tracker, "succeeder", "time-failer")
+parser.add_function(facts_tracker, ["succeeder", "time-failer"])
 
 parser.add_pattern("translator_facts", r"Translator facts: (\d+)", "memory-failer")
 

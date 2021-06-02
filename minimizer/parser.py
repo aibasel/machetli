@@ -3,6 +3,7 @@ import logging
 
 from lab import parser
 from lab import tools
+from minimizer.auxiliary import make_iterable
 
 
 class _Pattern(parser._Pattern):
@@ -36,20 +37,21 @@ class Parser(parser.Parser):
         tools.configure_logging()
         self.output_parsers = defaultdict(_OutputParser)
 
-    def add_pattern(self, attribute, regex, *cmd_names, type=int, flags="", required=False):
+    def add_pattern(self, attribute, regex, cmd_names, type=int, flags="", required=False):
         if type == bool:
             logging.warning(
                 "Casting any non-empty string to boolean will always "
                 "evaluate to true. Are you sure you want to use type=bool?"
             )
-        for name in cmd_names:
+        for name in make_iterable(cmd_names):
             self.output_parsers[name].add_pattern(
                 _Pattern(attribute, regex, required, type, flags)
             )
 
-    def add_function(self, function, *cmd_names):
-        for name in cmd_names:
-            self.output_parsers[name].add_function(function)
+    def add_function(self, functions, cmd_names):
+        for name in make_iterable(cmd_names):
+            for function in make_iterable(functions):
+                self.output_parsers[name].add_function(function)
 
     def parse(self, cmd_name, output):
         self.props = dict()
