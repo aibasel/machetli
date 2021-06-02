@@ -16,14 +16,13 @@ import logging
 import os
 import pprint
 import re
-import time
 
 from minimizer.grid import environments
 from lab import tools
 from minimizer.evaluator import Evaluator
 from minimizer.main import main
 from minimizer.parser import Parser
-from minimizer.run import Run, run_and_parse_all, run_all
+from minimizer.run import Run, run_and_parse_all
 from minimizer.planning.generators import SuccessorGenerator
 
 

@@ -1,15 +1,10 @@
-import argparse
 import logging
 import os
 import pickle
 import pkgutil
-import platform
 import re
 import subprocess
-import sys
-import time
 
-from minimizer.grid import slurm_tools
 from lab import tools
 
 TEMPLATE_FILE = "slurm-array-job.template"
