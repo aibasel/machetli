@@ -30,11 +30,20 @@ def parse_sas_task(task_filename):
 
 
 def generate_sas_file(state):
-    """
-    Generates a temporary file containing the dump of the SAS+ task from 
-    *state[sas_task_key]* and returns its full path. When the temporary 
-    file is not needed anymore, it can be removed with *os.remove(path)* 
-    (it is not removed automatically).
+    """Generates and returns a temporary SAS+ file from the SAS+ task in `state`.
+
+    Generates a temporary file (inside the ``/tmp`` directory) with the task dump of the SAS+ task in ``state["sas_task"]`` and returns its file name. When the temporary 
+    file is not needed anymore, it should be removed with ``os.remove(filename)`` because it is not removed automatically.
+
+    Parameters
+    ----------
+    state : dict
+        The dictionary describing an instance of the minimization problem.
+
+    Returns
+    -------
+    str
+        The filename.
     """
     f = tempfile.NamedTemporaryFile(mode="w+t", suffix=".sas", delete=False)
     state[SAS_TASK].output(f)
@@ -43,12 +52,23 @@ def generate_sas_file(state):
 
 
 def generate_pddl_files(state):
-    """
-    Generates temporary files containing the dumps of the domain and problem
-    description of the PDDL task from *state[pddl_task_key]* and returns a
-    tuple of the two full paths. When the temporary files are not needed
-    anymore, they can both be removed with *os.remove(path)* (they are not
-    removed automatically).
+    """Generates and returns temporary PDDL files from the PDDL task in `state`.
+
+    Generates temporary files (inside the ``/tmp`` directory) with the PDDL dumps of the domain and the problem
+    of the PDDL task in ``state["pddl_task"]`` and returns a
+    tuple containing the two files.
+    When the temporary files are not needed
+    anymore, they should both be removed with ``os.remove(filename)`` because they are not removed automatically.
+
+    Parameters
+    ----------
+    state : dict
+        The dictionary describing an instance of the minimization problem.
+
+    Returns
+    -------
+    2-tuple of str
+        The two filenames. Order: ``(domain_file, problem_file)``.
     """
     domain_f = tempfile.NamedTemporaryFile(
         mode="w+t", suffix=".pddl", delete=False)
