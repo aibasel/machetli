@@ -7,4 +7,4 @@ Originally, the Minimizer was developed to be used with the `Fast Downward <http
 
 **Code**: https://github.com/aibasel/minimizer
 
-**Documentation**: Coming soon.
+**Documentation**: https://minimizer.readthedocs.io
