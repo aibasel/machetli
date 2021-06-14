@@ -35,7 +35,7 @@ def main(
 
     if args.evaluate:
         dump_file_path = args.evaluate
-        # Use wait_for_filesystem here?
+        if not environment.wait_for_filesystem(dump_file_path): sys.exit(1)
         state = st.read_and_unpickle_state(dump_file_path)
         state["cwd"] = os.path.dirname(dump_file_path)
         result = evaluator().evaluate(state)
