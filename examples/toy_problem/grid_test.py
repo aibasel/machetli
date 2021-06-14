@@ -16,14 +16,13 @@ import logging
 import os
 import pprint
 import re
-import time
 
 from minimizer.grid import environments
 from lab import tools
 from minimizer.evaluator import Evaluator
 from minimizer.main import main
 from minimizer.parser import Parser
-from minimizer.run import Run, run_and_parse_all, run_all
+from minimizer.run import Run, run_and_parse_all
 from minimizer.planning.generators import SuccessorGenerator
 
 
@@ -43,14 +42,14 @@ class MyGenerator(SuccessorGenerator):
 
 parser = Parser()
 
-
+# The parsing result should be the same, regardless whether the function facts_tracker
+# is used or the pattern directly.
 def facts_tracker(content, props):
     props["translator_facts"] = re.findall(r"Translator facts: (\d+)", content)
 
+parser.add_function(facts_tracker, ["succeeder", "time-failer"])
 
-parser.add_function(facts_tracker, "succeeder")
-parser.add_function(facts_tracker, "time-failer")
-parser.add_function(facts_tracker, "memory-failer")
+parser.add_pattern("translator_facts", r"Translator facts: (\d+)", "memory-failer")
 
 
 class MyEvaluator(Evaluator):

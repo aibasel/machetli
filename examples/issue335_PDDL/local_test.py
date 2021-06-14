@@ -1,6 +1,5 @@
 #!/usr/bin/env python
 import os
-import sys
 
 from lab import tools
 from minimizer.evaluator import Evaluator
