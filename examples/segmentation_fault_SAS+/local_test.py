@@ -1,9 +1,6 @@
 #!/usr/bin/env python
 from lab import tools
-import sys
 import os
-# minimizer_dir = os.path.dirname(os.path.dirname(os.path.dirname(script_path)))
-# sys.path.append(minimizer_dir)
 
 from minimizer.parser import Parser
 from minimizer.evaluator import Evaluator
