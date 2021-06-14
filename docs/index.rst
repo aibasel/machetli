@@ -14,4 +14,10 @@
    :maxdepth: 1
    :caption: API
 
-   minimizer.planning
+   minimizer.planning.auxiliary
+
+.. toctree::
+   :maxdepth: 1
+   :caption: Successor Generators
+
+   minimizer.planning.generators
