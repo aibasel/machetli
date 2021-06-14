@@ -1,7 +1,4 @@
-import sys
-
 from minimizer.planning.downward_lib.sas_tasks import SASTask, SASVariables, SASMutexGroup, SASInit, SASGoal, SASOperator, SASAxiom
-from minimizer.planning.sas_transformers import SASVariableEraser, SASOperatorEraser
 
 
 def read_variables(sf, num_vars):

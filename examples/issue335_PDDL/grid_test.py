@@ -15,17 +15,15 @@ PYTHON_3_7      (path to a Python 3.7 executable, as the Fast Downward version a
 
 import os
 import pprint
-import sys
 
 from minimizer.grid import environments
 from lab import tools
 from minimizer.planning import auxiliary
 from minimizer.parser import Parser
 from minimizer.evaluator import Evaluator
-from minimizer.search import first_choice_hill_climbing
 from minimizer.planning.generators import RemoveObjects, ReplaceLiteralsWithTruth
 from minimizer.planning.pddl_writer import write_PDDL
-from minimizer.run import Run, run_and_parse_all, run_all
+from minimizer.run import Run, run_and_parse_all
 from minimizer.main import main
 
 script_path = tools.get_script_path()

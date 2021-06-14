@@ -15,26 +15,32 @@ SAS_TASK = "sas_task"
 
 
 def parse_pddl_task(dom_filename, prob_filename):
-    """
-    Returns parsed PDDL task instance.
+    """Parse the PDDL task defined in PDDL files *dom_filename* (PDDL domain)
+    and *prob_filename* (PDDL problem) an return an instance of the parsed PDDL task.
+
+    The returned task object is an instance of the ``Task`` class used internally
+    in `Fast Downward <http://www.fast-downward.org>`_.
+
     """
     return pddl_parser.open(domain_filename=dom_filename,
                             task_filename=prob_filename)
 
 
 def parse_sas_task(task_filename):
-    """
-    Returns parsed SAS+ task instance.
+    """Parse the SAS\ :sup:`+` task defined in the SAS\ :sup:`+` file
+    *task_filename* and return an instance of the parsed SAS\ :sup:`+` task.
+
+    The returned task object is an instance of the ``SASTask`` class used internally
+    in `Fast Downward <http://www.fast-downward.org>`_.
     """
     return sas_file_to_SASTask(task_filename)
 
 
 def generate_sas_file(state):
-    """
-    Generates a temporary file containing the dump of the SAS+ task from 
-    *state[sas_task_key]* and returns its full path. When the temporary 
-    file is not needed anymore, it can be removed with *os.remove(path)* 
-    (it is not removed automatically).
+    """Generate a temporary file containing the dump of the
+    SAS\ :sup:`+` task stored behind the ``"sas_task"`` key in 
+    the *state* dictionary and return its file name. The file 
+    is not deleted automatically.
     """
     f = tempfile.NamedTemporaryFile(mode="w+t", suffix=".sas", delete=False)
     state[SAS_TASK].output(f)
@@ -43,12 +49,10 @@ def generate_sas_file(state):
 
 
 def generate_pddl_files(state):
-    """
-    Generates temporary files containing the dumps of the domain and problem
-    description of the PDDL task from *state[pddl_task_key]* and returns a
-    tuple of the two full paths. When the temporary files are not needed
-    anymore, they can both be removed with *os.remove(path)* (they are not
-    removed automatically).
+    """Generate temporary files with the PDDL dumps of the domain and the problem
+    description of the PDDL task stored behind the ``"pddl_task"`` key in the
+    *state* dictionary and return a 2-tuple with the two file names in
+    order ``(domain_file, problem_file)``.
     """
     domain_f = tempfile.NamedTemporaryFile(
         mode="w+t", suffix=".pddl", delete=False)
@@ -63,9 +67,16 @@ def generate_pddl_files(state):
 
 @contextlib.contextmanager
 def state_with_generated_sas_file(state):
-    """
-    Context manager that adds an entry for the temporary generated sas file
-    to *state* and removes it afterwards.
+    """Context manager that generates a temporary SAS\ :sup:`+` file
+    containing the dump of the SAS\ :sup:`+` task stored behind the
+    ``"sas_task"`` key in the *state* dictionary and adds a dictionary
+    entry for the file name to *state*.
+    
+    After the context is left, the generated file is deleted,
+    as well as the entry in *state*.
+
+    For a usage example, see the context manager :func:`state_with_generated_pddl_files`,
+    as it works analogously.
     """
     state[GENERATED_SAS_FILENAME] = generate_sas_file(state)
     yield state
@@ -76,9 +87,42 @@ def state_with_generated_sas_file(state):
 
 @contextlib.contextmanager
 def state_with_generated_pddl_files(state):
-    """
-    Context manager that adds entries for the temporary generated domain
-    and problem file to *state* and removes them afterwards.
+    """Context manager that generates temporary PDDL domain
+    and problem files containing the dump of the PDDL task stored
+    behind the ``"pddl_task"`` key in the *state* dictionary and
+    adds dictionary entries for the file names to *state*.
+    
+    After the context is left, the generated files are deleted,
+    as well as the entries in *state*.
+
+    Example:
+
+    >>> from minimizer.planning.auxiliary import state_with_generated_pddl_files, parse_pddl_task
+    >>> state = {
+    ...     "pddl_task": parse_pddl_task("../examples/issue335_PDDL/cntr-domain.pddl",
+    ...     "../examples/issue335_PDDL/cntr-problem.pddl")
+    ... }
+    >>> # state does not contain the entries yet...
+    >>> "generated_pddl_domain_filename" in state or "generated_pddl_problem_filename" in state
+    False
+    >>> # ... but inside the context manager it does:
+    >>> with state_with_generated_pddl_files(state) as temp_state:
+    ...     "generated_pddl_domain_filename" in temp_state and 
+    ...     "generated_pddl_problem_filename" in temp_state
+    ...
+    True
+    >>> # The generated files in the state dictionary can now be used to replace placeholders in commands,
+    >>> # like in:
+    >>> cmd = ["fast-downward.py", "{generated_pddl_domain_filename}", "{generated_pddl_problem_filename}",
+    ... "--search", "astar(lmcut())"]
+    >>> with state_with_generated_pddl_files(state) as temp_state:
+    ...     formatted_cmd = [part.format(**state) for part in cmd]
+    ...
+
+    Functions *run_all* and *run_and_parse_all* automatically do this
+    command formatting before executing runs and expect the state passed
+    as their argument contain entries for the keys
+    ``"generated_pddl_domain_filename"`` and ``"generated_pddl_problem_filename"``.
     """
     domain_filename, problem_filename = generate_pddl_files(state)
     state[GENERATED_PDDL_DOMAIN_FILENAME] = domain_filename

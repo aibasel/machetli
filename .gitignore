@@ -1,8 +1,9 @@
 __pycache__/
-*.venv*/
+.venv*/
 .vscode/
 eval_dir/
 slurm.err
 slurm.log
 slurm-array-job.sbatch
 minimizer.egg-info/
+_build/
