@@ -1,23 +1,23 @@
 .. include:: ../README.rst
 
-..
-   .. toctree::
-      :maxdepth: 1
-      :caption: Tutorials
 
-..
-   local-tutorial
-   grid-tutorial
+.. toctree::
+   :caption: Getting Started
+
+   concepts
+
 
 
 .. toctree::
-   :maxdepth: 1
+   :caption: Tutorials
+..
+   local-tutorial
+   grid-tutorial
+   more-generators
+   more-evaluators
+
+.. toctree::
    :caption: API
 
    minimizer.planning.auxiliary
 
-.. toctree::
-   :maxdepth: 1
-   :caption: Successor Generators
-
-   minimizer.planning.generators
