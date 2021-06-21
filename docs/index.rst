@@ -20,4 +20,5 @@
    :caption: API
 
    minimizer.planning.auxiliary
+   minimizer.planning.generators
 

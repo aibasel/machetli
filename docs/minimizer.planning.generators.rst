@@ -2,7 +2,7 @@
 :mod:`minimizer.planning.generators` --- Successor Generators
 =============================================================
 
-Successor generators in the scope of the **Minimizer** are classes with a :meth:`get_successors() <minimizer.planning.generators.SuccessorGenerator.get_successors>` method defining how successors of a *state* should be constructed. The base class :class:`SuccessorGenerator <minimizer.planning.generators.SuccessorGenerator>` has the following form:
+Successor generators in the scope of the Minimizer are classes with a :meth:`get_successors(state)<minimizer.planning.generators.SuccessorGenerator.get_successors>` method defining how successors of a *state* should be constructed. The base class :class:`SuccessorGenerator <minimizer.planning.generators.SuccessorGenerator>` has the following form:
 
 .. autoclass:: minimizer.planning.generators.SuccessorGenerator
     :members: get_successors
