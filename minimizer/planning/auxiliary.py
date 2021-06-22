@@ -75,7 +75,7 @@ def state_with_generated_sas_file(state):
     After the context is left, the generated file is deleted,
     as well as the entry in *state*.
 
-    For a usage example, see the context manager :func:`state_with_generated_pddl_files`,
+    For a usage example, see the context manager :func:`state_with_generated_pddl_files<state_with_generated_pddl_files>`,
     as it works analogously.
     """
     state[GENERATED_SAS_FILENAME] = generate_sas_file(state)

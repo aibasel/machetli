@@ -64,7 +64,7 @@ As mentioned above, a state is a Python dictionary. You can store in it anything
 Successor Generators
 --------------------
 A successor generator is a class defining how successors of a :ref:`state<state_concept>` are constructed.
-It should implement the :class:`SuccessorGenerator<minimizer.planning.generators.SuccessorGenerator>` class and especially the :meth:`get_successors(state)<minimizer.planning.generators.SuccessorGenerator.get_successors>` method, which is expected to return a `Python generator <https://docs.python.org/3/glossary.html#term-generator>`_ yielding successors of a state. Successor generators can be passed to a Minimizer search via their class name:
+It should implement the :class:`SuccessorGenerator<minimizer.planning.generators.SuccessorGenerator>` interface with the :meth:`get_successors(state)<minimizer.planning.generators.SuccessorGenerator.get_successors>` method which is expected to return a `Python generator <https://docs.python.org/3/glossary.html#term-generator>`_ yielding successors of a state. Successor generators can be passed to a Minimizer search via their class name:
 
 .. code-block:: python
 
@@ -75,9 +75,10 @@ It should implement the :class:`SuccessorGenerator<minimizer.planning.generators
     # MyGenerator and SomeEvaluator are class names
     result = first_choice_hill_climbing(initial_state, MyGenerator, SomeEvaluator)
 
-If you want the search to be performed serially with multiple successors generators, you can pass a list of their class names in the order you want them to be used. The search result of each successor generator then becomes the initial state of the search with the following one:
+If you want the search to be performed serially with multiple successor generators, you can pass a list of their class names in the order you want them to be used. The search result with each of the successor generators then becomes the initial state of the search with the following one:
 
 .. code-block:: python
+    :name: succ_gen_list_exmpl
 
     result = first_choice_hill_climbing(initial_state, [Generator1, Generator2], SomeEvaluator)
 
@@ -87,3 +88,30 @@ The :mod:`minimizer.planning.generators` module provides a collection of readily
 
 Evaluators
 ----------
+An evaluator is a class defining how a :ref:`state<state_concept>` is evaluated. The Minimizer search requires each state to either be accepted or rejected. An evaluator should implement the :class:`Evaluator<minimizer.evaluator.Evaluator>` interface with the :meth:`evaluate(state)<minimizer.evaluator.Evaluator.evaluate>` method which is expected to return ``True`` if the state is accepted and ``False`` otherwise. Typically, when implementing your own evaluators, you will want to execute the runs in a state and use their parsed output and/or returncodes to evaluate it.
+
+Example evaluator definition:
+
+.. code-block:: python
+
+    from minimizer.parser import Parser
+    from minimizer.evaluator import Evaluator
+    from minimizer.planning.auxiliary import state_with_generated_pddl_files
+    from minimizer.run import run_and_parse_all
+
+    parser = Parser()
+    parser.add_pattern(attribute="negated_axiom",
+                       regex=r"(AssertionError: Negated axiom impossible)", cmd_names="issue335", type=bool)
+
+    class MyEvaluator(Evaluator):
+        def evaluate(self, state):
+            with state_with_generated_pddl_files(state) as local_state:
+                results = run_and_parse_all(local_state, parser)
+            accepted = results["issue335"]["stderr"]["negated_axiom"]
+            return accepted
+
+Like in the example :ref:`above<succ_gen_list_exmpl>`, the class name of the defined evaluator is then passed to the search function:
+
+.. code-block:: python
+
+    result = first_choice_hill_climbing(initial_state, [Generator1, Generator2], MyEvaluator)

@@ -28,7 +28,7 @@ class _Pattern(parser._Pattern):
 
 class _OutputParser(parser._FileParser):
     def accept_data(self, cmd_name, content):
-        # Only calling this member "filename" so inherited function 
+        # Only calling this member "filename" so inherited function
         # search_patterns does not need to be changed
         self.filename = cmd_name
         self.content = content
@@ -76,6 +76,7 @@ class Parser(parser.Parser):
 if __name__ == "__main__":
     import pprint
     parser = Parser()
-    parser.add_pattern(attribute="attr", regex=r"(world)", cmd_names="test", type=bool)
+    parser.add_pattern(attribute="attr", regex=r"(world)",
+                       cmd_names="test", type=bool)
     result = parser.parse(cmd_name="test", output="Hello world!")
     pprint.pprint(result)
