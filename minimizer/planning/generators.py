@@ -7,12 +7,23 @@ from minimizer.planning.downward_lib.sas_tasks import SASTask, SASMutexGroup, SA
 
 
 class SuccessorGenerator():
+    """Base class for all successor generators.
+    """
     def get_successors(self, state):
+        """Yield successors of *state*.
+        """
         pass
 
 
 class RemoveActions(SuccessorGenerator):
+    """Successor generator that removes 
+    randomly selected actions from the PDDL task in a state.
+    """
     def get_successors(self, state):
+        """Yield modified versions of *state* of which in each
+        one a different action is removed from the PDDL task
+        stored in ``state["pddl_task"]``.
+        """
         task = state["pddl_task"]
         action_names = [action.name for action in task.actions]
         random.Random().shuffle(action_names)
@@ -27,7 +38,17 @@ class RemoveActions(SuccessorGenerator):
 
 
 class ReplaceAtomsWithTruth(SuccessorGenerator):
+    """Successor generator that removes 
+    randomly selected atoms from the PDDL task in a state.
+    This is accomplished by scanning the entire task for the
+    atom to be removed, instantiating each instance of this atom
+    with the *truth* value and then simplifying all logical expressions.
+    """
     def get_successors(self, state):
+        """Yield modified versions of *state* of which in each
+        one a different atom is removed from the PDDL task
+        stored in ``state["pddl_task"]``. 
+        """
         task = state["pddl_task"]
         predicate_names = [predicate.name for predicate in task.predicates if
                            not (predicate.name == "dummy_axiom_trigger" or predicate.name == "=")]
@@ -43,7 +64,16 @@ class ReplaceAtomsWithTruth(SuccessorGenerator):
 
 
 class ReplaceAtomsWithFalsity(SuccessorGenerator):
+    """Successor generator that removes 
+    randomly selected atoms from the PDDL task in a state.
+    The same mechanism is used as in :class:`ReplaceAtomsWithTruth <minimizer.planning.generators.ReplaceAtomsWithTruth>`,
+    but replacing atoms with *falsity* instead.
+    """
     def get_successors(self, state):
+        """Yield modified versions of *state* of which in each
+        one a different atom is removed from the PDDL task
+        stored in ``state["pddl_task"]``. 
+        """
         task = state["pddl_task"]
         predicate_names = [predicate.name for predicate in task.predicates if
                            not (predicate.name == "dummy_axiom_trigger" or predicate.name == "=")]

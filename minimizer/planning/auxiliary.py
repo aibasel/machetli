@@ -75,7 +75,7 @@ def state_with_generated_sas_file(state):
     After the context is left, the generated file is deleted,
     as well as the entry in *state*.
 
-    For a usage example, see the context manager :func:`state_with_generated_pddl_files`,
+    For a usage example, see the context manager :func:`state_with_generated_pddl_files<state_with_generated_pddl_files>`,
     as it works analogously.
     """
     state[GENERATED_SAS_FILENAME] = generate_sas_file(state)
@@ -116,7 +116,7 @@ def state_with_generated_pddl_files(state):
     >>> cmd = ["fast-downward.py", "{generated_pddl_domain_filename}", "{generated_pddl_problem_filename}",
     ... "--search", "astar(lmcut())"]
     >>> with state_with_generated_pddl_files(state) as temp_state:
-    ...     formatted_cmd = [part.format(**state) for part in cmd]
+    ...     formatted_cmd = [part.format(**temp_state) for part in cmd]
     ...
 
     Functions *run_all* and *run_and_parse_all* automatically do this
