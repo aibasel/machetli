@@ -21,4 +21,6 @@
 
    minimizer.planning.auxiliary
    minimizer.planning.generators
+   minimizer.run
+   minimizer.evaluate
 
