@@ -74,7 +74,7 @@ class Run:
 class RunWithInputFile(Run):
     """
     Extends the *Run* class by adding the option of sending the content of a file to stdin,
-    e.g., in a command like *path/to/./my_executable < my_input_file*.
+    e.g., in a command like ``path/to/./my_executable < my_input_file``.
     """
 
     def __init__(self, command, input_file, time_limit, memory_limit=None, log_output=None):
