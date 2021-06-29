@@ -49,9 +49,10 @@ As mentioned above, a state is a Python dictionary. You can store in it anything
 Successor Generators
 --------------------
 A successor generator is a class defining how successors of a :ref:`state<state_concept>` are created.
-It should implement the :class:`SuccessorGenerator<minimizer.planning.generators.SuccessorGenerator>` interface with the :meth:`get_successors(state)<minimizer.planning.generators.SuccessorGenerator.get_successors>` method which is expected to return a `Python generator <https://docs.python.org/3/glossary.html#term-generator>`_ yielding successors of a state. Successor generators can be passed to a Minimizer search via their class name:
+It should implement the :class:`SuccessorGenerator<minimizer.planning.generators.SuccessorGenerator>` interface with the :meth:`get_successors(state)<minimizer.planning.generators.SuccessorGenerator.get_successors>` method. The minimizer expects :meth:`get_successors(state)<minimizer.planning.generators.SuccessorGenerator.get_successors>` to return a `Python generator <https://docs.python.org/3/glossary.html#term-generator>`_ that yields successors of a state. Successor generators can be passed to the Minimizer :ref:`search function<search_function>` via their class name:
 
 .. code-block:: python
+    :emphasize-lines: 2,12
     :name: succ_gen_exmpl
 
     from minimizer.search import first_choice_hill_climbing

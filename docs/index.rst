@@ -19,8 +19,9 @@
 .. toctree::
    :caption: API
 
+   minimizer.evaluate
+   minimizer.run
+   minimizer.search
    minimizer.planning.auxiliary
    minimizer.planning.generators
-   minimizer.run
-   minimizer.evaluate
 
