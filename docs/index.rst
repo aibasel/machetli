@@ -1,20 +1,14 @@
 .. include:: ../README.rst
 
-
 .. toctree::
    :caption: Getting Started
 
-   concepts
+.. installation
+   how_does_it_work
+.. examples
+.. extension
 
 
-
-.. toctree::
-   :caption: Tutorials
-..
-   local-tutorial
-   grid-tutorial
-   more-generators
-   more-evaluators
 
 .. toctree::
    :caption: API
