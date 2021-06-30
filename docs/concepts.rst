@@ -3,7 +3,7 @@ How Does It Work?
 
 .. _workflow:
 
-.. figure:: workflow.png
+.. figure:: workflow.svg
     :width: 100%
     :align: center
     
