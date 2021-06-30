@@ -3,12 +3,12 @@
 .. toctree::
    :caption: Getting Started
 
-.. installation
    how_does_it_work
-.. examples
+
+.. installation
+
+.. tutorial
 .. extension
-
-
 
 .. toctree::
    :caption: API
