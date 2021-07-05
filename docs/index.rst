@@ -3,9 +3,8 @@
 .. toctree::
    :caption: Getting Started
 
+   installation
    how_does_it_work
-
-.. installation
 
 .. tutorial
 .. extension
