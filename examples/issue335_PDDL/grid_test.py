@@ -1,19 +1,7 @@
-#!/usr/bin/env python
-
-"""
-IMPORTANT INFORMATION
-_____________________
-
-Before running this script, please make sure to have the following environment variables set:
-
-DOWNWARD_ROOT   (path to the root directory of the Fast Downward planner, at the revision
-                with commit hash 09ccef5fd)
-
-PYTHON_3_7      (path to a Python 3.7 executable, as the Fast Downward version associated
-                with this issue does not work with newer Python versions)
-"""
+#!/usr/bin/env python3
 
 import os
+import sys
 import pprint
 
 from minimizer.grid import environments
@@ -29,17 +17,23 @@ from minimizer.main import main
 script_path = tools.get_script_path()
 script_dir = os.path.dirname(script_path)
 
-
 domain_filename = os.path.join(script_dir, "cntr-domain.pddl")
 problem_filename = os.path.join(script_dir, "cntr-problem.pddl")
 
-# os.environ.update({"PYTHON_3_7": "/infai/galluc00/.venv_minimizer/bin/python",
-#                    "DOWNWARD_ROOT": "/infai/galluc00/downward"})
+try:
+    interpreter = os.environ["PYTHON_3_7"]
+    planner = os.environ["DOWNWARD_REPO"]
+except KeyError:
+    msg = """
+Make sure to set the environment variables PYTHON_3_7 and DOWNWARD_REPO.
+PYTHON_3_7:     Path to Python 3.7 executable (due to older Fast Downward version).
+DOWNWARD_REPO:  Path to Fast Downward repository (https://github.com/aibasel/downward)
+                at commit 09ccef5fd.
+    """
+    sys.exit(msg)
 
-interpreter = os.environ["PYTHON_3_7"]
-planner = os.path.join(
-    os.environ["DOWNWARD_ROOT"], "src/translate/translate.py")
-command = [interpreter, planner,
+translator = os.path.join(planner, "src/translate/translate.py")
+command = [interpreter, translator,
            "{generated_pddl_domain_filename}", "{generated_pddl_problem_filename}"]
 
 initial_state = {
@@ -67,10 +61,10 @@ class MyEvaluator(Evaluator):
 
 
 my_environment = environments.BaselSlurmEnvironment(
-    export=["PATH", "PYTHON_3_7", "DOWNWARD_ROOT"])
+    export=["PATH", "PYTHON_3_7", "DOWNWARD_REPO"])
 
 result = main(initial_state, [
-                          RemoveObjects, ReplaceLiteralsWithTruth], MyEvaluator, my_environment)
+    RemoveObjects, ReplaceLiteralsWithTruth], MyEvaluator, my_environment)
 
 write_PDDL(result["pddl_task"], "result-domain.pddl", "result-problem.pddl")
 
