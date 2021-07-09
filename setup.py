@@ -1,4 +1,4 @@
-from setuptools import setup
+from setuptools import setup, find_packages
 
 setup(
     name="minimizer",
@@ -7,7 +7,7 @@ setup(
     author_email="lucas.galerykaeser@gmail.com",
     url="https://github.com/aibasel/minimizer",
     license="GPL3+",
-    packages=["minimizer", "minimizer.grid", "minimizer.planning"],
+    packages=find_packages(),
     install_requires=["lab"],
     python_requires=">=3.7"
 )

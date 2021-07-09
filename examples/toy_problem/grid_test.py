@@ -1,19 +1,10 @@
 #!/usr/bin/env python3
 
-"""
-IMPORTANT INFORMATION
-_____________________
-
-Before running this script, please make sure to have the following environment variables set:
-
-DOWNWARD_ROOT           (path to the root directory of the Fast Downward planner, at a recent revision)
-
-DOWNWARD_BENCHMARKS      (path to the benchmarks root directory from https://github.com/aibasel/downward-benchmarks)
-"""
 
 import copy
 import logging
 import os
+import sys
 import pprint
 import re
 
@@ -25,9 +16,18 @@ from minimizer.parser import Parser
 from minimizer.run import Run, run_and_parse_all
 from minimizer.planning.generators import SuccessorGenerator
 
-
-DOWNWARD_ROOT = os.environ["DOWNWARD_ROOT"]
-DOWNWARD_BENCHMARKS = os.environ["DOWNWARD_BENCHMARKS"]
+try:
+    DOWNWARD_REPO = os.environ["DOWNWARD_REPO"]
+    DOWNWARD_BENCHMARKS = os.environ["DOWNWARD_BENCHMARKS"]
+except KeyError:
+    msg = """
+Make sure to set the environment variables DOWNWARD_REPO and DOWNWARD_BENCHMARKS.
+DOWNWARD_REPO:          Path to Fast Downward repository (https://github.com/aibasel/downward)
+                        at commit 09ccef5fd.
+DOWNWARD_BENCHMARKS:    Path to planning benchmarks repository
+                        (https://github.com/aibasel/downward-benchmarks).
+"""
+    sys.exit(msg)
 
 
 class MyGenerator(SuccessorGenerator):
@@ -44,12 +44,16 @@ parser = Parser()
 
 # The parsing result should be the same, regardless whether the function facts_tracker
 # is used or the pattern directly.
+
+
 def facts_tracker(content, props):
     props["translator_facts"] = re.findall(r"Translator facts: (\d+)", content)
 
+
 parser.add_function(facts_tracker, ["succeeder", "time-failer"])
 
-parser.add_pattern("translator_facts", r"Translator facts: (\d+)", "memory-failer")
+parser.add_pattern("translator_facts",
+                   r"Translator facts: (\d+)", "memory-failer")
 
 
 class MyEvaluator(Evaluator):
@@ -71,10 +75,9 @@ class MyEvaluator(Evaluator):
 domain = os.path.join(DOWNWARD_BENCHMARKS, "tpp/domain.pddl")
 problem1 = os.path.join(DOWNWARD_BENCHMARKS, "tpp/p05.pddl")
 problem2 = os.path.join(DOWNWARD_BENCHMARKS, "tpp/p07.pddl")
-# problem3 = os.path.join(DOWNWARD_BENCHMARKS, "tpp/p30.pddl")
 search_arguments = ["--search", "astar(lmcut())"]
 planner = [tools.get_python_executable(), os.path.join(
-    DOWNWARD_ROOT, "fast-downward.py")]
+    DOWNWARD_REPO, "fast-downward.py")]
 planner_and_domain = planner + [domain]
 
 # run1 succeeds, run2 fails on time limit, run3 fails on memory limit
