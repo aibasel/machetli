@@ -91,7 +91,7 @@ class MyEvaluator(Evaluator):
         # the pddl task stored in *state* so they can be used in the execution
         # of the run.
         with auxiliary.state_with_generated_pddl_files(state) as local_state:
-            # run_and_parser_all is a convenient function that executes all the
+            # run_and_parse_all is a convenient function that executes all the
             # runs we defined within the provided limit(s) and applies the above
             # defined parser to the output logs of each run. The properties dictionary
             # generated from the parsed logs is returned and stored in *results*.
