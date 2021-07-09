@@ -49,8 +49,6 @@ command = [
 
 # Here, we define the initial state the search should be started from. Generally, you can
 # store anything in this dictionary that could be useful for the minimization task.
-
-
 initial_state = {
     # We are  creating the entry "pddl_task" because further down we are using the
     # state_with_generated_pddl_files function from the auxiliary module and it expects
@@ -74,8 +72,6 @@ parser = Parser()
 # This function checks whether the given string is present in the
 # output log *content* and adds an entry with the resulting boolean
 # to the properties dictionary *props*.
-
-
 def assertion_error(content, props):
     props["assertion_error"] = "AssertionError: Negated axiom impossible" in content
 
@@ -89,8 +85,6 @@ parser.add_function(assertion_error, "issue335")
 # to the search function. We are required to implement the *evaluate*
 # function, because it will be executed during the search every time a state
 # needs to be evaluated.
-
-
 class MyEvaluator(Evaluator):
     def evaluate(self, state):
         # The following context manager generates temporary PDDL files for

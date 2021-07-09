@@ -5,8 +5,8 @@
 
    installation
    how_does_it_work
-
-.. tutorial
+   tutorial
+   
 .. extension
 
 .. toctree::
