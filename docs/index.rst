@@ -13,6 +13,8 @@
    :caption: API
 
    minimizer.evaluate
+   minimizer.main
+   minimizer.parser
    minimizer.run
    minimizer.search
    minimizer.planning.auxiliary
