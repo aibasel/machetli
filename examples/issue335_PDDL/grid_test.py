@@ -55,7 +55,7 @@ initial_state = {
     # the PDDL task to be stored behind that keyword.
     "pddl_task": auxiliary.parse_pddl_task(domain_filename, problem_filename),
     # Similarly, we are creating the entry "runs" because we want to be able to use the
-    # convernient run_and_parse_all function further down and it expects your runs to be
+    # convenient run_and_parse_all function further down and it expects your runs to be
     # accessible through that keyword.
     "runs": {
         # The required arguments for a run object are *command* and *time_limit*, which
@@ -132,6 +132,6 @@ pprint.pprint(result)
 # to transform PDDL tasks. Implementations of the SuccesssorGenerator class
 # are required to have a *get_successors(state)* function that returns a generator
 # of states which are considered the successors. The way a successor generator
-# is implemented determines how the state and your run(s) look after the search
+# is implemented determines how the state and your run(s) look(s) after the search
 # is completed. Like the evaluator, successor generators may have to be
 # tailored exactly to your use case.
