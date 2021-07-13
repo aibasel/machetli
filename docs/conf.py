@@ -52,6 +52,9 @@ html_show_copyright = False
 # The name of the Pygments (syntax highlighting) style to use.
 pygments_style = "sphinx"
 
+# Do not ignore __init__ methods.
+autoclass_content = "both"
+
 
 # -- Options for HTML output -------------------------------------------------
 
