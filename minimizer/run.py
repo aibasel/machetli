@@ -10,11 +10,24 @@ from lab.calls.call import set_limit
 
 
 class Run:
-    """
-    Stores a command and its optional time and memory limits.
+    """Define an executable command with time and memory limits.
     """
 
-    def __init__(self, command, time_limit, memory_limit=None, log_output=None):
+    def __init__(self, command, time_limit=1800, memory_limit=None, log_output=None):
+        """*command* is a list of strings that starts your program with
+        the desired parameters on a Linux machine.
+
+        After *time_limit* seconds, the subprocess of *command* 
+        is killed.
+
+        Above a memory usage of *memory_limit* MiB, the subprocess of
+        *command* is killed.
+
+        Use the *log_output* option ``"on_fail"`` if you want log files to be
+        written when *command* terminates on a non-zero exit code or use the
+        option ``"always"`` if you want them always to be written. These options
+        only work in combination with the :func:`minimizer.run.run_all` function.
+        """
         self.command = command
         self.time_limit = time_limit
         self.memory_limit = memory_limit
@@ -25,10 +38,10 @@ class Run:
         return f'Run(\"{" ".join([os.path.basename(part) for part in self.command])}\")'
 
     def start(self, state):
-        """
-        Formats the command according to *state* and executes it with *subprocess.Popen*. 
-        Returns the 3-tuple (stdout, stderr, returncode) 
-        with the values obtained from the executed command.
+        """Format the command with the entries of *state* and execute it with
+        `subprocess.Popen <https://docs.python.org/3/library/subprocess.html#subprocess.Popen>`_.
+        Return the 3-tuple (stdout, stderr, returncode) with the values obtained 
+        from the executed command.
         """
         # These declarations are needed for the _prepare_call() function.
         time_limit = self.time_limit
@@ -72,17 +85,23 @@ class Run:
 
 
 class RunWithInputFile(Run):
+    """Extension of the :class:`Run <minimizer.run.Run>` class adding
+    the option of sending the content of a file to stdin.
     """
-    Extends the *Run* class by adding the option of sending the content of a file to stdin,
-    e.g., in a command like ``path/to/./my_executable < my_input_file``.
-    """
+    # e.g., in a command like ``path/to/./my_executable < my_input_file``.
 
-    def __init__(self, command, input_file, time_limit, memory_limit=None, log_output=None):
-        super().__init__(command, time_limit=time_limit,
-                         memory_limit=memory_limit, log_output=log_output)
+    def __init__(self, command, input_file, **kwargs):
+        """*input_file* is the path to the file whose content should be sent to
+        the stdin of the executed *command*.
+        """
+        super().__init__(command, **kwargs)
         self.input_file = input_file
 
     def start(self, state):
+        """Same as the :meth:`base method <minimizer.run.Run.start>`, with
+        the addition of the content from *input_file* being passed to the
+        stdin of the executed *command*.
+        """
         # These declarations are needed for the _prepare_call() function.
         time_limit = self.time_limit
         memory_limit = self.memory_limit
@@ -129,17 +148,20 @@ class RunWithInputFile(Run):
 
 
 def run_all(state):
-    """
-    Starts all runs in *state["runs"]* and returns a dictionary where run outputs
-    can be accessed the following ways: *results[run_name]["stdout]*, 
-    *results[run_name]["stderr]* or *results[run_name]["returncode]*.
+    """Start all runs in *state["runs"]* and return a *results* dictionary
+    where run outputs of run *run_name* can be accessed via:
+    
+    - *results[run_name]["stdout"]*,
+    - *results[run_name]["stderr"]* and
+    - *results[run_name]["returncode"]*.
     """
     assert "runs" in state, "Could not find entry \"runs\" in state."
     results = {}
     for name, run in state["runs"].items():
         stdout, stderr, returncode = run.start(state)
         if run.log_always or run.log_on_fail and returncode != 0:
-            cwd = state["cwd"] if "cwd" in state else os.path.dirname(tools.get_script_path())
+            cwd = state["cwd"] if "cwd" in state else os.path.dirname(
+                tools.get_script_path())
             if stdout:
                 with open(os.path.join(cwd, f"{name}.log"), "w") as logfile:
                     logfile.write(stdout)
@@ -153,10 +175,11 @@ def run_all(state):
 
 
 def run_and_parse_all(state, parsers):
-    """
-    Executes *run_all(state)* and returns an updated version of the results
-    dictionary containing the parsing results in place of the actual stdout
-    and stderr outputs.
+    """Execute :func:`minimizer.run.run_all` and apply all *parsers* to the
+    generated stdout and stderr outputs. Return an updated version of the
+    *results* dictionary containing the parsing results in place of the actual
+    stdout and stderr outputs. *parsers* can be a list of :class:`minimizer.parser.Parser`
+    objects or a single one.
     """
     results = run_all(state)
     parsed_results = {}
