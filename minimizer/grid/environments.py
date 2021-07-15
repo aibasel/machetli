@@ -20,7 +20,7 @@ TIME_LIMIT_FACTOR = 1.5
 
 # Sets of slurm job state codes
 DONE_STATE = {"COMPLETED"}
-BUSY_STATES = {"PENDING", "RUNNING"}
+BUSY_STATES = {"PENDING", "RUNNING", "REQUEUED", "SUSPENDED"}
 
 
 class SubmissionError(Exception):
