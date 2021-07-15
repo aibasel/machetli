@@ -35,7 +35,12 @@ def main(
 
     if args.evaluate:
         dump_file_path = args.evaluate
-        if not environment.wait_for_filesystem(dump_file_path): sys.exit(1)
+        for _ in range(10):
+            _random_sleep()
+            if os.path.exists(dump_file_path):
+                break
+        else:
+            sys.exit(1)  # Make evaluation fail if state file is not found after 10 attempts.
         state = st.read_and_unpickle_state(dump_file_path)
         state["cwd"] = os.path.dirname(dump_file_path)
         result = evaluator().evaluate(state)
@@ -49,11 +54,18 @@ def main(
 
     elif isinstance(environment, environments.SlurmEnvironment):
         result = search.search_grid(initial_state=initial_state,
-                                       successor_generators=successor_generators,
-                                       environment=environment,
-                                       enforce_order=enforce_order,
-                                       batch_size=batch_size)
+                                    successor_generators=successor_generators,
+                                    environment=environment,
+                                    enforce_order=enforce_order,
+                                    batch_size=batch_size)
         st.launch_email_job(environment)
         return result
     else:
         arg_parser.print_usage()
+
+
+def _random_sleep():
+    """Sleep for 1-5 seconds, chosen at random."""
+    import random
+    import time
+    time.sleep(random.randint(1, 5))
