@@ -20,3 +20,8 @@
    minimizer.planning.auxiliary
    minimizer.planning.generators
 
+.. toctree::
+   :caption: General
+   :titlesonly:
+
+   DOCS_GUIDE
