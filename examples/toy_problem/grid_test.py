@@ -23,7 +23,7 @@ except KeyError:
     msg = """
 Make sure to set the environment variables DOWNWARD_REPO and DOWNWARD_BENCHMARKS.
 DOWNWARD_REPO:          Path to Fast Downward repository (https://github.com/aibasel/downward)
-                        at commit 09ccef5fd.
+                        at a recent version (mid-2021). Also make sure to build the executable.
 DOWNWARD_BENCHMARKS:    Path to planning benchmarks repository
                         (https://github.com/aibasel/downward-benchmarks).
 """
