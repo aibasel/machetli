@@ -49,15 +49,13 @@ command = [
 
 # Here, we define the initial state the search should be started from. Generally, you can
 # store anything in this dictionary that could be useful for the minimization task.
-
-
 initial_state = {
     # We are  creating the entry "pddl_task" because further down we are using the
     # state_with_generated_pddl_files function from the auxiliary module and it expects
     # the PDDL task to be stored behind that keyword.
     "pddl_task": auxiliary.parse_pddl_task(domain_filename, problem_filename),
     # Similarly, we are creating the entry "runs" because we want to be able to use the
-    # convernient run_and_parse_all function further down and it expects your runs to be
+    # convenient run_and_parse_all function further down and it expects your runs to be
     # accessible through that keyword.
     "runs": {
         # The required arguments for a run object are *command* and *time_limit*, which
@@ -74,8 +72,6 @@ parser = Parser()
 # This function checks whether the given string is present in the
 # output log *content* and adds an entry with the resulting boolean
 # to the properties dictionary *props*.
-
-
 def assertion_error(content, props):
     props["assertion_error"] = "AssertionError: Negated axiom impossible" in content
 
@@ -89,15 +85,13 @@ parser.add_function(assertion_error, "issue335")
 # to the search function. We are required to implement the *evaluate*
 # function, because it will be executed during the search every time a state
 # needs to be evaluated.
-
-
 class MyEvaluator(Evaluator):
     def evaluate(self, state):
         # The following context manager generates temporary PDDL files for
         # the pddl task stored in *state* so they can be used in the execution
         # of the run.
         with auxiliary.state_with_generated_pddl_files(state) as local_state:
-            # run_and_parser_all is a convenient function that executes all the
+            # run_and_parse_all is a convenient function that executes all the
             # runs we defined within the provided limit(s) and applies the above
             # defined parser to the output logs of each run. The properties dictionary
             # generated from the parsed logs is returned and stored in *results*.
@@ -138,6 +132,6 @@ pprint.pprint(result)
 # to transform PDDL tasks. Implementations of the SuccesssorGenerator class
 # are required to have a *get_successors(state)* function that returns a generator
 # of states which are considered the successors. The way a successor generator
-# is implemented determines how the state and your run(s) look after the search
+# is implemented determines how the state and your run(s) look(s) after the search
 # is completed. Like the evaluator, successor generators may have to be
 # tailored exactly to your use case.

@@ -32,8 +32,12 @@ author = 'Lucas Galery Käser'
 extensions = [
         "sphinx.ext.autodoc",
         "sphinx.ext.viewcode",
-        'sphinx_rtd_theme',
+        "sphinx_rtd_theme",
+        "sphinx.ext.autosectionlabel",
 ]
+
+# Make sure the target is unique
+autosectionlabel_prefix_document = True
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['_templates']
@@ -51,6 +55,9 @@ html_show_copyright = False
 
 # The name of the Pygments (syntax highlighting) style to use.
 pygments_style = "sphinx"
+
+# Do not ignore __init__ methods.
+autoclass_content = "both"
 
 
 # -- Options for HTML output -------------------------------------------------

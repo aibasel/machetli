@@ -1,5 +1,5 @@
 =============================================
-:mod:`minimizer.run` --- Wrapper for Programs
+:mod:`minimizer.run` --- Wrapper for Commands
 =============================================
 
 .. automodule:: minimizer.run

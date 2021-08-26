@@ -1,15 +1,18 @@
 #!/usr/bin/env python3
+
 import os
 import sys
+import pprint
 
+from minimizer.grid import environments
 from lab import tools
-from minimizer.evaluator import Evaluator
+from minimizer.planning import auxiliary
 from minimizer.parser import Parser
-from minimizer.search import first_choice_hill_climbing
+from minimizer.evaluator import Evaluator
 from minimizer.planning.generators import RemoveObjects, ReplaceLiteralsWithTruth
 from minimizer.planning.pddl_writer import write_PDDL
 from minimizer.run import Run, run_and_parse_all
-from minimizer.planning import auxiliary
+from minimizer.main import main
 
 script_path = tools.get_script_path()
 script_dir = os.path.dirname(script_path)
@@ -30,8 +33,12 @@ DOWNWARD_REPO:  Path to Fast Downward repository (https://github.com/aibasel/dow
     sys.exit(msg)
 
 translator = os.path.join(planner, "src/translate/translate.py")
-command = [interpreter, translator,
-           "{generated_pddl_domain_filename}", "{generated_pddl_problem_filename}"]
+
+command = [
+    interpreter,
+    translator,
+    "{generated_pddl_domain_filename}",
+    "{generated_pddl_problem_filename}"]
 
 initial_state = {
     "pddl_task": auxiliary.parse_pddl_task(domain_filename, problem_filename),
@@ -57,8 +64,13 @@ class MyEvaluator(Evaluator):
         return results["issue335"]["stderr"]["assertion_error"]
 
 
-result = first_choice_hill_climbing(
-    initial_state, [RemoveObjects, ReplaceLiteralsWithTruth], MyEvaluator)
+my_environment = environments.LocalEnvironment()
+
+result = main(initial_state,
+              [RemoveObjects, ReplaceLiteralsWithTruth],
+              MyEvaluator,
+              my_environment)
+
 write_PDDL(result["pddl_task"], "result-domain.pddl", "result-problem.pddl")
 
-#run_search(initial_state, [RemoveObjects, ReplaceLiteralsWithTruth], MyEvaluator)
+pprint.pprint(result)
