@@ -70,7 +70,7 @@ class Parser(parser.Parser):
             )
         for name in tools.make_list(cmd_names):
             self.output_parsers[name].add_pattern(
-                _Pattern(attribute, regex, required=False, type=type, flags=flags)
+                _Pattern(attribute, regex, required=False, type_=type, flags=flags)
             )
 
     def add_function(self, functions, cmd_names):
