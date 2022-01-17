@@ -94,6 +94,17 @@ class LocalEnvironment(Environment):
     pass
 
 
+def makedirs(path):
+    """
+    os.makedirs() variant that doesn't complain if the path already exists.
+    """
+    try:
+        os.makedirs(path)
+    except OSError:
+        # Directory probably already exists.
+        pass
+
+
 class SlurmEnvironment(Environment):
     # Must be overridden in derived classes.
     DEFAULT_PARTITION = None
@@ -137,7 +148,7 @@ class SlurmEnvironment(Environment):
 
         script_dir = os.path.dirname(self.script_path)
         self.eval_dir = os.path.join(script_dir, EVAL_DIR)
-        tools.makedirs(self.eval_dir)
+        makedirs(self.eval_dir)
         st.check_for_whitespace(self.eval_dir)
         self.sbatch_file = os.path.join(script_dir, SBATCH_FILE)
         self.wait_for_filesystem(self.eval_dir)
@@ -177,7 +188,7 @@ class SlurmEnvironment(Environment):
         for rank, state in enumerate(batch):
             run_dir_name = f"{rank:03}"
             run_dir_path = os.path.join(batch_dir_path, run_dir_name)
-            tools.makedirs(run_dir_path)
+            makedirs(run_dir_path)
             dump_file_path = os.path.join(run_dir_path, DUMP_FILENAME)
             st.pickle_and_dump_state(state, dump_file_path)
             run_dirs.append(run_dir_path)

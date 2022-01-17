@@ -1,7 +1,5 @@
 from collections import defaultdict
-import errno
 import logging
-import os
 import re
 
 from minimizer import tools
@@ -93,6 +91,17 @@ class _OutputParser(_FileParser):
         self.content = content
 
 
+def make_list(value):
+    if value is None:
+        return []
+    elif isinstance(value, list):
+        return value[:]
+    elif isinstance(value, (tuple, set)):
+        return list(value)
+    else:
+        return [value]
+
+
 class Parser:
     """Parse stdout and stderr strings.
 
@@ -130,7 +139,7 @@ class Parser:
                 "Casting any non-empty string to boolean will always "
                 "evaluate to true. Are you sure you want to use type=bool?"
             )
-        for name in tools.make_list(cmd_names):
+        for name in make_list(cmd_names):
             self.output_parsers[name].add_pattern(
                 _Pattern(attribute, regex, required=False, type_=type, flags=flags)
             )
@@ -157,8 +166,8 @@ class Parser:
 
             parser.add_function(facts_tracker, ["amazing_run", "superb_run"])
         """
-        for name in tools.make_list(cmd_names):
-            for function in tools.make_list(functions):
+        for name in make_list(cmd_names):
+            for function in make_list(functions):
                 self.output_parsers[name].add_function(function)
 
     def parse(self, cmd_name, output):

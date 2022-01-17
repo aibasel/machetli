@@ -13,7 +13,4 @@ setup(
     package_data={
         "slurm-template": ["minimizer/grid/slurm-array-job.template"],
     },
-    install_requires=[
-        "simplejson",  # optional, speeds up reading properties files
-    ]
 )
