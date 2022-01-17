@@ -5,7 +5,7 @@ import sys
 import pprint
 
 from minimizer.grid import environments
-from lab import tools
+from minimizer import tools
 from minimizer.planning import auxiliary
 from minimizer.parser import Parser
 from minimizer.evaluator import Evaluator

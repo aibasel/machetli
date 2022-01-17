@@ -1,11 +1,34 @@
 from collections import defaultdict
+import errno
 import logging
+import os
+import re
 
-from lab import parser
-from lab import tools
+from minimizer import tools
 
 
-class _Pattern(parser._Pattern):
+# TODO: mention derivation from Lab and revise comments for these dependencies.
+
+def _get_pattern_flags(s):
+    flags = 0
+    for char in s:
+        try:
+            flags |= getattr(re, char)
+        except AttributeError:
+            logging.critical(f"Unknown pattern flag: {char}")
+    return flags
+
+
+class _Pattern:
+    def __init__(self, attribute, regex, required, type_, flags):
+        self.attribute = attribute
+        self.type_ = type_
+        self.required = required
+        self.group = 1
+
+        flags = _get_pattern_flags(flags)
+        self.regex = re.compile(regex, flags)
+
     def search(self, content, cmd_name):
         found_props = {}
         match = self.regex.search(content)
@@ -22,8 +45,47 @@ class _Pattern(parser._Pattern):
                 found_props[self.attribute] = value
         return found_props
 
+    def __str__(self):
+        return self.regex.pattern
 
-class _OutputParser(parser._FileParser):
+
+class _FileParser:
+    """
+    Private class that parses a given file according to the added patterns
+    and functions.
+    """
+
+    def __init__(self):
+        self.filename = None
+        self.content = None
+        self.patterns = []
+        self.functions = []
+
+    def load_file(self, filename):
+        self.filename = filename
+        with open(filename) as f:
+            self.content = f.read()
+
+    def add_pattern(self, pattern):
+        self.patterns.append(pattern)
+
+    def add_function(self, function):
+        self.functions.append(function)
+
+    def search_patterns(self):
+        assert self.content is not None
+        found_props = {}
+        for pattern in self.patterns:
+            found_props.update(pattern.search(self.content, self.filename))
+        return found_props
+
+    def apply_functions(self, props):
+        assert self.content is not None
+        for function in self.functions:
+            function(self.content, props)
+
+
+class _OutputParser(_FileParser):
     def accept_data(self, cmd_name, content):
         # Only calling this member "filename" so inherited function
         # search_patterns does not need to be changed
@@ -31,7 +93,7 @@ class _OutputParser(parser._FileParser):
         self.content = content
 
 
-class Parser(parser.Parser):
+class Parser:
     """Parse stdout and stderr strings.
 
     Strongly influenced by the `parser implementation of Lab

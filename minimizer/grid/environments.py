@@ -5,9 +5,8 @@ import re
 import subprocess
 import time
 
-from lab import tools
+from minimizer import tools
 from minimizer.grid import slurm_tools as st
-from lab.environments import SlurmEnvironment as lab_slurm_env
 
 
 EVAL_DIR = "eval_dir"
@@ -156,7 +155,8 @@ class SlurmEnvironment(Environment):
         job_params["mailtype"] = "NONE"
         job_params["mailuser"] = ""
         job_params["soft_memory_limit"] = int(
-            0.98 * self.cpus_per_task * lab_slurm_env._get_memory_in_kb(self.memory_per_cpu))
+            0.98 * self.cpus_per_task * self._get_memory_in_kb(
+                self.memory_per_cpu))
         job_params["python"] = tools.get_python_executable()
         job_params["script_path"] = self.script_path
         return job_params
@@ -262,6 +262,23 @@ class SlurmEnvironment(Environment):
             "+ ") for pair in unclean_job_state_list]
         return {k: v for k, v in (pair.split() for pair in stripped_job_state_list)}
 
+    @staticmethod
+    def _get_memory_in_kb(limit):
+        match = re.match(r"^(\d+)(k|m|g)?$", limit, flags=re.I)
+        if not match:
+            logging.critical(f"malformed memory_per_cpu parameter: {limit}")
+        memory = int(match.group(1))
+        suffix = match.group(2)
+        if suffix is not None:
+            suffix = suffix.lower()
+        if suffix == "k":
+            pass
+        elif suffix is None or suffix == "m":
+            memory *= 1024
+        elif suffix == "g":
+            memory *= 1024 * 1024
+        return memory
+
 
 class BaselSlurmEnvironment(SlurmEnvironment):
     """Environment for Basel's AI group."""
@@ -276,9 +293,8 @@ class BaselSlurmEnvironment(SlurmEnvironment):
 
         # Abort if mem_per_cpu too high for Basel partitions
         if self.partition in {"infai_1", "infai_2"}:
-            mem_per_cpu_in_kb = lab_slurm_env._get_memory_in_kb(
-                self.memory_per_cpu)
-            max_mem_per_cpu_in_kb = lab_slurm_env._get_memory_in_kb(
+            mem_per_cpu_in_kb = self._get_memory_in_kb( self.memory_per_cpu)
+            max_mem_per_cpu_in_kb = self._get_memory_in_kb(
                 self.MAX_MEM_INFAI_BASEL[self.partition])
             if mem_per_cpu_in_kb > max_mem_per_cpu_in_kb:
                 logging.critical(
