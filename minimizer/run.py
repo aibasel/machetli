@@ -8,6 +8,7 @@ import errno
 from minimizer import tools
 
 
+# This function is copied from lab.calls.call (<https://lab.readthedocs.org>).
 def set_limit(kind, soft_limit, hard_limit):
     try:
         resource.setrlimit(kind, (soft_limit, hard_limit))

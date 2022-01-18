@@ -1,9 +1,10 @@
+"""
+This file is derived from ``tools.py`` of Lab (<https://lab.readthedocs.io>).
+Functions and classes that are not needed for this project were removed.
+"""
 import logging
 import os
 import sys
-
-# TODO: the functions in this file are copied from lab.tools.py and
-#  should potentially be referenced.
 
 
 DEFAULT_ENCODING = "utf-8"
@@ -64,5 +65,27 @@ def configure_logging(level=logging.INFO):
     root_logger.addHandler(stdout_handler)
     root_logger.addHandler(stderr_handler)
     root_logger.setLevel(level)
+
+
+def make_list(value):
+    if value is None:
+        return []
+    elif isinstance(value, list):
+        return value[:]
+    elif isinstance(value, (tuple, set)):
+        return list(value)
+    else:
+        return [value]
+
+
+def makedirs(path):
+    """
+    os.makedirs() variant that doesn't complain if the path already exists.
+    """
+    try:
+        os.makedirs(path)
+    except OSError:
+        # Directory probably already exists.
+        pass
 
 

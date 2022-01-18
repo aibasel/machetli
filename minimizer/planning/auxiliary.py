@@ -19,7 +19,7 @@ def parse_pddl_task(dom_filename, prob_filename):
     and *prob_filename* (PDDL problem) an return an instance of the parsed PDDL task.
 
     The returned task object is an instance of the ``Task`` class used internally
-    in `Fast Downward <http://www.fast-downward.org>`_.
+    in `Fast Downward <https://www.fast-downward.org>`_.
 
     """
     return pddl_parser.open(domain_filename=dom_filename,
@@ -31,7 +31,7 @@ def parse_sas_task(task_filename):
     *task_filename* and return an instance of the parsed SAS\ :sup:`+` task.
 
     The returned task object is an instance of the ``SASTask`` class used internally
-    in `Fast Downward <http://www.fast-downward.org>`_.
+    in `Fast Downward <https://www.fast-downward.org>`_.
     """
     return sas_file_to_SASTask(task_filename)
 
