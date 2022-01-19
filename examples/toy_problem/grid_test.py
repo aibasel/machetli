@@ -9,7 +9,7 @@ import pprint
 import re
 
 from minimizer.grid import environments
-from lab import tools
+from minimizer import tools
 from minimizer.evaluator import Evaluator
 from minimizer.main import main
 from minimizer.parser import Parser

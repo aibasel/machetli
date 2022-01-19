@@ -4,7 +4,7 @@ import os
 import platform
 import sys
 
-from lab import tools
+from minimizer import tools
 from minimizer.grid import environments, search
 from minimizer.grid import slurm_tools as st
 from minimizer.search import first_choice_hill_climbing

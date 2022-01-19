@@ -8,7 +8,6 @@ setup(
     url="https://github.com/aibasel/minimizer",
     license="GPL3+",
     packages=find_packages(),
-    install_requires=["lab"],
     python_requires=">=3.7",
     include_package_data=True,
     package_data={

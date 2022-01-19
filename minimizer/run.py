@@ -5,8 +5,18 @@ import subprocess
 import sys
 import errno
 
-from lab import tools
-from lab.calls.call import set_limit
+from minimizer import tools
+
+
+# This function is copied from lab.calls.call (<https://lab.readthedocs.org>).
+def set_limit(kind, soft_limit, hard_limit):
+    try:
+        resource.setrlimit(kind, (soft_limit, hard_limit))
+    except (OSError, ValueError) as err:
+        logging.error(
+            f"Resource limit for {kind} could not be set to "
+            f"[{soft_limit}, {hard_limit}] ({err})"
+        )
 
 
 class Run:

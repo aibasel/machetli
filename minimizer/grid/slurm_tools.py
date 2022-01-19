@@ -5,7 +5,7 @@ import pkgutil
 import re
 import subprocess
 
-from lab import tools
+from minimizer import tools
 
 TEMPLATE_FILE = "slurm-array-job.template"
 DEFAULT_ARRAY_SIZE = 200
