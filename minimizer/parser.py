@@ -63,14 +63,8 @@ class _ContentParser:
     """
 
     def __init__(self):
-        self.cmd_name = None
-        self.content = None
         self.patterns = []
         self.functions = []
-
-    def initialize(self, cmd_name, content):
-        self.cmd_name = cmd_name
-        self.content = content
 
     def add_pattern(self, pattern):
         self.patterns.append(pattern)
@@ -78,17 +72,17 @@ class _ContentParser:
     def add_function(self, function):
         self.functions.append(function)
 
-    def search_patterns(self):
-        assert self.content is not None
+    def search_patterns(self, content, cmd_name):
+        assert content is not None
         found_props = {}
         for pattern in self.patterns:
-            found_props.update(pattern.search(self.content, self.cmd_name))
+            found_props.update(pattern.search(content, cmd_name))
         return found_props
 
-    def apply_functions(self, props):
-        assert self.content is not None
+    def apply_functions(self, props, content):
+        assert content is not None
         for function in self.functions:
-            function(self.content, props)
+            function(content, props)
 
 
 class Parser:
@@ -168,15 +162,12 @@ class Parser:
 
         for name, content_parser in list(self.content_parsers.items()):
             if name == cmd_name:
-                content_parser.initialize(name, content)
+                self.props.update(
+                    content_parser.search_patterns(content, cmd_name))
 
         for name, content_parser in list(self.content_parsers.items()):
             if name == cmd_name:
-                self.props.update(content_parser.search_patterns())
-
-        for name, content_parser in list(self.content_parsers.items()):
-            if name == cmd_name:
-                content_parser.apply_functions(self.props)
+                content_parser.apply_functions(self.props, content)
 
         return self.props
 
