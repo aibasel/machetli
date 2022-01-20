@@ -23,8 +23,6 @@ def main(
     successor_generators,
     evaluator,
     environment=environments.LocalEnvironment(),
-    enforce_order=False,
-    batch_size=st.DEFAULT_ARRAY_SIZE
 ):
     """Start a minimizer search and return the resulting state.
 
@@ -96,8 +94,8 @@ def main(
         result = search.search_grid(initial_state=initial_state,
                                     successor_generators=successor_generators,
                                     environment=environment,
-                                    enforce_order=enforce_order,
-                                    batch_size=batch_size)
+                                    enforce_order=environment.enforce_order,
+                                    batch_size=environment.batch_size)
         st.launch_email_job(environment)
         return result
     else:

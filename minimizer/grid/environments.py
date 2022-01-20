@@ -86,12 +86,16 @@ class PollingError(Exception):
 
 
 class Environment:
-    def __init__(self, email=None):
-        self.email = email
+    def __init__(self, enforce_order, batch_size=None):
+        # In the search, a *batch_size* of *None* will result in using
+        # all successors in one batch.
+        self.batch_size = batch_size
+        self.enforce_order = enforce_order
 
 
 class LocalEnvironment(Environment):
-    pass
+    def __init__(self, **kwargs):
+        Environment.__init__(self, enforce_order=False, **kwargs)
 
 
 class SlurmEnvironment(Environment):
@@ -107,6 +111,7 @@ class SlurmEnvironment(Environment):
 
     def __init__(
         self,
+        email=None,
         extra_options=None,
         partition=None,
         qos=None,
@@ -114,10 +119,12 @@ class SlurmEnvironment(Environment):
         nice=None,
         export=None,
         setup=None,
+        batch_size=st.DEFAULT_ARRAY_SIZE,
         **kwargs
     ):
-        Environment.__init__(self, **kwargs)
+        Environment.__init__(self, batch_size=batch_size, **kwargs)
 
+        self.email = email
         self.extra_options = extra_options or "## (not used)"
         self.partition = partition or self.DEFAULT_PARTITION
         self.qos = qos or self.DEFAULT_QOS
