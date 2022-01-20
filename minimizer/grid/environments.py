@@ -109,6 +109,7 @@ class SlurmEnvironment(Environment):
     DEFAULT_SETUP = ""
     DEFAULT_NICE = 0  # TODO: Check if this makes sense
 
+    # TODO: are differences to Lab reasonable? e.g., here we have no time limit.
     def __init__(
         self,
         email=None,
@@ -116,6 +117,7 @@ class SlurmEnvironment(Environment):
         partition=None,
         qos=None,
         memory_per_cpu=None,
+        cpus_per_task=1,
         nice=None,
         export=None,
         setup=None,
@@ -129,18 +131,11 @@ class SlurmEnvironment(Environment):
         self.partition = partition or self.DEFAULT_PARTITION
         self.qos = qos or self.DEFAULT_QOS
         self.memory_per_cpu = memory_per_cpu or self.DEFAULT_MEMORY_PER_CPU
+        self.cpus_per_task = cpus_per_task
         self.nice = nice or self.DEFAULT_NICE
         self.export = export or self.DEFAULT_EXPORT
         self.setup = setup or self.DEFAULT_SETUP
         self.script_path = tools.get_script_path()
-
-        # Number of cores is used to determine the soft memory limit
-        self.cpus_per_task = 1  # This is the default
-        if "--cpus-per-task" in self.extra_options:
-            rexpr = r"--cpus-per-task=(\d+)"
-            match = re.search(rexpr, self.extra_options)
-            assert match, f"{self.extra_options} should have matched {rexpr}."
-            self.cpus_per_task = int(match.group(1))
 
         script_dir = os.path.dirname(self.script_path)
         self.eval_dir = os.path.join(script_dir, EVAL_DIR)
