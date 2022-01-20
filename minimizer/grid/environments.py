@@ -5,6 +5,7 @@ import re
 import subprocess
 import time
 
+from abc import abstractmethod
 from minimizer import tools
 from minimizer.grid import slurm_tools as st
 
@@ -92,10 +93,22 @@ class Environment:
         self.batch_size = batch_size
         self.enforce_order = enforce_order
 
+    @abstractmethod
+    def get_improving_successor(self, evaluator, batch, batch_num):
+        pass
+
 
 class LocalEnvironment(Environment):
     def __init__(self, **kwargs):
         Environment.__init__(self, enforce_order=False, **kwargs)
+
+    # This is a first-choice hill climbing approach.
+    def get_improving_successor(self, evaluator, batch, batch_num):
+        # TODO: logging
+        for succ in batch:
+            if evaluator().evaluate(succ):
+                return succ
+        return None
 
 
 class SlurmEnvironment(Environment):
@@ -162,6 +175,57 @@ class SlurmEnvironment(Environment):
         job_params["python"] = tools.get_python_executable()
         job_params["script_path"] = self.script_path
         return job_params
+
+    def get_improving_successor(self, evaluator, batch, batch_num):
+        try:
+            job = self.submit_array_job(batch, batch_num)
+        except SubmissionError as se:
+            if self.enforce_order:
+                se.warn_abort()
+                # TODO: should raise an error that can be handled by
+                #  the caller.
+                return None
+            else:
+                se.warn()
+
+        try:
+            self.poll_job(job["id"])
+        except TaskError as te:
+            if self.enforce_order:
+                te.remove_tasks_after_first_critical(job)
+                if not job["tasks"]:
+                    # TODO: should raise an error that can be handled
+                    #  by the caller.
+                    return None
+            else:
+                te.remove_critical_tasks(job)
+                if not job["tasks"]:
+                    return None
+        except PollingError as pe:
+            pe.warn_abort(job)
+            # TODO: should raise an error that can be handled by the caller.
+            return None
+
+        for task in job["tasks"]:
+            result_file = os.path.join(task["dir"], "result")
+            if self.wait_for_filesystem(result_file):
+                result = st.parse_result(result_file)
+                if result:
+                    logging.info("Found successor!")
+                    return task["curr"]
+            else:
+                if self.enforce_order:
+                    logging.warning( "Aborting search because evaluation "
+                                     f"in {task['dir']} failed.")
+                    # TODO: should raise an error that can be handled
+                    #  by the caller.
+                    return None
+                else:
+                    logging.warning(
+                        f"Result file {result_file} does not exist. "
+                        "Continuing with next task.")
+                    continue
+        return None
 
     def wait_for_filesystem(self, *paths):
         attempts = int(FILESYSTEM_TIME_LIMIT / FILESYSTEM_TIME_INTERVAL)

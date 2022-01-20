@@ -5,9 +5,9 @@ import platform
 import sys
 
 from minimizer import tools
-from minimizer.grid import environments, search
+from minimizer.grid import environments
 from minimizer.grid import slurm_tools as st
-from minimizer.search import first_choice_hill_climbing
+from minimizer.search import new_search
 
 
 def get_arg_parser():
@@ -71,6 +71,8 @@ def main(
     tools.configure_logging() if not args.debug else tools.configure_logging(
         level=logging.DEBUG)
 
+    successor_generators = tools.make_list(successor_generators)
+
     if args.evaluate:
         dump_file_path = args.evaluate
         for _ in range(10):
@@ -85,19 +87,15 @@ def main(
         logging.info(f"Node: {platform.node()}")
         sys.exit(0) if result else sys.exit(1)
 
-    elif isinstance(environment, environments.LocalEnvironment):
-        return first_choice_hill_climbing(initial_state=initial_state,
-                                          successor_generators=successor_generators,
-                                          evaluator=evaluator)
+    elif environment:
+        current_state = initial_state
+        for successor_generator in successor_generators:
+            current_state = new_search(
+                # TODO: when do we need to use classes and when should
+                #  we rather use instances?
+                current_state, successor_generator(), evaluator, environment)
+        return current_state
 
-    elif isinstance(environment, environments.SlurmEnvironment):
-        result = search.search_grid(initial_state=initial_state,
-                                    successor_generators=successor_generators,
-                                    environment=environment,
-                                    enforce_order=environment.enforce_order,
-                                    batch_size=environment.batch_size)
-        st.launch_email_job(environment)
-        return result
     else:
         arg_parser.print_usage()
 
