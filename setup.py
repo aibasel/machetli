@@ -11,6 +11,6 @@ setup(
     python_requires=">=3.7",
     include_package_data=True,
     package_data={
-        "slurm-template": ["minimizer/grid/slurm-array-job.template"],
+        "minimizer": ["grid/slurm-array-job.template"],
     },
 )
