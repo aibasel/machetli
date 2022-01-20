@@ -7,7 +7,7 @@ import sys
 from minimizer import tools
 from minimizer.grid import environments
 from minimizer.grid import slurm_tools as st
-from minimizer.search import new_search
+from minimizer.search import search
 
 
 def get_arg_parser():
@@ -90,7 +90,7 @@ def main(
     elif environment:
         current_state = initial_state
         for successor_generator in successor_generators:
-            current_state = new_search(
+            current_state = search(
                 # TODO: when do we need to use classes and when should
                 #  we rather use instances?
                 current_state, successor_generator(), evaluator, environment)
