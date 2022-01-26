@@ -148,9 +148,8 @@ class RunWithInputFile(Run):
             else:
                 raise
 
-        f = open(self.input_file.format(**state), "r")
-        input_text = f.read()
-        f.close()
+        with open(self.input_file.format(**state), "r") as file:
+            input_text = file.read()
 
         out_str, err_str = process.communicate(input=input_text)
 
