@@ -34,7 +34,7 @@ RUN_DIR=${RUN_DIRS[$SLURM_ARRAY_TASK_ID]}
 %(python)s %(script_path)s --evaluate "$RUN_DIR/dump"
 RETCODE=$?
 
-echo "The evaluation finished with exit code $RETCODE" > $RUN_DIR/result
+echo "$RETCODE" > $RUN_DIR/exit_code
 # redirect output of grid_test to dump directory
 ) > "$RUN_DIR/driver.log" 2> "$RUN_DIR/driver.err"
 

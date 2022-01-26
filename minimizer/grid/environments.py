@@ -173,8 +173,7 @@ class SlurmEnvironment(Environment):
         for task in self.job["tasks"]:
             result_file = os.path.join(task["dir"], "result")
             if self.wait_for_filesystem(result_file):
-                result = st.parse_result(result_file)
-                if result:
+                if st.parse_exit_code(result_file) == 0:
                     logging.info("Found successor!")
                     successor = task["state"]
                     break
