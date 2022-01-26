@@ -102,4 +102,4 @@ def _random_sleep():
     """Sleep for 1-5 seconds, chosen at random."""
     import random
     import time
-    time.sleep(random.randint(1, 5))
+    time.sleep(1 + 4 * random.random())
