@@ -26,19 +26,25 @@ class MyGenerator(SuccessorGenerator):
 """
 Expected search behavior:
 Expanding: <0,0>
+  Evaluating: <0,1>
   Evaluating: <1,1>
   Evaluating: <2,1>
-  Evaluating: <0,1>
   Evaluating: <3,1>
 Expanding: <3,1>
+  Evaluating: <0,2>
   Evaluating: <1,2>
-  Evaluating: <3,2>
-Expanding: <3,2>
-  Evaluating: <2,3>
-  Evaluating: <1,3>
-  Evaluating: <3,3>
+  Evaluating: <2,2>
+Expanding: <2,2>
   Evaluating: <0,3>
-Search Result: <3,2>
+  Evaluating: <1,3>
+Expanding: <1,3>
+  Evaluating: <0,4>
+Expanding: <0,4>
+  Evaluating: <0,5>
+  Evaluating: <1,5>
+  Evaluating: <2,5>
+  Evaluating: <3,5>
+Search Result: <0,4>
 """
 class MyEvaluator(Evaluator):
     def evaluate(self, state):
@@ -47,7 +53,7 @@ class MyEvaluator(Evaluator):
         logging.info(f"Evaluating: <id={state_id}, level={level}>")
         state["runs"]["echo"].start(state)
 
-        return level <= 2 and state_id == 3
+        return level + state_id == 4
 
 
 run = Run(["echo", "Hello", "world"])

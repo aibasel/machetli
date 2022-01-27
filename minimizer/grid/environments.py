@@ -177,6 +177,7 @@ class SlurmEnvironment(Environment):
         return job_params
 
     def get_improving_successor(self, evaluator, batch, batch_num):
+        batch = list(batch)
         try:
             job = self.submit_array_job(batch, batch_num)
         except SubmissionError as se:

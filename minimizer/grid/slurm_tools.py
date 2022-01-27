@@ -5,6 +5,8 @@ import pkgutil
 import re
 import subprocess
 
+from itertools import islice
+
 from minimizer import tools
 
 TEMPLATE_FILE = "slurm-array-job.template"
@@ -29,21 +31,6 @@ def parse_result(result_file):
     exitcode = int(match.group(1))
     result = True if exitcode == 0 else False
     return result
-
-
-def get_next_batch(successor_generator, batch_size):
-    while True:
-        batch = []
-        for _ in range(batch_size):
-            try:
-                next_state = next(successor_generator)
-                batch.append(next_state)
-            except StopIteration:  # generator exhausted, exit function
-                if batch:
-                    yield batch
-                return
-        else:
-            yield batch
 
 
 def fill_template(**parameters):
