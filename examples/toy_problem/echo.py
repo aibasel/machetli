@@ -16,44 +16,40 @@ from minimizer.planning.generators import SuccessorGenerator
 class MyGenerator(SuccessorGenerator):
     def get_successors(self, state):
         logging.info(f"Expanding:\n{pprint.pformat(state)}")
-        for i in range(4):
+        for i in range(5):
             succ = copy.deepcopy(state)
             succ["level"] = state["level"] + 1
             succ["id"] = i
             yield succ
 
 
-"""
-Expected search behavior:
-Expanding: <0,0>
-  Evaluating: <0,1>
-  Evaluating: <1,1>
-  Evaluating: <2,1>
-  Evaluating: <3,1>
-Expanding: <3,1>
-  Evaluating: <0,2>
-  Evaluating: <1,2>
-  Evaluating: <2,2>
-Expanding: <2,2>
-  Evaluating: <0,3>
-  Evaluating: <1,3>
-Expanding: <1,3>
-  Evaluating: <0,4>
-Expanding: <0,4>
-  Evaluating: <0,5>
-  Evaluating: <1,5>
-  Evaluating: <2,5>
-  Evaluating: <3,5>
-Search Result: <0,4>
-"""
 class MyEvaluator(Evaluator):
+    """
+    Expected search behavior:
+    Expanding: <0,0>
+      Evaluating: <0,1>
+      Evaluating: <1,1>
+      Evaluating: <2,1>
+    Expanding: <2,1>
+      Evaluating: <0,2>
+      Evaluating: <1,2>
+    Expanding: <1,2>
+      Evaluating: <0,3>
+    Expanding: <0,3>
+      Evaluating: <0,4>
+      Evaluating: <1,4>
+      Evaluating: <2,4>
+      Evaluating: <3,4>
+      Evaluating: <4,4>
+    Search Result: <0,3>
+    """
     def evaluate(self, state):
         state_id = state["id"]
         level = state["level"]
         logging.info(f"Evaluating: <id={state_id}, level={level}>")
         state["runs"]["echo"].start(state)
 
-        return level + state_id == 4
+        return level + state_id == 3
 
 
 run = Run(["echo", "Hello", "world"])
@@ -69,9 +65,7 @@ if platform.node().endswith((".scicore.unibas.ch", ".cluster.bc2.ch")):
 else:
     my_environment = environments.LocalEnvironment()
 
-search_result = main(create_initial_state(),
-                     MyGenerator,
-                     MyEvaluator,
-                     my_environment)
+search_result = main(
+    create_initial_state(), MyGenerator, MyEvaluator, my_environment)
 
 logging.info(f"Search result:\n{pprint.pformat(search_result)}")
