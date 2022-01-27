@@ -91,8 +91,6 @@ def main(
         current_state = initial_state
         for successor_generator in successor_generators:
             current_state = search(
-                # TODO: when do we need to use classes and when should
-                #  we rather use instances?
                 current_state, successor_generator(), evaluator, environment)
         return current_state
 

@@ -5,12 +5,9 @@ import pkgutil
 import re
 import subprocess
 
-from itertools import islice
-
 from minimizer import tools
 
 TEMPLATE_FILE = "slurm-array-job.template"
-DEFAULT_ARRAY_SIZE = 200
 
 
 def pickle_and_dump_state(state, file_path):
@@ -49,10 +46,11 @@ def launch_email_job(environment):
                            input=b"#! /bin/bash\n")
         except:
             logging.warning(
-                "Something went wrong while trying to send the notification email.")
+                "Something went wrong while trying to send the "
+                "notification email.")
     return
 
 
 def check_for_whitespace(path):
-    assert not re.search(
-        r"\s+", path), "The script path must not contain any whitespace characters."
+    assert not re.search(r"\s+", path), \
+        "The script path must not contain any whitespace characters."

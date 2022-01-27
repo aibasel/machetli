@@ -25,45 +25,43 @@ BUSY_STATES = {"PENDING", "RUNNING", "REQUEUED", "SUSPENDED"}
 
 
 class Environment:
-    def __init__(self, enforce_order, batch_size=None):
-        # In the search, a *batch_size* of *None* will result in using
-        # all successors in one batch.
+    def __init__(self, enforce_order, batch_size=1):
         self.batch_size = batch_size
         self.enforce_order = enforce_order
+        self.job = None
 
     @abstractmethod
-    def submit(self, batch, batch_id):
+    def submit(self, batch, batch_id, evaluator):
         pass
 
     @abstractmethod
-    def wait_until_finished(self, job_id):
+    def wait_until_finished(self):
         pass
 
     @abstractmethod
-    def get_improving_successor(self, evaluator):
+    def get_improving_successor(self):
         pass
 
 
 class LocalEnvironment(Environment):
     def __init__(self):
-        Environment.__init__(self, enforce_order=False, batch_size=1)
-        self.id = None
+        Environment.__init__(self, enforce_order=False)
         self.successor = None
 
-    def submit(self, batch, batch_id):
+    def submit(self, batch, batch_id, evaluator):
         assert len(batch) == 1
-        self.id = batch_id
-        self.successor = batch[0]
-        return batch_id
+        assert not self.job
+        self.successor = None
+        self.job = batch_id
+        if evaluator().evaluate(batch[0]):
+            self.successor = batch[0]
 
-    def wait_until_finished(self, job_id):
-        assert self.id == job_id
+    def wait_until_finished(self):
+        assert self.job is not None
 
-    def get_improving_successor(self, evaluator):
-        if evaluator().evaluate(self.successor):
-            return self.successor
-        else:
-            return None
+    def get_improving_successor(self):
+        self.job = None
+        return self.successor
 
 
 class SlurmEnvironment(Environment):
@@ -75,7 +73,7 @@ class SlurmEnvironment(Environment):
     # Can be overridden in derived classes.
     DEFAULT_EXPORT = ["PATH"]
     DEFAULT_SETUP = ""
-    DEFAULT_NICE = 0  # TODO: Check if this makes sense
+    DEFAULT_NICE = 0
 
     # TODO: are differences to Lab reasonable? e.g., here we have no time limit.
     def __init__(
@@ -89,7 +87,7 @@ class SlurmEnvironment(Environment):
         nice=None,
         export=None,
         setup=None,
-        batch_size=st.DEFAULT_ARRAY_SIZE,
+        batch_size=200,
         **kwargs
     ):
         Environment.__init__(self, batch_size=batch_size, **kwargs)
@@ -111,7 +109,7 @@ class SlurmEnvironment(Environment):
         st.check_for_whitespace(self.eval_dir)
         self.sbatch_file = os.path.join(script_dir, SBATCH_FILE)
         self.wait_for_filesystem(self.eval_dir)
-        self.job = None
+        self.critical = False
 
     def get_job_params(self):
         job_params = dict()
@@ -132,7 +130,8 @@ class SlurmEnvironment(Environment):
         job_params["script_path"] = self.script_path
         return job_params
 
-    def submit(self, batch, batch_id):
+    def submit(self, batch, batch_id, evaluator):
+        assert not self.job
         try:
             self.job = self.submit_array_job(batch, batch_id)
         except SubmissionError as se:
@@ -143,45 +142,55 @@ class SlurmEnvironment(Environment):
                 se.warn()
                 # TODO: this means job is undefined, so we should also abort.
 
-    def wait_until_finished(self, job_id):
+    def wait_until_finished(self):
         assert self.job
         try:
-            self.poll_job(self.job["id"])
+            self.poll_job()
         except TaskError as te:
             if self.enforce_order:
-                te.remove_critical_tasks(self.job)
+                te.remove_tasks_after_first_critical(self.job)
                 if not self.job["tasks"]:
                     raise te
             else:
                 te.remove_critical_tasks(self.job)
                 if not self.job["tasks"]:
-                    raise te
+                    # TODO: this is just a hack to replace the "continue"
+                    #  that occurred here in the original grid search.
+                    self.critical = True
+                    return
         except PollingError as pe:
             pe.warn_abort()
             raise pe
 
-    def get_improving_successor(self, evaluator):
+    def get_improving_successor(self):
         assert self.job
+        if self.critical:
+            self.critical = False
+            self.job = None
+            return None
+
+        successor = None
         for task in self.job["tasks"]:
             result_file = os.path.join(task["dir"], "result")
             if self.wait_for_filesystem(result_file):
                 result = st.parse_result(result_file)
                 if result:
                     logging.info("Found successor!")
-                    return task["curr"]
+                    successor = task["state"]
+                    break
             else:
                 if self.enforce_order:
                     logging.warning("Aborting search because evaluation "
                                     f"in {task['dir']} failed.")
-                    # TODO: should raise an error that can be handled
-                    #  by the caller.
+                    # TODO: raise an error that can be handled by the caller.
                     return None
                 else:
                     logging.warning(
                         f"Result file {result_file} does not exist. "
                         "Continuing with next task.")
                     continue
-        return None
+        self.job = None
+        return successor
 
     def wait_for_filesystem(self, *paths):
         attempts = int(FILESYSTEM_TIME_LIMIT / FILESYSTEM_TIME_INTERVAL)
@@ -206,7 +215,9 @@ class SlurmEnvironment(Environment):
         # Give the NFS time to write the paths
         if not self.wait_for_filesystem(*run_dirs):
             logging.critical(
-                f"One of the following paths is missing:\n{pprint.pformat(run_dirs)}")
+                f"One of the following paths is missing:\n"
+                f"{pprint.pformat(run_dirs)}"
+            )
         return run_dirs
 
     def write_sbatch_file(self, **kwargs):
@@ -243,16 +254,18 @@ class SlurmEnvironment(Environment):
             logging.info(match.group(0))
         job_id = match.group(1)
         job = {"id": job_id,
-               "tasks": [{"curr": c, "dir": d} for c, d in
+               "tasks": [{"state": s, "dir": d} for s, d in
                          zip(batch, run_dirs)]}
         return job
 
-    def poll_job(self, job_id):
+    def poll_job(self):
+        job_id = self.job["id"]
         while True:
             time.sleep(POLLING_TIME_INTERVAL)
             try:
                 output = subprocess.check_output(
-                    ["sacct", "-j", str(job_id), "--format=jobid,state", "--noheader", "--allocations"]).decode()
+                    ["sacct", "-j", str(job_id), "--format=jobid,state",
+                     "--noheader", "--allocations"]).decode()
                 task_states = self._build_task_state_dict(output)
                 done = []
                 busy = []
@@ -267,7 +280,8 @@ class SlurmEnvironment(Environment):
                         critical.append(task_id)
                 if busy:
                     logging.info(
-                        f"{len(busy)} task{'s are' if len(busy) > 1 else ' is'} still busy.")
+                        f"{len(busy)} task"
+                        f"{'s are' if len(busy) > 1 else ' is'} still busy.")
                     continue
                 if critical:
                     critical_tasks = [
@@ -283,7 +297,8 @@ class SlurmEnvironment(Environment):
         unclean_job_state_list = sacct_output.strip("\n").split("\n")
         stripped_job_state_list = [pair.strip(
             "+ ") for pair in unclean_job_state_list]
-        return {k: v for k, v in (pair.split() for pair in stripped_job_state_list)}
+        return {k: v for k, v in
+                (pair.split() for pair in stripped_job_state_list)}
 
     @staticmethod
     # This function is copied from lab.environment.SlurmEnvironment
@@ -323,5 +338,8 @@ class BaselSlurmEnvironment(SlurmEnvironment):
                 self.MAX_MEM_INFAI_BASEL[self.partition])
             if mem_per_cpu_in_kb > max_mem_per_cpu_in_kb:
                 logging.critical(
-                    f"Memory limit {self.memory_per_cpu} surpassing the maximum amount allowed for partition {self.partition}: {self.MAX_MEM_INFAI_BASEL[self.partition]}.")
+                    f"Memory limit {self.memory_per_cpu} surpassing the "
+                    f"maximum amount allowed for partition {self.partition}: "
+                    f"{self.MAX_MEM_INFAI_BASEL[self.partition]}."
+                )
 
