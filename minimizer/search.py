@@ -1,4 +1,4 @@
-from itertools import chain, islice
+from itertools import islice
 from minimizer.tools import SubmissionError, TaskError, PollingError
 
 
@@ -15,8 +15,11 @@ def search(initial_state, successor_generator, evaluator, environment):
         #  then rather be *1* than *None*, but *poll* doesn't make too
         #  much sense in that case.
         try:
-            best_successor = environment.get_improving_successor(
-                evaluator, batch, batch_num)
+            job_id = environment.submit(batch, batch_num)
+            environment.wait_until_finished(job_id)
+            best_successor = environment.get_successor(evaluator)
+            # best_successor = environment.get_improving_successor(
+            #     evaluator, batch, batch_num)
         except (SubmissionError, TaskError, PollingError):
             # TODO: this might not be reasonable error treatment, but it
             #  is what happened previously
