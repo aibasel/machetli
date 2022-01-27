@@ -8,6 +8,7 @@ import time
 from abc import abstractmethod
 from minimizer import tools
 from minimizer.grid import slurm_tools as st
+from minimizer.tools import SubmissionError, TaskError, PollingError
 
 
 EVAL_DIR = "eval_dir"
@@ -21,69 +22,6 @@ TIME_LIMIT_FACTOR = 1.5
 # Sets of slurm job state codes
 DONE_STATE = {"COMPLETED"}
 BUSY_STATES = {"PENDING", "RUNNING", "REQUEUED", "SUSPENDED"}
-
-
-class SubmissionError(Exception):
-    def __init__(self, cpe):
-        print(cpe)
-        self.returncode = cpe.returncode
-        self.cmd = cpe.cmd
-        self.output = cpe.output
-        self.stdout = cpe.stdout
-        self.stderr = cpe.stderr
-
-    def __str__(self):
-        return f"""
-                Error during job submission:
-                Submission command: {self.cmd}
-                Returncode: {self.returncode}
-                Output: {self.output}
-                Captured stdout: {self.stdout}
-                Captured stderr: {self.stderr}"""
-
-    def warn(self):
-        logging.warning(f"""The following batch submission failed but is ignored:
-                        {self}""")
-
-    def warn_abort(self):
-        logging.warning(f"""Task order cannot be kept because the following batch submission failed:
-                        {self}
-                        Aborting search.""")
-
-
-class TaskError(Exception):
-    def __init__(self, critical_tasks):
-        self.critical_tasks = critical_tasks
-        self.indices_critical = [int(parts[1]) for parts in (
-            task_id.split("_") for task_id in self.critical_tasks)]
-
-    def __repr__(self):
-        return pprint.pformat(self.critical_tasks)
-
-    def remove_critical_tasks(self, job):
-        """Remove tasks from job that entered a critical state."""
-        job["tasks"] = [t for i, t in enumerate(
-            job["tasks"]) if i not in self.indices_critical]
-        logging.warning(
-            f"Some tasks from job {job['id']} entered a critical state but the search is continued.")
-
-    def remove_tasks_after_first_critical(self, job):
-        """Remove all tasks from job after the first one that entered a critical state."""
-        first_failed = self.indices_critical[0]
-        job["tasks"] = job["tasks"][:first_failed]
-        if not job["tasks"]:
-            logging.warning(f"""Since the first task failed, the order cannot be kept.
-                            Aborting search.""")
-        else:
-            logging.warning(f"""At least one task from job {job['id']} entered a critical state:
-                            {self}
-                            The tasks before the first critical one are still considered.""")
-
-
-class PollingError(Exception):
-    def warn_abort(self, job):
-        logging.error(
-            f"Polling job {job['id']} caused an error. Aborting search.")
 
 
 class Environment:
@@ -177,35 +115,30 @@ class SlurmEnvironment(Environment):
         return job_params
 
     def get_improving_successor(self, evaluator, batch, batch_num):
-        batch = list(batch)
         try:
             job = self.submit_array_job(batch, batch_num)
         except SubmissionError as se:
             if self.enforce_order:
                 se.warn_abort()
-                # TODO: should raise an error that can be handled by
-                #  the caller.
-                return None
+                raise se
             else:
                 se.warn()
+                # TODO: this means job is undefined, so we should also abort.
 
         try:
             self.poll_job(job["id"])
         except TaskError as te:
             if self.enforce_order:
-                te.remove_tasks_after_first_critical(job)
+                te.remove_critical_tasks(job)
                 if not job["tasks"]:
-                    # TODO: should raise an error that can be handled
-                    #  by the caller.
-                    return None
+                    raise te
             else:
                 te.remove_critical_tasks(job)
                 if not job["tasks"]:
-                    return None
+                    raise te
         except PollingError as pe:
-            pe.warn_abort(job)
-            # TODO: should raise an error that can be handled by the caller.
-            return None
+            pe.warn_abort()
+            raise pe
 
         for task in job["tasks"]:
             result_file = os.path.join(task["dir"], "result")
@@ -287,8 +220,9 @@ class SlurmEnvironment(Environment):
         else:
             logging.info(match.group(0))
         job_id = match.group(1)
-        job = {"id": job_id}
-        job["tasks"] = [{"curr": c, "dir": d} for c, d in zip(batch, run_dirs)]
+        job = {"id": job_id,
+               "tasks": [{"curr": c, "dir": d} for c, d in
+                         zip(batch, run_dirs)]}
         return job
 
     def poll_job(self, job_id):
@@ -320,8 +254,8 @@ class SlurmEnvironment(Environment):
                 else:
                     logging.info("All tasks are done!")
                     return
-            except subprocess.CalledProcessError as cpe:
-                raise PollingError
+            except subprocess.CalledProcessError:
+                raise PollingError(job_id)
 
     def _build_task_state_dict(self, sacct_output):
         unclean_job_state_list = sacct_output.strip("\n").split("\n")
