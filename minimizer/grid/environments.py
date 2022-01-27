@@ -40,12 +40,7 @@ class Environment:
         pass
 
     @abstractmethod
-    # TODO: rename to get_improving_successor
-    def get_successor(self, evaluator):
-        pass
-
-    @abstractmethod
-    def get_improving_successor(self, evaluator, batch, batch_num):
+    def get_improving_successor(self, evaluator):
         pass
 
 
@@ -64,19 +59,11 @@ class LocalEnvironment(Environment):
     def wait_until_finished(self, job_id):
         assert self.id == job_id
 
-    def get_successor(self, evaluator):
+    def get_improving_successor(self, evaluator):
         if evaluator().evaluate(self.successor):
             return self.successor
         else:
             return None
-
-    # This is a first-choice hill climbing approach.
-    def get_improving_successor(self, evaluator, batch, batch_num):
-        # TODO: logging
-        for succ in batch:
-            if evaluator().evaluate(succ):
-                return succ
-        return None
 
 
 class SlurmEnvironment(Environment):
@@ -173,7 +160,7 @@ class SlurmEnvironment(Environment):
             pe.warn_abort()
             raise pe
 
-    def get_successor(self, evaluator):
+    def get_improving_successor(self, evaluator):
         assert self.job
         for task in self.job["tasks"]:
             result_file = os.path.join(task["dir"], "result")
@@ -186,53 +173,6 @@ class SlurmEnvironment(Environment):
                 if self.enforce_order:
                     logging.warning("Aborting search because evaluation "
                                     f"in {task['dir']} failed.")
-                    # TODO: should raise an error that can be handled
-                    #  by the caller.
-                    return None
-                else:
-                    logging.warning(
-                        f"Result file {result_file} does not exist. "
-                        "Continuing with next task.")
-                    continue
-        return None
-
-    def get_improving_successor(self, evaluator, batch, batch_num):
-        try:
-            job = self.submit_array_job(batch, batch_num)
-        except SubmissionError as se:
-            if self.enforce_order:
-                se.warn_abort()
-                raise se
-            else:
-                se.warn()
-                # TODO: this means job is undefined, so we should also abort.
-
-        try:
-            self.poll_job(job["id"])
-        except TaskError as te:
-            if self.enforce_order:
-                te.remove_critical_tasks(job)
-                if not job["tasks"]:
-                    raise te
-            else:
-                te.remove_critical_tasks(job)
-                if not job["tasks"]:
-                    raise te
-        except PollingError as pe:
-            pe.warn_abort()
-            raise pe
-
-        for task in job["tasks"]:
-            result_file = os.path.join(task["dir"], "result")
-            if self.wait_for_filesystem(result_file):
-                result = st.parse_result(result_file)
-                if result:
-                    logging.info("Found successor!")
-                    return task["curr"]
-            else:
-                if self.enforce_order:
-                    logging.warning( "Aborting search because evaluation "
-                                     f"in {task['dir']} failed.")
                     # TODO: should raise an error that can be handled
                     #  by the caller.
                     return None
