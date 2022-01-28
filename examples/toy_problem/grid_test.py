@@ -108,6 +108,6 @@ search_result = main(create_initial_state(),
                      MyGenerator,
                      MyEvaluator,
                      my_environment,
-                     enforce_order=True)
+                     enforce_order=False)
 
 print(f"Search result:\n{pprint.pformat(search_result)}")
