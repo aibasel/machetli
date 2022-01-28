@@ -1,36 +1,27 @@
-from minimizer.planning.downward_lib import timers
+from itertools import islice
+from minimizer.tools import SubmissionError, TaskError, PollingError
 
 
-def first_choice_hill_climbing(initial_state, successor_generators, evaluator):
-    if not isinstance(successor_generators, list):
-        successor_generators = [successor_generators]
+def search(initial_state, successor_generator, evaluator, environment):
     current_state = initial_state
-    last_state = None
-    print()
-    with timers.timing("Starting first-choice hill-climbing search"):
-        for succ_gen in successor_generators:
-            print()
-            with timers.timing("Generating successors with class {}".format(
-                    succ_gen.__name__)):
-                num_children = 0
-                num_successors = 0
-                print()
-                while True:
-                    if num_children > 0:
-                        print(
-                            "Child found ({}), evaluated {} successor{}.\n"
-                            .format(num_children, num_successors, "s" if num_successors > 1 else ""))
-                    num_successors = 0
-                    num_children += 1
-                    last_state = current_state
-                    for successor_state in succ_gen().get_successors(current_state):
-                        num_successors += 1
-                        if evaluator().evaluate(successor_state):
-                            current_state = successor_state
-                            break
-                    else:
-                        print(
-                            "\nNo successor found by evaluator, end of first-choice hill-climbing."
-                        )
-                        break
-        return last_state
+    batch_size = environment.batch_size
+    batch_num = 0
+
+    successors = successor_generator.get_successors(current_state)
+    batch = list(islice(successors, batch_size))
+    while batch:
+        try:
+            environment.submit(batch, batch_num, evaluator)
+            environment.wait_until_finished()
+            best_successor = environment.get_improving_successor()
+        except (SubmissionError, TaskError, PollingError):
+            # FIXME: this is not proper error handling yet.
+            best_successor = None
+
+        if best_successor:
+            current_state = best_successor
+            successors = successor_generator.get_successors(current_state)
+        batch_num += 1
+        batch = list(islice(successors, batch_size))
+
+    return current_state

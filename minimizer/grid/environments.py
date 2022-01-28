@@ -5,8 +5,10 @@ import re
 import subprocess
 import time
 
+from abc import abstractmethod
 from minimizer import tools
 from minimizer.grid import slurm_tools as st
+from minimizer.tools import SubmissionError, TaskError, PollingError
 
 
 EVAL_DIR = "eval_dir"
@@ -22,76 +24,44 @@ DONE_STATE = {"COMPLETED"}
 BUSY_STATES = {"PENDING", "RUNNING", "REQUEUED", "SUSPENDED"}
 
 
-class SubmissionError(Exception):
-    def __init__(self, cpe):
-        print(cpe)
-        self.returncode = cpe.returncode
-        self.cmd = cpe.cmd
-        self.output = cpe.output
-        self.stdout = cpe.stdout
-        self.stderr = cpe.stderr
-
-    def __str__(self):
-        return f"""
-                Error during job submission:
-                Submission command: {self.cmd}
-                Returncode: {self.returncode}
-                Output: {self.output}
-                Captured stdout: {self.stdout}
-                Captured stderr: {self.stderr}"""
-
-    def warn(self):
-        logging.warning(f"""The following batch submission failed but is ignored:
-                        {self}""")
-
-    def warn_abort(self):
-        logging.warning(f"""Task order cannot be kept because the following batch submission failed:
-                        {self}
-                        Aborting search.""")
-
-
-class TaskError(Exception):
-    def __init__(self, critical_tasks):
-        self.critical_tasks = critical_tasks
-        self.indices_critical = [int(parts[1]) for parts in (
-            task_id.split("_") for task_id in self.critical_tasks)]
-
-    def __repr__(self):
-        return pprint.pformat(self.critical_tasks)
-
-    def remove_critical_tasks(self, job):
-        """Remove tasks from job that entered a critical state."""
-        job["tasks"] = [t for i, t in enumerate(
-            job["tasks"]) if i not in self.indices_critical]
-        logging.warning(
-            f"Some tasks from job {job['id']} entered a critical state but the search is continued.")
-
-    def remove_tasks_after_first_critical(self, job):
-        """Remove all tasks from job after the first one that entered a critical state."""
-        first_failed = self.indices_critical[0]
-        job["tasks"] = job["tasks"][:first_failed]
-        if not job["tasks"]:
-            logging.warning(f"""Since the first task failed, the order cannot be kept.
-                            Aborting search.""")
-        else:
-            logging.warning(f"""At least one task from job {job['id']} entered a critical state:
-                            {self}
-                            The tasks before the first critical one are still considered.""")
-
-
-class PollingError(Exception):
-    def warn_abort(self, job):
-        logging.error(
-            f"Polling job {job['id']} caused an error. Aborting search.")
-
-
 class Environment:
-    def __init__(self, email=None):
-        self.email = email
+    def __init__(self, enforce_order, batch_size=1):
+        self.batch_size = batch_size
+        self.enforce_order = enforce_order
+        self.job = None
+
+    @abstractmethod
+    def submit(self, batch, batch_id, evaluator):
+        pass
+
+    @abstractmethod
+    def wait_until_finished(self):
+        pass
+
+    @abstractmethod
+    def get_improving_successor(self):
+        pass
 
 
 class LocalEnvironment(Environment):
-    pass
+    def __init__(self):
+        Environment.__init__(self, enforce_order=False)
+        self.successor = None
+
+    def submit(self, batch, batch_id, evaluator):
+        assert len(batch) == 1
+        assert not self.job
+        self.successor = None
+        self.job = batch_id
+        if evaluator().evaluate(batch[0]):
+            self.successor = batch[0]
+
+    def wait_until_finished(self):
+        assert self.job is not None
+
+    def get_improving_successor(self):
+        self.job = None
+        return self.successor
 
 
 class SlurmEnvironment(Environment):
@@ -103,37 +73,35 @@ class SlurmEnvironment(Environment):
     # Can be overridden in derived classes.
     DEFAULT_EXPORT = ["PATH"]
     DEFAULT_SETUP = ""
-    DEFAULT_NICE = 0  # TODO: Check if this makes sense
+    DEFAULT_NICE = 0
 
+    # TODO: are differences to Lab reasonable? e.g., here we have no time limit.
     def __init__(
         self,
+        email=None,
         extra_options=None,
         partition=None,
         qos=None,
         memory_per_cpu=None,
+        cpus_per_task=1,
         nice=None,
         export=None,
         setup=None,
+        batch_size=200,
         **kwargs
     ):
-        Environment.__init__(self, **kwargs)
+        Environment.__init__(self, batch_size=batch_size, **kwargs)
 
+        self.email = email
         self.extra_options = extra_options or "## (not used)"
         self.partition = partition or self.DEFAULT_PARTITION
         self.qos = qos or self.DEFAULT_QOS
         self.memory_per_cpu = memory_per_cpu or self.DEFAULT_MEMORY_PER_CPU
+        self.cpus_per_task = cpus_per_task
         self.nice = nice or self.DEFAULT_NICE
         self.export = export or self.DEFAULT_EXPORT
         self.setup = setup or self.DEFAULT_SETUP
         self.script_path = tools.get_script_path()
-
-        # Number of cores is used to determine the soft memory limit
-        self.cpus_per_task = 1  # This is the default
-        if "--cpus-per-task" in self.extra_options:
-            rexpr = r"--cpus-per-task=(\d+)"
-            match = re.search(rexpr, self.extra_options)
-            assert match, f"{self.extra_options} should have matched {rexpr}."
-            self.cpus_per_task = int(match.group(1))
 
         script_dir = os.path.dirname(self.script_path)
         self.eval_dir = os.path.join(script_dir, EVAL_DIR)
@@ -141,6 +109,7 @@ class SlurmEnvironment(Environment):
         st.check_for_whitespace(self.eval_dir)
         self.sbatch_file = os.path.join(script_dir, SBATCH_FILE)
         self.wait_for_filesystem(self.eval_dir)
+        self.critical = False
 
     def get_job_params(self):
         job_params = dict()
@@ -160,6 +129,68 @@ class SlurmEnvironment(Environment):
         job_params["python"] = tools.get_python_executable()
         job_params["script_path"] = self.script_path
         return job_params
+
+    def submit(self, batch, batch_id, evaluator):
+        assert not self.job
+        try:
+            self.job = self.submit_array_job(batch, batch_id)
+        except SubmissionError as se:
+            if self.enforce_order:
+                se.warn_abort()
+                raise se
+            else:
+                se.warn()
+                # TODO: this means job is undefined, so we should also abort.
+
+    def wait_until_finished(self):
+        assert self.job
+        try:
+            self.poll_job()
+        except TaskError as te:
+            if self.enforce_order:
+                te.remove_tasks_after_first_critical(self.job)
+                if not self.job["tasks"]:
+                    raise te
+            else:
+                te.remove_critical_tasks(self.job)
+                if not self.job["tasks"]:
+                    # TODO: this is just a hack to replace the "continue"
+                    #  that occurred here in the original grid search.
+                    self.critical = True
+                    return
+        except PollingError as pe:
+            pe.warn_abort()
+            raise pe
+
+    def get_improving_successor(self):
+        assert self.job
+        if self.critical:
+            self.critical = False
+            self.job = None
+            return None
+
+        successor = None
+        for task in self.job["tasks"]:
+            result_file = os.path.join(task["dir"], "result")
+            if self.wait_for_filesystem(result_file):
+                result = st.parse_result(result_file)
+                if result:
+                    logging.info("Found successor!")
+                    successor = task["state"]
+                    break
+            else:
+                if self.enforce_order:
+                    logging.warning("Aborting search because evaluation "
+                                    f"in {task['dir']} failed.")
+                    # TODO: raise an error that can be handled by the caller.
+                    return None
+                else:
+                    logging.warning(
+                        f"Result file {result_file} does not exist. "
+                        "Continuing with next task.")
+                    continue
+        self.job = None
+        return successor
 
     def wait_for_filesystem(self, *paths):
         attempts = int(FILESYSTEM_TIME_LIMIT / FILESYSTEM_TIME_INTERVAL)
@@ -184,7 +215,9 @@ class SlurmEnvironment(Environment):
         # Give the NFS time to write the paths
         if not self.wait_for_filesystem(*run_dirs):
             logging.critical(
-                f"One of the following paths is missing:\n{pprint.pformat(run_dirs)}")
+                f"One of the following paths is missing:\n"
+                f"{pprint.pformat(run_dirs)}"
+            )
         return run_dirs
 
     def write_sbatch_file(self, **kwargs):
@@ -220,16 +253,19 @@ class SlurmEnvironment(Environment):
         else:
             logging.info(match.group(0))
         job_id = match.group(1)
-        job = {"id": job_id}
-        job["tasks"] = [{"curr": c, "dir": d} for c, d in zip(batch, run_dirs)]
+        job = {"id": job_id,
+               "tasks": [{"state": s, "dir": d} for s, d in
+                         zip(batch, run_dirs)]}
         return job
 
-    def poll_job(self, job_id):
+    def poll_job(self):
+        job_id = self.job["id"]
         while True:
             time.sleep(POLLING_TIME_INTERVAL)
             try:
                 output = subprocess.check_output(
-                    ["sacct", "-j", str(job_id), "--format=jobid,state", "--noheader", "--allocations"]).decode()
+                    ["sacct", "-j", str(job_id), "--format=jobid,state",
+                     "--noheader", "--allocations"]).decode()
                 task_states = self._build_task_state_dict(output)
                 done = []
                 busy = []
@@ -244,7 +280,8 @@ class SlurmEnvironment(Environment):
                         critical.append(task_id)
                 if busy:
                     logging.info(
-                        f"{len(busy)} task{'s are' if len(busy) > 1 else ' is'} still busy.")
+                        f"{len(busy)} task"
+                        f"{'s are' if len(busy) > 1 else ' is'} still busy.")
                     continue
                 if critical:
                     critical_tasks = [
@@ -253,14 +290,15 @@ class SlurmEnvironment(Environment):
                 else:
                     logging.info("All tasks are done!")
                     return
-            except subprocess.CalledProcessError as cpe:
-                raise PollingError
+            except subprocess.CalledProcessError:
+                raise PollingError(job_id)
 
     def _build_task_state_dict(self, sacct_output):
         unclean_job_state_list = sacct_output.strip("\n").split("\n")
         stripped_job_state_list = [pair.strip(
             "+ ") for pair in unclean_job_state_list]
-        return {k: v for k, v in (pair.split() for pair in stripped_job_state_list)}
+        return {k: v for k, v in
+                (pair.split() for pair in stripped_job_state_list)}
 
     @staticmethod
     # This function is copied from lab.environment.SlurmEnvironment
@@ -300,5 +338,8 @@ class BaselSlurmEnvironment(SlurmEnvironment):
                 self.MAX_MEM_INFAI_BASEL[self.partition])
             if mem_per_cpu_in_kb > max_mem_per_cpu_in_kb:
                 logging.critical(
-                    f"Memory limit {self.memory_per_cpu} surpassing the maximum amount allowed for partition {self.partition}: {self.MAX_MEM_INFAI_BASEL[self.partition]}.")
+                    f"Memory limit {self.memory_per_cpu} surpassing the "
+                    f"maximum amount allowed for partition {self.partition}: "
+                    f"{self.MAX_MEM_INFAI_BASEL[self.partition]}."
+                )
 

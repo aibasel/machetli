@@ -9,7 +9,6 @@ from minimizer import tools
 from minimizer.planning import auxiliary
 from minimizer.parser import Parser
 from minimizer.evaluator import Evaluator
-from minimizer.search import first_choice_hill_climbing
 from minimizer.planning.generators import RemoveSASVariables, RemoveSASOperators
 from minimizer.planning.sas_reader import write_SAS
 from minimizer.run import RunWithInputFile, run_and_parse_all

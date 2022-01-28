@@ -8,7 +8,6 @@ import subprocess
 from minimizer import tools
 
 TEMPLATE_FILE = "slurm-array-job.template"
-DEFAULT_ARRAY_SIZE = 200
 
 
 def pickle_and_dump_state(state, file_path):
@@ -31,21 +30,6 @@ def parse_result(result_file):
     return result
 
 
-def get_next_batch(successor_generator, batch_size):
-    while True:
-        batch = []
-        for _ in range(batch_size):
-            try:
-                next_state = next(successor_generator)
-                batch.append(next_state)
-            except StopIteration:  # generator exhausted, exit function
-                if batch:
-                    yield batch
-                return
-        else:
-            yield batch
-
-
 def fill_template(**parameters):
     template = tools.get_string(pkgutil.get_data(
         "minimizer", os.path.join("grid", TEMPLATE_FILE)))
@@ -62,10 +46,11 @@ def launch_email_job(environment):
                            input=b"#! /bin/bash\n")
         except:
             logging.warning(
-                "Something went wrong while trying to send the notification email.")
+                "Something went wrong while trying to send the "
+                "notification email.")
     return
 
 
 def check_for_whitespace(path):
-    assert not re.search(
-        r"\s+", path), "The script path must not contain any whitespace characters."
+    assert not re.search(r"\s+", path), \
+        "The script path must not contain any whitespace characters."
