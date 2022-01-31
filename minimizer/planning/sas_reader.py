@@ -113,30 +113,30 @@ def read_axioms(sf, num_axioms):
 
 
 def sas_file_to_SASTask(sas_file) -> SASTask:
-    sf = open(sas_file, 'r')
-    while True:
-        # pos = sf.tell()
-        line = sf.readline().replace("\n", "")
-        if line == "begin_metric":
-            break
-    metric = bool(sf.readline().replace("\n", ""))
-    sf.readline()  # skip end_metric
-    # read variables
-    num_vars = int(sf.readline().replace("\n", ""))
-    variables = read_variables(sf, num_vars)
-    # read mutexes
-    num_mutexes = int(sf.readline().replace("\n", ""))
-    mutexes = read_mutexes(sf, num_mutexes)
-    # read init state
-    init = read_init_state(sf, num_vars)
-    # read goal
-    goal = read_goal(sf)
-    # read operators
-    num_operators = int(sf.readline().replace("\n", ""))
-    operators = read_operators(sf, num_operators)
-    # read axioms
-    num_axioms = int(sf.readline().replace("\n", ""))
-    axioms = read_axioms(sf, num_axioms)
+    with open(sas_file, "r") as sf:
+        while True:
+            # pos = sf.tell()
+            line = sf.readline().replace("\n", "")
+            if line == "begin_metric":
+                break
+        metric = bool(sf.readline().replace("\n", ""))
+        sf.readline()  # skip end_metric
+        # read variables
+        num_vars = int(sf.readline().replace("\n", ""))
+        variables = read_variables(sf, num_vars)
+        # read mutexes
+        num_mutexes = int(sf.readline().replace("\n", ""))
+        mutexes = read_mutexes(sf, num_mutexes)
+        # read init state
+        init = read_init_state(sf, num_vars)
+        # read goal
+        goal = read_goal(sf)
+        # read operators
+        num_operators = int(sf.readline().replace("\n", ""))
+        operators = read_operators(sf, num_operators)
+        # read axioms
+        num_axioms = int(sf.readline().replace("\n", ""))
+        axioms = read_axioms(sf, num_axioms)
 
     sas_task = SASTask(variables, mutexes, init, goal, operators, axioms, metric)
     sas_task.validate()

@@ -61,7 +61,7 @@ def create_initial_state():
 
 if platform.node().endswith((".scicore.unibas.ch", ".cluster.bc2.ch")):
     my_environment = environments.BaselSlurmEnvironment(
-        batch_size=2, enforce_order=False)
+        batch_size=2, allow_nondeterministic_successor_choice=True)
 else:
     my_environment = environments.LocalEnvironment()
 

@@ -41,8 +41,8 @@ class Run:
         self.command = command
         self.time_limit = time_limit
         self.memory_limit = memory_limit
-        self.log_on_fail = True if log_output == "on_fail" else False
-        self.log_always = True if log_output == "always" else False
+        self.log_on_fail = log_output == "on_fail"
+        self.log_always = log_output == "always"
 
     def __repr__(self):
         return f'Run(\"{" ".join([os.path.basename(part) for part in self.command])}\")'
@@ -148,9 +148,8 @@ class RunWithInputFile(Run):
             else:
                 raise
 
-        f = open(self.input_file.format(**state), "r")
-        input_text = f.read()
-        f.close()
+        with open(self.input_file.format(**state), "r") as file:
+            input_text = file.read()
 
         out_str, err_str = process.communicate(input=input_text)
 

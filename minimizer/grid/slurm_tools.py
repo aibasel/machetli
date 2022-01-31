@@ -20,14 +20,10 @@ def read_and_unpickle_state(file_path):
         return pickle.load(dump_file)
 
 
-def parse_result(result_file):
-    rf = open(result_file, "r")
-    match = re.match(
-        r"The evaluation finished with exit code (\d+)", rf.read())
-    rf.close()
-    exitcode = int(match.group(1))
-    result = True if exitcode == 0 else False
-    return result
+def parse_exit_code(result_file):
+    with open(result_file, "r") as rf:
+        exitcode = int(rf.read())
+    return exitcode
 
 
 def fill_template(**parameters):

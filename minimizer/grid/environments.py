@@ -24,10 +24,21 @@ DONE_STATE = {"COMPLETED"}
 BUSY_STATES = {"PENDING", "RUNNING", "REQUEUED", "SUSPENDED"}
 
 
+"""
+When performing the search on a Slurm grid, the possibility of
+failure at some point is increased due to the introduced parallelism
+on multiple nodes and an I/O load over the network filesystem. When
+setting *allow_nondeterministic_successor_choice* to ``False``, the
+:func:`search <minimizer.search.search>` function will enforce that
+the search is aborted if a single task fails and no successor from
+an earlier task is accepted.
+"""
 class Environment:
-    def __init__(self, enforce_order, batch_size=1):
+    def __init__(self, allow_nondeterministic_successor_choice,
+                 batch_size=1):
         self.batch_size = batch_size
-        self.enforce_order = enforce_order
+        self.allow_nondeterministic_successor_choice = \
+            allow_nondeterministic_successor_choice
         self.job = None
 
     @abstractmethod
@@ -45,7 +56,8 @@ class Environment:
 
 class LocalEnvironment(Environment):
     def __init__(self):
-        Environment.__init__(self, enforce_order=False)
+        Environment.__init__(
+            self, allow_nondeterministic_successor_choice=True)
         self.successor = None
 
     def submit(self, batch, batch_id, evaluator):
@@ -135,7 +147,7 @@ class SlurmEnvironment(Environment):
         try:
             self.job = self.submit_array_job(batch, batch_id)
         except SubmissionError as se:
-            if self.enforce_order:
+            if self.allow_nondeterministic_successor_choice:
                 se.warn_abort()
                 raise se
             else:
@@ -147,7 +159,7 @@ class SlurmEnvironment(Environment):
         try:
             self.poll_job()
         except TaskError as te:
-            if self.enforce_order:
+            if self.allow_nondeterministic_successor_choice:
                 te.remove_tasks_after_first_critical(self.job)
                 if not self.job["tasks"]:
                     raise te
@@ -171,15 +183,14 @@ class SlurmEnvironment(Environment):
 
         successor = None
         for task in self.job["tasks"]:
-            result_file = os.path.join(task["dir"], "result")
+            result_file = os.path.join(task["dir"], "exit_code")
             if self.wait_for_filesystem(result_file):
-                result = st.parse_result(result_file)
-                if result:
+                if st.parse_exit_code(result_file) == 0:
                     logging.info("Found successor!")
                     successor = task["state"]
                     break
             else:
-                if self.enforce_order:
+                if self.allow_nondeterministic_successor_choice:
                     logging.warning("Aborting search because evaluation "
                                     f"in {task['dir']} failed.")
                     # TODO: raise an error that can be handled by the caller.

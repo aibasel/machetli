@@ -117,18 +117,17 @@ def write_domain_axioms(task, df):
 
 
 def write_domain_PDDL(task, domain_filename):
-    df = open(domain_filename, "w")
-    df.write("\n(")
-    write_domain_header(task, df)
-    write_domain_requirements(task, df)
-    write_domain_types(task, df)
-    write_domain_objects(task, df)
-    write_domain_predicates(task, df)
-    write_domain_functions(task, df)
-    write_domain_axioms(task, df)
-    write_domain_actions(task, df)
-    df.write(")\n")
-    df.close()
+    with open(domain_filename, "w") as df:
+        df.write("\n(")
+        write_domain_header(task, df)
+        write_domain_requirements(task, df)
+        write_domain_types(task, df)
+        write_domain_objects(task, df)
+        write_domain_predicates(task, df)
+        write_domain_functions(task, df)
+        write_domain_axioms(task, df)
+        write_domain_actions(task, df)
+        df.write(")\n")
 
 
 def write_problem_header(task, pf):
@@ -162,15 +161,14 @@ def write_problem_metric(task, pf):
 
 
 def write_problem_PDDL(task, problem_filename):
-    pf = open(problem_filename, "w")
-    pf.write("\n(")
-    write_problem_header(task, pf)
-    write_problem_domain(task, pf)
-    write_problem_init(task, pf)
-    write_problem_goal(task, pf)
-    write_problem_metric(task, pf)
-    pf.write(")\n")
-    pf.close()
+    with open(problem_filename, "w") as pf:
+        pf.write("\n(")
+        write_problem_header(task, pf)
+        write_problem_domain(task, pf)
+        write_problem_init(task, pf)
+        write_problem_goal(task, pf)
+        write_problem_metric(task, pf)
+        pf.write(")\n")
 
 
 def write_PDDL(task: Task, domain_filename: str, problem_filename: str):
