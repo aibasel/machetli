@@ -24,6 +24,15 @@ DONE_STATE = {"COMPLETED"}
 BUSY_STATES = {"PENDING", "RUNNING", "REQUEUED", "SUSPENDED"}
 
 
+"""
+When performing the search on a Slurm grid, the possibility of
+failure at some point is increased due to the introduced parallelism
+on multiple nodes and an I/O load over the network filesystem. When
+setting *allow_nondeterministic_successor_choice* to ``False``, the
+:func:`search <minimizer.search.search>` function will enforce that
+the search is aborted if a single task fails and no successor from
+an earlier task is accepted.
+"""
 class Environment:
     def __init__(self, allow_nondeterministic_successor_choice,
                  batch_size=1):

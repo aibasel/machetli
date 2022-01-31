@@ -2,15 +2,6 @@ from itertools import islice
 from minimizer.tools import SubmissionError, TaskError, PollingError
 
 
-"""
-When performing the search on a Slurm grid, the possibility of
-failure at some point is increased due to the introduced parallelism
-on multiple nodes and an I/O load over the network filesystem. When
-setting *allow_nondeterministic_successor_choice* to ``False``, the
-:func:`search <minimizer.search.search>` function will enforce that
-the search is aborted if a single task fails and no successor from
-an earlier task is accepted.
-"""
 def search(initial_state, successor_generator, evaluator, environment):
     current_state = initial_state
     batch_size = environment.batch_size
