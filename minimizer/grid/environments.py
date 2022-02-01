@@ -149,10 +149,11 @@ class SlurmEnvironment(Environment):
         except SubmissionError as se:
             if self.allow_nondeterministic_successor_choice:
                 se.warn_abort()
-                raise se
+                # TODO: this means job is undefined, so we should also abort.
             else:
                 se.warn()
-                # TODO: this means job is undefined, so we should also abort.
+                self.job = None
+                raise se
 
     def wait_until_finished(self):
         assert self.job
@@ -160,16 +161,17 @@ class SlurmEnvironment(Environment):
             self.poll_job()
         except TaskError as te:
             if self.allow_nondeterministic_successor_choice:
-                te.remove_tasks_after_first_critical(self.job)
-                if not self.job["tasks"]:
-                    raise te
-            else:
                 te.remove_critical_tasks(self.job)
                 if not self.job["tasks"]:
                     # TODO: this is just a hack to replace the "continue"
                     #  that occurred here in the original grid search.
                     self.critical = True
                     return
+            else:
+                te.remove_tasks_after_first_critical(self.job)
+                if not self.job["tasks"]:
+                    self.job = None
+                    raise te
         except PollingError as pe:
             pe.warn_abort()
             raise pe
@@ -191,15 +193,15 @@ class SlurmEnvironment(Environment):
                     break
             else:
                 if self.allow_nondeterministic_successor_choice:
-                    logging.warning("Aborting search because evaluation "
-                                    f"in {task['dir']} failed.")
-                    # TODO: raise an error that can be handled by the caller.
-                    return None
-                else:
                     logging.warning(
                         f"Result file {result_file} does not exist. "
                         "Continuing with next task.")
                     continue
+                else:
+                    logging.warning("Aborting search because evaluation "
+                                    f"in {task['dir']} failed.")
+                    # TODO: raise an error that can be handled by the caller.
+                    return None
         self.job = None
         return successor
 
