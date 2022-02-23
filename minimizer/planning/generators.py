@@ -1,4 +1,5 @@
 import copy
+import itertools
 import random
 
 from minimizer.planning import pddl_visitors
@@ -151,7 +152,7 @@ class RemoveSASVariables(SuccessorGenerator):
                 child_task = self.transform(pre_child_task, var)
             child_state["sas_task"] = child_task
             yield child_state
-    
+
     def transform(self, task, var):
         # remove var attributes from variables object
         new_variables = task.variables
@@ -239,4 +240,96 @@ class RemoveSASVariables(SuccessorGenerator):
             new_axioms.append(SASAxiom(new_condition, ax.effect))
 
         return SASTask(new_variables, new_mutexes, new_init, new_goal, new_operators, new_axioms, task.metric)
-        
+
+
+class RemoveSASEffect(SuccessorGenerator):
+    def get_successors(self, state):
+        task = state["sas_task"]
+        num_ops = len(task.operators)
+        for op in random.sample(range(num_ops), num_ops):
+            num_eff = len(task.operators[op].pre_post)
+            for effect in random.sample(range(num_eff), num_eff):
+                child_state = copy.deepcopy(state)
+                with timers.timing("Obtaining successor"):
+                    del child_state["sas_task"].operators[op].pre_post[effect]
+                    yield child_state
+
+
+class SetUnspecifiedSASPrevailCondition(SuccessorGenerator):
+    def get_successors(self, state):
+        task = state["sas_task"]
+        num_ops = len(task.operators)
+        for op in random.sample(range(num_ops), num_ops):
+            num_eff = len(task.operators[op].pre_post)
+            for effect in random.sample(range(num_eff), num_eff):
+                var, pre, post, cond = task.operators[op].pre_post[effect]
+                if pre == -1:
+                    num_val = task.variables.ranges[var]
+                    for val in random.sample(range(num_val), num_val):
+                        child_state = copy.deepcopy(state)
+                        with timers.timing("Obtaining successor"):
+                            child_state["sas_task"].operators[op].pre_post[
+                                effect] = (var, val, post, cond)
+                            yield child_state
+
+
+class MergeSASOperators(SuccessorGenerator):
+    def get_successors(self, state):
+        task = state["sas_task"]
+        for op1, op2 in itertools.permutations(task.operators, 2):
+            child_state = copy.deepcopy(state)
+            with timers.timing("Obtaining successor"):
+                child_task = self.transform(child_state["sas_task"], op1, op2)
+            if child_task:
+                child_state["sas_task"] = child_task
+                yield child_state
+
+    def transform(self, task, op1, op2):
+        def combined_pre_post(op):
+            combined_pre, combined_post = {}, {}
+            for var, value in op.prevail:
+                combined_pre[var] = value
+                combined_post[var] = value
+            for var, pre, post, cond in op.pre_post:
+                if cond:
+                    raise NotImplementedError("Conditional effects not yet supported.")
+                if pre != -1:
+                    combined_pre[var] = pre
+                combined_post[var] = post
+            return combined_pre, combined_post
+
+        pre1, post1 = combined_pre_post(op1)
+        pre2, post2 = combined_pre_post(op2)
+
+        # Check that op2 is applicable and update preconditions
+        merged_pre = pre1
+        for var, pre in pre2.items():
+            if var not in post1:
+                merged_pre[var] = pre
+            elif post1[var] != pre:
+                # Operators not compatible
+                return None
+
+        # update effects
+        merged_post = post1
+        merged_post.update(post2)
+
+        merged_prevail = []
+        merged_pre_post = []
+        for var, post in merged_post.items():
+            pre = merged_pre.get(var, -1)
+            if pre == post:
+                merged_prevail.append((var, pre))
+            else:
+                merged_pre_post.append((var, pre, post, []))
+
+        merged_name = op1.name + " and then " + op2.name
+        merged_cost = op1.cost + op2.cost
+        merged_op = SASOperator(merged_name, merged_prevail, merged_pre_post, merged_cost)
+
+        new_operators = [op for op in task.operators if op.name not in [op1.name, op2.name]] + [merged_op]
+
+        return SASTask(task.variables, task.mutexes, task.init, task.goal, new_operators,
+                       task.axioms, task.metric)
+
+

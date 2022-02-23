@@ -3,7 +3,7 @@ from contextlib import redirect_stdout
 
 from minimizer.planning.downward_lib.pddl import Task, TypedObject, Predicate, Action, Axiom, Function, Truth, Conjunction, \
     Disjunction, Falsity, \
-    UniversalCondition, ExistentialCondition, Atom, NegatedAtom, Effect
+    UniversalCondition, ExistentialCondition, Atom, NegatedAtom, Effect, Assign
 from minimizer.planning.downward_lib.pddl.conditions import ConstantCondition
 
 
@@ -95,8 +95,8 @@ class TaskElementErasePredicateVisitor(TaskElementVisitor):
         new_predicates = [
             predicate for predicate in task.predicates if predicate.name != self.predicate_name]
 
-        new_init = [atom for atom in task.init if atom.predicate !=
-                    self.predicate_name]
+        new_init = [atom for atom in task.init if isinstance(atom, Assign)
+                    or atom.predicate != self.predicate_name]
 
         new_goal = task.goal.accept(self)
 
