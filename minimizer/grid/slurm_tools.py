@@ -29,7 +29,7 @@ def parse_exit_code(result_file):
 def fill_template(**parameters):
     template = tools.get_string(pkgutil.get_data(
         "minimizer", os.path.join("grid", TEMPLATE_FILE)))
-    return template % parameters
+    return template.format(**parameters)
 
 
 def launch_email_job(environment):

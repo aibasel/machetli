@@ -7,6 +7,7 @@ import time
 
 from abc import abstractmethod
 from minimizer import tools
+from minimizer.evaluator import run_evaluator
 from minimizer.grid import slurm_tools as st
 from minimizer.tools import SubmissionError, TaskError, PollingError
 
@@ -42,7 +43,7 @@ class Environment:
         self.job = None
 
     @abstractmethod
-    def submit(self, batch, batch_id, evaluator):
+    def submit(self, batch, batch_id, evaluator_path):
         pass
 
     @abstractmethod
@@ -60,12 +61,12 @@ class LocalEnvironment(Environment):
             self, allow_nondeterministic_successor_choice=True)
         self.successor = None
 
-    def submit(self, batch, batch_id, evaluator):
+    def submit(self, batch, batch_id, evaluator_path):
         assert len(batch) == 1
         assert not self.job
         self.successor = None
         self.job = batch_id
-        if evaluator().evaluate(batch[0]):
+        if run_evaluator(evaluator_path, batch[0]):
             self.successor = batch[0]
 
     def wait_until_finished(self):
@@ -142,10 +143,10 @@ class SlurmEnvironment(Environment):
         job_params["script_path"] = self.script_path
         return job_params
 
-    def submit(self, batch, batch_id, evaluator):
+    def submit(self, batch, batch_id, evaluator_path):
         assert not self.job
         try:
-            self.job = self.submit_array_job(batch, batch_id)
+            self.job = self.submit_array_job(batch, batch_id, evaluator_path)
         except SubmissionError as se:
             if self.allow_nondeterministic_successor_choice:
                 se.warn_abort()
@@ -243,7 +244,7 @@ class SlurmEnvironment(Environment):
             f.write(filled_text)
         # TODO: Implement check whether file was updated
 
-    def submit_array_job(self, batch, batch_num):
+    def submit_array_job(self, batch, batch_num, evaluator_path):
         """
         Writes pickled version of each state in *batch* to its own file.
         Then, submits a slurm array job which will evaluate each state
@@ -252,7 +253,7 @@ class SlurmEnvironment(Environment):
         run_dirs = self.build_batch_directories(batch, batch_num)
         batch_name = f"batch_{batch_num:03}"
         self.write_sbatch_file(run_dirs=" ".join(run_dirs), name=batch_name,
-                               num_tasks=len(batch)-1)
+                               num_tasks=len(batch)-1, evaluator_path=evaluator_path)
         submission_command = ["sbatch", "--export",
                               ",".join(self.export), self.sbatch_file]
         try:

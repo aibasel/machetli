@@ -1,37 +1,37 @@
 #! /bin/bash
 ### Set name.
-#SBATCH --job-name=%(name)s
+#SBATCH --job-name={name}
 ### Redirect stdout and stderr.
-#SBATCH --output=%(logfile)s
-#SBATCH --error=%(errfile)s
+#SBATCH --output={logfile}
+#SBATCH --error={errfile}
 ### Let later steps append their logs to the output and error files.
 #SBATCH --open-mode=append
 ### Set partition.
-#SBATCH --partition=%(partition)s
+#SBATCH --partition={partition}
 ### Set quality-of-service group.
-#SBATCH --qos=%(qos)s
+#SBATCH --qos={qos}
 ### Set memory limit.
-#SBATCH --mem-per-cpu=%(memory_per_cpu)s
+#SBATCH --mem-per-cpu={memory_per_cpu}
 ### Number of tasks.
-#SBATCH --array=0-%(num_tasks)d
+#SBATCH --array=0-{num_tasks}
 ### Adjustment to priority ([-2147483645, 2147483645]).
-#SBATCH --nice=%(nice)s
+#SBATCH --nice={nice}
 ### Send mail? Mail type can be e.g. NONE, END, FAIL, ARRAY_TASKS.
-#SBATCH --mail-type=%(mailtype)s
-#SBATCH --mail-user=%(mailuser)s
+#SBATCH --mail-type={mailtype}
+#SBATCH --mail-user={mailuser}
 ### Extra options
-%(extra_options)s
+{extra_options}
 
-%(environment_setup)s
+{environment_setup}
 
-ulimit -Sv %(soft_memory_limit)d
+ulimit -Sv {soft_memory_limit}
 
-declare -a RUN_DIRS=( %(run_dirs)s )
+declare -a RUN_DIRS=( {run_dirs} )
 
-RUN_DIR=${RUN_DIRS[$SLURM_ARRAY_TASK_ID]}
+RUN_DIR=${{RUN_DIRS[$SLURM_ARRAY_TASK_ID]}}
 
 (
-%(python)s %(script_path)s --evaluate "$RUN_DIR/dump"
+{python} -m minimizer.evaluator {evaluator_path} "$RUN_DIR/dump"
 RETCODE=$?
 
 echo "$RETCODE" > $RUN_DIR/exit_code

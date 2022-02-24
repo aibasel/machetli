@@ -2,7 +2,7 @@ from itertools import islice
 from minimizer.tools import SubmissionError, TaskError, PollingError
 
 
-def search(initial_state, successor_generator, evaluator, environment):
+def search(initial_state, successor_generator, evaluator_path, environment):
     current_state = initial_state
     batch_size = environment.batch_size
     batch_num = 0
@@ -11,7 +11,7 @@ def search(initial_state, successor_generator, evaluator, environment):
     batch = list(islice(successors, batch_size))
     while batch:
         try:
-            environment.submit(batch, batch_num, evaluator)
+            environment.submit(batch, batch_num, evaluator_path)
             environment.wait_until_finished()
             best_successor = environment.get_improving_successor()
         except (SubmissionError, TaskError, PollingError):
