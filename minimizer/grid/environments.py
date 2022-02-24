@@ -36,8 +36,9 @@ an earlier task is accepted.
 """
 class Environment:
     def __init__(self, allow_nondeterministic_successor_choice,
-                 batch_size=1):
+                 batch_size=1, loglevel=logging.INFO):
         self.batch_size = batch_size
+        self.loglevel = loglevel
         self.allow_nondeterministic_successor_choice = \
             allow_nondeterministic_successor_choice
         self.job = None
@@ -56,9 +57,9 @@ class Environment:
 
 
 class LocalEnvironment(Environment):
-    def __init__(self):
+    def __init__(self, loglevel=logging.INFO):
         Environment.__init__(
-            self, allow_nondeterministic_successor_choice=True)
+            self, allow_nondeterministic_successor_choice=True, loglevel=loglevel)
         self.successor = None
 
     def submit(self, batch, batch_id, evaluator_path):
@@ -302,7 +303,7 @@ class SlurmEnvironment(Environment):
                         task for task in task_states if task in critical]
                     raise TaskError(critical_tasks)
                 else:
-                    logging.info("All tasks are done!")
+                    logging.info("Batch completed.")
                     return
             except subprocess.CalledProcessError:
                 raise PollingError(job_id)

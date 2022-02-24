@@ -1,6 +1,8 @@
 import importlib
 import logging
+import random
 import sys
+import time
 
 from minimizer.grid import slurm_tools as st
 
@@ -17,12 +19,23 @@ def run_evaluator(evaluator_path, state):
     return module.evaluate(state)
 
 
+def wait_for_file(filename, wait_time=5, repetitions=10):
+        for _ in range(repetitions):
+            time.sleep(wait_time * random.random())
+            if os.path.exists(filename):
+                break
+        else:
+            logging.critical(f"Could not find file '{filename}' after {repetitions} attempts.")
+
+
 if __name__ == "__main__":
     if len(sys.argv) != 3:
         logging.critical(f"Expected two arguments to minimizer.evaluator but got {len(sys.argv)}.")
     evaluator_path = sys.argv[1]
     state_filename = sys.argv[2]
+    wait_for_file(state_filename)
     state = st.read_and_unpickle_state(state_filename)
+    logging.info(f"Node: {platform.node()}")
     if run_evaluator(evaluator_path, state):
         sys.exit(0)
     else:
