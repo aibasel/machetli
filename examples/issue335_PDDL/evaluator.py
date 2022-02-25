@@ -47,6 +47,3 @@ def evaluate(state):
 
         ## TODO: add parsing methods?
         return "AssertionError: Negated axiom impossible" in stderr
-
-
-
