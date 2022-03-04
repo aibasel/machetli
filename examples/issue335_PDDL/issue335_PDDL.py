@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 import os
+import platform
 import pprint
 
 from minimizer import tools
@@ -9,6 +10,7 @@ from minimizer.planning import auxiliary
 from minimizer.planning.generators import RemoveObjects, ReplaceLiteralsWithTruth
 from minimizer.planning.pddl_writer import write_PDDL
 from minimizer.search import search
+from minimizer.tools import get_script_path
 
 script_path = tools.get_script_path()
 script_dir = os.path.dirname(script_path)

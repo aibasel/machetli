@@ -8,11 +8,13 @@
 import copy
 import logging
 import os
+import platform
 import pprint
 
 from minimizer.grid import environments
 from minimizer.planning.generators import SuccessorGenerator
 from minimizer.search import search
+from minimizer.tools import get_script_path
 
 class MyGenerator(SuccessorGenerator):
     def get_successors(self, state):
@@ -23,8 +25,11 @@ class MyGenerator(SuccessorGenerator):
             succ["id"] = i
             yield succ
 
-environment = environments.BaselSlurmEnvironment(
-    extra_options="#SBATCH --cpus-per-task=2",)
+environment = environments.LocalEnvironment()
+if platform.node().endswith((".scicore.unibas.ch", ".cluster.bc2.ch")):
+    environment = environments.BaselSlurmEnvironment(
+        extra_options="#SBATCH --cpus-per-task=2",
+        allow_nondeterministic_successor_choice=False)
 
 evaluator_filename = os.path.join(os.path.dirname(get_script_path()), "evaluator.py")
 
@@ -32,7 +37,6 @@ search_result = search(
     {"level": 1, "id": 1},
     MyGenerator(),
     evaluator_filename,
-    environment,
-    allow_nondeterministic_successor_choice=False)
+    environment)
 
 print(f"Search result:\n{pprint.pformat(search_result)}")

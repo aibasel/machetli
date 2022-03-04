@@ -1,6 +1,7 @@
 import logging
 import os
 import pkgutil
+import re
 import subprocess
 
 from minimizer import tools
