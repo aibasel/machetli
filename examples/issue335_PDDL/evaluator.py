@@ -4,29 +4,13 @@ import sys
 from minimizer.planning import auxiliary
 from minimizer.run import Run
 
-
-# The Fast Downward issue we use for this example is from 2014. The code of the
-# planner from that time is only compatible with Python versions < 3.8.
-try:
-    PYTHON37 = os.environ["PYTHON_3_7"]
-    PLANNER_REPO = os.environ["DOWNWARD_REPO"]
-except KeyError:
-    msg = """
-Make sure to set the environment variables PYTHON_3_7 and DOWNWARD_REPO.
-PYTHON_3_7:     Path to Python 3.7 executable (due to older Fast Downward version).
-DOWNWARD_REPO:  Path to Fast Downward repository (https://github.com/aibasel/downward)
-                at commit 09ccef5fd.
-    """
-    sys.exit(msg)
-
-# The bug we want to isolate occurs in the translate module, so we define
-# a shortcut to it.
+PYTHON37 = os.environ["PYTHON_3_7"]
+PLANNER_REPO = os.environ["DOWNWARD_REPO"]
 TRANSLATOR = os.path.join(PLANNER_REPO, "src/translate/translate.py")
 
-
-# The evaluation function we are defining here will later be used
-# in the search function. It will be executed during the search to
-# check if generated states still produce the behaviour we are searching for.
+# The evaluation function we are defining here is used in the search function.
+# It is executed during the search to check if generated states still produce
+# the behaviour we are searching for.
 def evaluate(state):
     # The following context manager generates temporary PDDL files for
     # the pddl task stored in *state* so they can be used in the execution
