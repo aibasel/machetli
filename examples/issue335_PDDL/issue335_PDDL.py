@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 
 import os
-import sys
 import pprint
 
 from minimizer import tools
@@ -16,7 +15,6 @@ script_dir = os.path.dirname(script_path)
 
 domain_filename = os.path.join(script_dir, "cntr-domain.pddl")
 problem_filename = os.path.join(script_dir, "cntr-problem.pddl")
-evaluator_filename = os.path.join(script_dir, "evaluator.py")
 
 # Here, we define the initial state the search should be started from. Generally, you can
 # store anything in this dictionary that could be useful for the minimization task.
@@ -26,21 +24,22 @@ initial_state = {
     # the PDDL task to be stored behind that keyword.
     "pddl_task": auxiliary.parse_pddl_task(domain_filename, problem_filename),
 }
+successor_generators = [RemoveObjects(), ReplaceLiteralsWithTruth()]
+evaluator_filename = os.path.join(script_dir, "evaluator.py")
 
 # The defined environment depends on where you want to execute the search:
 #   - on you local machine
 #   - on a Slurm computing grid
-my_environment = environments.BaselSlurmEnvironment(
-    export=["PATH", "PYTHON_3_7", "DOWNWARD_REPO"])
+environment = environments.LocalEnvironment()
+if platform.node().endswith((".scicore.unibas.ch", ".cluster.bc2.ch")):
+    environment = environments.BaselSlurmEnvironment(
+        export=["PATH", "PYTHON_3_7", "DOWNWARD_REPO"])
 
 # To start the search, we need to pass the initial state, the successor
 # generator(s), the evaluator class and the environment to be used to the
 # main function, which will return the resulting state, once the search
 # is finished.
-result = search(initial_state,
-              RemoveObjects(), # TODO: [RemoveObjects, ReplaceLiteralsWithTruth]
-              evaluator_filename,
-              my_environment)
+result = search(initial_state, successor_generators, evaluator_filename, environment)
 
 # If you want the modified PDDL task to be dumped to files (which you
 # probably do!), you need to explicitly do this here. Otherwise, it

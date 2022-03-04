@@ -1,5 +1,10 @@
 #!/usr/bin/env python3
 
+# In this example, we showcase a simple custom successor generator and how to
+# use custom values in the state. Our states here build a tree and each state is
+# identified by its level in the tree and an ID enumerating the siblings. The
+# evaluator in evaluator.py accepts a specific node on each level. It also shows
+# how to run an external process as part of the evaluation.
 
 import copy
 import logging

@@ -1,9 +1,8 @@
 import os
 import sys
 
-from minimizer.parser import Parser
 from minimizer.planning import auxiliary
-from minimizer.run import Run, run_and_parse_all
+from minimizer.run import Run
 
 
 # The Fast Downward issue we use for this example is from 2014. The code of the

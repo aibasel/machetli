@@ -1,4 +1,5 @@
 from itertools import islice
+import logging
 
 from minimizer.grid.environments import LocalEnvironment
 from minimizer.successors import make_single_successor_generator
@@ -60,6 +61,7 @@ TODO: update line numbers and filename
             successor = None
 
         if successor:
+            logging.info("Found successor")
             current_state = successor
             successors = successor_generator.get_successors(current_state)
         batch_num += 1
