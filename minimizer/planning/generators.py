@@ -5,15 +5,7 @@ import random
 from minimizer.planning import pddl_visitors
 from minimizer.planning.downward_lib import timers
 from minimizer.planning.downward_lib.sas_tasks import SASTask, SASMutexGroup, SASInit, SASGoal, SASOperator, SASAxiom
-
-
-class SuccessorGenerator():
-    """Base class for all successor generators.
-    """
-    def get_successors(self, state):
-        """Yield successors of *state*.
-        """
-        pass
+from minimizer.successors import SuccessorGenerator
 
 
 class RemoveActions(SuccessorGenerator):

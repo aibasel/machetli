@@ -4,8 +4,11 @@ Functions and classes that are not needed for this project were removed.
 """
 import logging
 import os
+import pickle
 import pprint
+import random
 import sys
+import time
 
 
 DEFAULT_ENCODING = "utf-8"
@@ -67,7 +70,7 @@ def configure_logging(level=logging.INFO):
     root_logger.addHandler(stderr_handler)
     root_logger.setLevel(level)
 
-
+# TODO: only used by a deprecated parser function. will be removed.
 def make_list(value):
     if value is None:
         return []
@@ -88,6 +91,21 @@ def makedirs(path):
     except OSError:
         # Directory probably already exists.
         pass
+
+
+def write_state(state, file_path):
+    with open(file_path, "wb") as state_file:
+        pickle.dump(state, state_file)
+
+
+def read_state(file_path, wait_time, repetitions):
+    for _ in range(repetitions):
+        time.sleep(wait_time * random.random())
+        if os.path.exists(file_path):
+            with open(file_path, "rb") as state_file:
+                return pickle.load(state_file)
+    else:
+        logging.critical(f"Could not find file '{filename}' after {repetitions} attempts.")
 
 
 class SubmissionError(Exception):

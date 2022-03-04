@@ -1,33 +1,33 @@
-from minimizer.planning.auxiliary import state_with_generated_pddl_files
-from minimizer.run import run_and_parse_all
+import importlib
+import logging
+import platform
+import sys
 
-class Evaluator:
-    """Interface for state evaluators.
-    """
-    parsers = None
+from minimizer.tools import read_state
 
-    def evaluate(self, state):
-        """Return ``True`` if *state* is accepted and ``False`` otherwise.
-        Must be implemented in derived classes.
-        """
-        raise NotImplementedError()
+# https://stackoverflow.com/questions/67631/how-to-import-a-module-given-the-full-path/50395128#50395128
+def _import_evaluator(module_name, evaluator_path):
+    spec = importlib.util.spec_from_file_location(module_name, evaluator_path)
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[spec.name] = module 
+    spec.loader.exec_module(module)
+    return module
 
 
-class ParsingEvaluator(Evaluator):
-    """Abstract :class:`Evaluator<minimizer.evaluator.Evaluator>` implementation
-    for output and returncode parsing."""
+def is_evaluator_successful(evaluator_path, state):
+    module = _import_evaluator("custom_evaluator", evaluator_path)
+    return module.evaluate(state)
 
-    def evaluate(self, state):
-        """Call :func:`run_and_parse_all(state, parsers)<minimizer.run.run_and_parse_all>`
-        and return
-        :meth:`self.interpret_results(results)<minimizer.evaluator.ParsingEvaluator.interpret_results>`."""
-        with state_with_generated_pddl_files(state) as local_state:
-            results = run_and_parse_all(local_state, self.parsers)
-        return self.interpret_results(results)
 
-    def interpret_results(self, results):
-        """Return ``True`` or ``False``, depending on the content of
-        the *results* dictionary.
-        Must be implemented in derived classes.
-        """
-        raise NotImplementedError()
+if __name__ == "__main__":
+    if len(sys.argv) != 3:
+        logging.critical(f"Expected two arguments to minimizer.evaluator but got {len(sys.argv)}.")
+    evaluator_path = sys.argv[1]
+    state_filename = sys.argv[2]
+    logging.info(f"Running evaluator '{evaluator_path}' for state '{state_filename}' on node: {platform.node()}.")
+
+    state = read_state(state_filename, 5, 2)
+    if is_evaluator_successful(evaluator_path, state):
+        sys.exit(0)
+    else:
+        sys.exit(1)
