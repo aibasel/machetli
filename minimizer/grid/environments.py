@@ -5,15 +5,14 @@ import re
 import subprocess
 import time
 
-from abc import abstractmethod
 from minimizer import tools
-from minimizer.evaluator import run_evaluator
+from minimizer.evaluator import is_evaluator_successful
 from minimizer.grid import slurm_tools as st
-from minimizer.tools import SubmissionError, TaskError, PollingError
+from minimizer.tools import SubmissionError, TaskError, PollingError, write_state
 
 
 EVAL_DIR = "eval_dir"
-DUMP_FILENAME = "dump"
+STATE_FILENAME = "state.pickle"
 SBATCH_FILE = "slurm-array-job.sbatch"
 FILESYSTEM_TIME_INTERVAL = 3
 FILESYSTEM_TIME_LIMIT = 60
@@ -35,47 +34,43 @@ the search is aborted if a single task fails and no successor from
 an earlier task is accepted.
 """
 class Environment:
-    def __init__(self, allow_nondeterministic_successor_choice,
+    def __init__(self, allow_nondeterministic_successor_choice=True,
                  batch_size=1, loglevel=logging.INFO):
         self.batch_size = batch_size
         self.loglevel = loglevel
         self.allow_nondeterministic_successor_choice = \
             allow_nondeterministic_successor_choice
-        self.job = None
 
-    @abstractmethod
     def submit(self, batch, batch_id, evaluator_path):
-        pass
+        raise NotImplementedError
 
-    @abstractmethod
     def wait_until_finished(self):
-        pass
+        raise NotImplementedError
 
-    @abstractmethod
     def get_improving_successor(self):
-        pass
+        raise NotImplementedError
 
 
 class LocalEnvironment(Environment):
-    def __init__(self, loglevel=logging.INFO):
-        Environment.__init__(
-            self, allow_nondeterministic_successor_choice=True, loglevel=loglevel)
+    def __init__(self, **kwargs):
+        Environment.__init__(self, **kwargs)
         self.successor = None
 
     def submit(self, batch, batch_id, evaluator_path):
-        assert len(batch) == 1
-        assert not self.job
-        self.successor = None
-        self.job = batch_id
-        if run_evaluator(evaluator_path, batch[0]):
-            self.successor = batch[0]
+        assert self.successor is None
+
+        for state in batch:
+            if is_evaluator_successful(evaluator_path, state):
+                self.successor = state
+            break
 
     def wait_until_finished(self):
-        assert self.job is not None
+        pass
 
     def get_improving_successor(self):
-        self.job = None
-        return self.successor
+        result = self.successor
+        self.successor = None
+        return result
 
 
 class SlurmEnvironment(Environment):
@@ -116,6 +111,7 @@ class SlurmEnvironment(Environment):
         self.export = export or self.DEFAULT_EXPORT
         self.setup = setup or self.DEFAULT_SETUP
         self.script_path = tools.get_script_path()
+        self.job = None
 
         script_dir = os.path.dirname(self.script_path)
         self.eval_dir = os.path.join(script_dir, EVAL_DIR)
@@ -224,8 +220,8 @@ class SlurmEnvironment(Environment):
             run_dir_name = f"{rank:03}"
             run_dir_path = os.path.join(batch_dir_path, run_dir_name)
             tools.makedirs(run_dir_path)
-            dump_file_path = os.path.join(run_dir_path, DUMP_FILENAME)
-            st.pickle_and_dump_state(state, dump_file_path)
+            state_file_path = os.path.join(run_dir_path, STATE_FILENAME)
+            write_state(state, state_file_path)
             run_dirs.append(run_dir_path)
         # Give the NFS time to write the paths
         if not self.wait_for_filesystem(*run_dirs):

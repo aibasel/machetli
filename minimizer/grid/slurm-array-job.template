@@ -29,19 +29,19 @@ ulimit -Sv {soft_memory_limit}
 declare -a RUN_DIRS=( {run_dirs} )
 
 RUN_DIR=${{RUN_DIRS[$SLURM_ARRAY_TASK_ID]}}
+cd $RUN_DIR
 
 (
-{python} -m minimizer.evaluator {evaluator_path} "$RUN_DIR/dump"
+{python} -m minimizer.evaluator "{evaluator_path}" "state.pickle"
 RETCODE=$?
 
-echo "$RETCODE" > $RUN_DIR/exit_code
-# redirect output of grid_test to dump directory
-) > "$RUN_DIR/driver.log" 2> "$RUN_DIR/driver.err"
+echo "$RETCODE" > exit_code
+) > driver.log 2> driver.err
 
 # Delete empty driver files.
-if [[ ! -s "$RUN_DIR/driver.log" ]]; then
-    rm "$RUN_DIR/driver.log"
+if [[ ! -s driver.log ]]; then
+    rm driver.log
 fi
-if [[ ! -s "$RUN_DIR/driver.err" ]]; then
-    rm "$RUN_DIR/driver.err"
+if [[ ! -s driver.err ]]; then
+    rm driver.err
 fi

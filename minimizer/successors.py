@@ -4,7 +4,7 @@ class SuccessorGenerator():
     def get_successors(self, state):
         """Yield successors of *state*.
         """
-        pass
+        raise NotImplementedError
 
 class ChainingSuccessorGenerator(SuccessorGenerator):
     def __init__(self, nested_generators):

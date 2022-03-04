@@ -1,23 +1,11 @@
 import logging
 import os
-import pickle
 import pkgutil
-import re
 import subprocess
 
 from minimizer import tools
 
 TEMPLATE_FILE = "slurm-array-job.template"
-
-
-def pickle_and_dump_state(state, file_path):
-    with open(file_path, "wb") as dump_file:
-        pickle.dump(state, dump_file)
-
-
-def read_and_unpickle_state(file_path):
-    with open(file_path, "rb") as dump_file:
-        return pickle.load(dump_file)
 
 
 def parse_exit_code(result_file):
