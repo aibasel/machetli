@@ -1,5 +1,6 @@
 import importlib
 import logging
+import platform
 import sys
 
 from minimizer.tools import read_state
