@@ -1,5 +1,4 @@
 import os
-import sys
 
 from minimizer.planning import auxiliary
 from minimizer.run import Run

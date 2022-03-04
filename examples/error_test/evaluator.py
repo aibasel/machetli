@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 
 import os
-import sys
 
 from minimizer import tools
 from minimizer.run import Run

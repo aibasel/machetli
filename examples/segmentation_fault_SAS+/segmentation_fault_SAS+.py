@@ -2,6 +2,7 @@
 import os
 import platform
 import pprint
+import sys
 
 from minimizer.grid import environments
 from minimizer.tools import get_script_path

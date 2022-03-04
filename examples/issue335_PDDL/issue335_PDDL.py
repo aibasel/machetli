@@ -2,6 +2,7 @@
 
 import os
 import platform
+import sys
 
 from minimizer import tools
 from minimizer.grid import environments

@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
 import os
-import sys
 
 from minimizer.planning import auxiliary
 from minimizer.run import RunWithInputFile
