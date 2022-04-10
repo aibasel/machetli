@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-# In this example, we test how the minimizer deals with calls running out of
+# In this example, we test how Machetli deals with calls running out of
 # time or memory during the evaluation of a state. This is particularly
 # interesting when running on the grid where tasks are not necessarily executed
 # in order.
@@ -12,10 +12,10 @@ import platform
 import pprint
 import sys
 
-from minimizer.grid import environments
-from minimizer.planning.generators import SuccessorGenerator
-from minimizer.search import search
-from minimizer.tools import get_script_path
+from machetli.grid import environments
+from machetli.planning.generators import SuccessorGenerator
+from machetli.search import search
+from machetli.tools import get_script_path
 
 if "DOWNWARD_REPO" not in os.environ:
     msg = """

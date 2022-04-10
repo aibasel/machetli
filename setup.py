@@ -11,7 +11,7 @@ setup(
     long_description_content_type="text/x-rst",
     author="Lucas Galery Käser",
     author_email="lucas.galerykaeser@gmail.com",
-    url="https://github.com/aibasel/minimizer",
+    url="https://github.com/aibasel/machetli",
     license="GPL3+",
     project_urls={
         "Documentation": "https://minimizer.readthedocs.io/",
@@ -29,6 +29,6 @@ setup(
     python_requires=">=3.7",
     include_package_data=True,
     package_data={
-        "minimizer": ["grid/slurm-array-job.template"],
+        "machetli": ["grid/slurm-array-job.template"],
     },
 )

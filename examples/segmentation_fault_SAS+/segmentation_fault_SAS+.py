@@ -4,12 +4,12 @@ import platform
 import pprint
 import sys
 
-from minimizer.grid import environments
-from minimizer.tools import get_script_path
-from minimizer.planning import auxiliary
-from minimizer.planning.generators import RemoveSASVariables, RemoveSASOperators
-from minimizer.planning.sas_reader import write_SAS
-from minimizer.search import search
+from machetli.grid import environments
+from machetli.tools import get_script_path
+from machetli.planning import auxiliary
+from machetli.planning.generators import RemoveSASVariables, RemoveSASOperators
+from machetli.planning.sas_reader import write_SAS
+from machetli.search import search
 
 if "DOWNWARD_REPO" not in os.environ:
     msg = """

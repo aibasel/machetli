@@ -12,10 +12,10 @@ import os.path
 import platform
 import pprint
 
-from minimizer.grid import environments
-from minimizer.search import search
-from minimizer.tools import get_script_path
-from minimizer.planning.generators import SuccessorGenerator
+from machetli.grid import environments
+from machetli.search import search
+from machetli.tools import get_script_path
+from machetli.planning.generators import SuccessorGenerator
 
 class MyGenerator(SuccessorGenerator):
     def get_successors(self, state):

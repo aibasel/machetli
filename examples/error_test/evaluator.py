@@ -2,8 +2,8 @@
 
 import os
 
-from minimizer import tools
-from minimizer.run import Run
+from machetli import tools
+from machetli.run import Run
 
 DOWNWARD_REPO = os.environ["DOWNWARD_REPO"]
 DOWNWARD_BENCHMARKS = os.environ["DOWNWARD_BENCHMARKS"]

@@ -4,13 +4,13 @@ import os
 import platform
 import sys
 
-from minimizer import tools
-from minimizer.grid import environments
-from minimizer.planning import auxiliary
-from minimizer.planning.generators import RemoveObjects, ReplaceLiteralsWithTruth
-from minimizer.planning.pddl_writer import write_PDDL
-from minimizer.search import search
-from minimizer.tools import get_script_path
+from machetli import tools
+from machetli.grid import environments
+from machetli.planning import auxiliary
+from machetli.planning.generators import RemoveObjects, ReplaceLiteralsWithTruth
+from machetli.planning.pddl_writer import write_PDDL
+from machetli.search import search
+from machetli.tools import get_script_path
 
 # The Fast Downward issue we use for this example is from 2014. The code of the
 # planner from that time is only compatible with Python versions < 3.8.
@@ -36,9 +36,8 @@ problem_filename = os.path.join(script_dir, "cntr-problem.pddl")
 # Here, we define the initial state the search should be started from. Generally, you can
 # store anything in this dictionary that could be useful for the minimization task.
 initial_state = {
-    # We are  creating the entry "pddl_task" because further down we are using the
-    # state_with_generated_pddl_files function from the auxiliary module and it expects
-    # the PDDL task to be stored behind that keyword.
+    # We are  creating the entry "pddl_task" because our successor generators
+    # and our evaluator expect this key.
     "pddl_task": auxiliary.parse_pddl_task(domain_filename, problem_filename),
 }
 successor_generators = [RemoveObjects(), ReplaceLiteralsWithTruth()]
