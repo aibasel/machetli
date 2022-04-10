@@ -36,9 +36,8 @@ problem_filename = os.path.join(script_dir, "cntr-problem.pddl")
 # Here, we define the initial state the search should be started from. Generally, you can
 # store anything in this dictionary that could be useful for the minimization task.
 initial_state = {
-    # We are  creating the entry "pddl_task" because further down we are using the
-    # state_with_generated_pddl_files function from the auxiliary module and it expects
-    # the PDDL task to be stored behind that keyword.
+    # We are  creating the entry "pddl_task" because our successor generators
+    # and our evaluator expect this key.
     "pddl_task": auxiliary.parse_pddl_task(domain_filename, problem_filename),
 }
 successor_generators = [RemoveObjects(), ReplaceLiteralsWithTruth()]
