@@ -1,7 +1,7 @@
 import os
 
-from minimizer.planning import auxiliary
-from minimizer.run import Run
+from machetli.planning import auxiliary
+from machetli.run import Run
 
 PYTHON37 = os.environ["PYTHON_3_7"]
 PLANNER_REPO = os.environ["DOWNWARD_REPO"]

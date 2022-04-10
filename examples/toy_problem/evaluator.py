@@ -1,5 +1,5 @@
 import logging
-from minimizer.run import Run
+from machetli.run import Run
 
 def evaluate(state):
     """

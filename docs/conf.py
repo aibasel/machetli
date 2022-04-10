@@ -19,7 +19,7 @@ import sphinx_rtd_theme
 
 # -- Project information -----------------------------------------------------
 
-project = 'Minimizer'
+project = 'Machetli'
 copyright = '2021, Lucas Galery Käser et al.'
 author = 'Lucas Galery Käser'
 

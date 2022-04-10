@@ -4,13 +4,13 @@ import os
 import platform
 import sys
 
-from minimizer import tools
-from minimizer.grid import environments
-from minimizer.planning import auxiliary
-from minimizer.planning.generators import RemoveObjects, ReplaceLiteralsWithTruth
-from minimizer.planning.pddl_writer import write_PDDL
-from minimizer.search import search
-from minimizer.tools import get_script_path
+from machetli import tools
+from machetli.grid import environments
+from machetli.planning import auxiliary
+from machetli.planning.generators import RemoveObjects, ReplaceLiteralsWithTruth
+from machetli.planning.pddl_writer import write_PDDL
+from machetli.search import search
+from machetli.tools import get_script_path
 
 # The Fast Downward issue we use for this example is from 2014. The code of the
 # planner from that time is only compatible with Python versions < 3.8.

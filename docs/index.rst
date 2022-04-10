@@ -12,13 +12,13 @@
 .. toctree::
    :caption: API
 
-   minimizer.evaluate
-   minimizer.main
-   minimizer.parser
-   minimizer.run
-   minimizer.search
-   minimizer.planning.auxiliary
-   minimizer.planning.generators
+   machetli.evaluate
+   machetli.main
+   machetli.parser
+   machetli.run
+   machetli.search
+   machetli.planning.auxiliary
+   machetli.planning.generators
 
 .. toctree::
    :caption: General

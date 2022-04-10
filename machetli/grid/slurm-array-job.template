@@ -1,0 +1,47 @@
+#! /bin/bash
+### Set name.
+#SBATCH --job-name={name}
+### Redirect stdout and stderr.
+#SBATCH --output={logfile}
+#SBATCH --error={errfile}
+### Let later steps append their logs to the output and error files.
+#SBATCH --open-mode=append
+### Set partition.
+#SBATCH --partition={partition}
+### Set quality-of-service group.
+#SBATCH --qos={qos}
+### Set memory limit.
+#SBATCH --mem-per-cpu={memory_per_cpu}
+### Number of tasks.
+#SBATCH --array=0-{num_tasks}
+### Adjustment to priority ([-2147483645, 2147483645]).
+#SBATCH --nice={nice}
+### Send mail? Mail type can be e.g. NONE, END, FAIL, ARRAY_TASKS.
+#SBATCH --mail-type={mailtype}
+#SBATCH --mail-user={mailuser}
+### Extra options
+{extra_options}
+
+{environment_setup}
+
+ulimit -Sv {soft_memory_limit}
+
+declare -a RUN_DIRS=( {run_dirs} )
+
+RUN_DIR=${{RUN_DIRS[$SLURM_ARRAY_TASK_ID]}}
+cd $RUN_DIR
+
+(
+{python} -m machetli.evaluator "{evaluator_path}" "state.pickle"
+RETCODE=$?
+
+echo "$RETCODE" > exit_code
+) > driver.log 2> driver.err
+
+# Delete empty driver files.
+if [[ ! -s driver.log ]]; then
+    rm driver.log
+fi
+if [[ ! -s driver.err ]]; then
+    rm driver.err
+fi

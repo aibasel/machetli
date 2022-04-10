@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 import os
 
-from minimizer.planning import auxiliary
-from minimizer.run import RunWithInputFile
+from machetli.planning import auxiliary
+from machetli.run import RunWithInputFile
 
 REPO = os.environ["DOWNWARD_REPO"]
 PLANNER =  os.path.join(REPO, "builds/release/bin/downward")
