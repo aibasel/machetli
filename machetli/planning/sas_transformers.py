@@ -2,7 +2,6 @@ from collections import Generator
 import copy
 import random
 
-from machetli.planning.downward_lib import timers
 from machetli.planning.downward_lib.sas_tasks import SASTask, SASMutexGroup, SASGoal, SASOperator, SASInit, SASAxiom
 
 SEED = 42
@@ -25,8 +24,7 @@ class SASOperatorEraser(SASTransformer):
         random.Random(SEED).shuffle(operator_names)
         for name in operator_names:
             pre_child = copy.deepcopy(sas_task)
-            with timers.timing("Obtaining successor"):
-                child = self.transform(pre_child, name)
+            child = self.transform(pre_child, name)
             yield child, name
 
     def transform(self, sas_task, op_name):
@@ -46,8 +44,7 @@ class SASVariableEraser(SASTransformer):
         random.Random(SEED).shuffle(variables)
         for var in variables:
             pre_child = copy.deepcopy(sas_task)
-            with timers.timing("Obtaining successor"):
-                child = self.transform(pre_child, var)
+            child = self.transform(pre_child, var)
             yield child, var
 
     def transform(self, sas_task, var):
