@@ -6,6 +6,7 @@ from machetli.planning import pddl_visitors
 from machetli.planning.downward_lib.sas_tasks import SASTask, SASMutexGroup, SASInit, SASGoal, SASOperator, SASAxiom
 from machetli.successors import SuccessorGenerator
 
+# TODO: document that "change_msg" is a reserved keyword.
 
 class RemoveActions(SuccessorGenerator):
     """Successor generator that removes 
@@ -24,6 +25,8 @@ class RemoveActions(SuccessorGenerator):
             pre_child_task = child_state["pddl_task"]
             child_state["pddl_task"] = pre_child_task.accept(
                 pddl_visitors.TaskElementEraseActionVisitor(name))
+            child_state["change_msg"] = \
+                f"removed 1 of {len(action_names)} actions."
             yield child_state
 
 
@@ -48,6 +51,8 @@ class ReplaceAtomsWithTruth(SuccessorGenerator):
             pre_child_task = child_state["pddl_task"]
             child_state["pddl_task"] = pre_child_task.accept(
                 pddl_visitors.TaskElementErasePredicateTrueAtomVisitor(name))
+            child_state["change_msg"] = \
+                f"replaced 1 of {len(predicate_names)} atoms with Truth."
             yield child_state
 
 
@@ -71,6 +76,8 @@ class ReplaceAtomsWithFalsity(SuccessorGenerator):
             pre_child_task = child_state["pddl_task"]
             child_state["pddl_task"] = pre_child_task.accept(
                 pddl_visitors.TaskElementErasePredicateFalseAtomVisitor(name))
+            child_state["change_msg"] = \
+                f"replaced 1 of {len(predicate_names)} atoms with Falsity."
             yield child_state
 
 
@@ -85,6 +92,8 @@ class ReplaceLiteralsWithTruth(SuccessorGenerator):
             pre_child_task = child_state["pddl_task"]
             child_state["pddl_task"] = pre_child_task.accept(
                 pddl_visitors.TaskElementErasePredicateTrueLiteralVisitor(name))
+            child_state["change_msg"] = \
+                f"replaced 1 of {len(predicate_names)} literals with Truth."
             yield child_state
 
 
@@ -98,6 +107,8 @@ class RemoveObjects(SuccessorGenerator):
             pre_child_task = child_state["pddl_task"]
             child_state["pddl_task"] = pre_child_task.accept(
                 pddl_visitors.TaskElementEraseObjectVisitor(name))
+            child_state["change_msg"] = \
+                f"replaced 1 of {len(object_names)} objects."
             yield child_state
 
 
@@ -110,13 +121,15 @@ class RemoveSASOperators(SuccessorGenerator):
             child_state = copy.deepcopy(state)
             pre_child_task = child_state["sas_task"]
             child_state["sas_task"] = self.transform(pre_child_task, name)
+            child_state["change_msg"] = \
+                f"removed 1 of {len(operator_names)} operators."
             yield child_state
 
     def transform(self, task, op_name):
         new_operators = [op for op in task.operators if not op.name == op_name]
 
-        return SASTask(task.variables, task.mutexes, task.init, task.goal, new_operators,
-                       task.axioms, task.metric)
+        return SASTask(task.variables, task.mutexes, task.init, task.goal,
+                       new_operators, task.axioms, task.metric)
 
 
 class RemoveSASVariables(SuccessorGenerator):
@@ -128,6 +141,8 @@ class RemoveSASVariables(SuccessorGenerator):
             child_state = copy.deepcopy(state)
             pre_child_task = child_state["sas_task"]
             child_state["sas_task"] = self.transform(pre_child_task, var)
+            child_state["change_msg"] = \
+                f"removed 1 of {len(variables)} variables."
             yield child_state
 
     def transform(self, task, var):
@@ -228,6 +243,7 @@ class RemoveSASEffect(SuccessorGenerator):
             for effect in random.sample(range(num_eff), num_eff):
                 child_state = copy.deepcopy(state)
                 del child_state["sas_task"].operators[op].pre_post[effect]
+                child_state["change_msg"] = f"removed 1 operator effect."
                 yield child_state
 
 
@@ -245,6 +261,8 @@ class SetUnspecifiedSASPrevailCondition(SuccessorGenerator):
                         child_state = copy.deepcopy(state)
                         child_state["sas_task"].operators[op].pre_post[
                             effect] = (var, val, post, cond)
+                        child_state["change_msg"] = \
+                            f"removed the prevail condition of 1 operator."
                         yield child_state
 
 
@@ -256,6 +274,8 @@ class MergeSASOperators(SuccessorGenerator):
             child_task = self.transform(child_state["sas_task"], op1, op2)
             if child_task:
                 child_state["sas_task"] = child_task
+                child_state["change_msg"] = \
+                    f"merge 2 of {len(task.operators)} operators."
                 yield child_state
 
     def transform(self, task, op1, op2):
