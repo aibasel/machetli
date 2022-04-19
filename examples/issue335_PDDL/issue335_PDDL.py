@@ -6,11 +6,8 @@ import sys
 
 from machetli import tools
 from machetli.grid import environments
-from machetli.planning import auxiliary
-from machetli.planning.generators import RemoveObjects, ReplaceLiteralsWithTruth
-from machetli.planning.pddl_writer import write_PDDL
+from machetli import pddl as pddl
 from machetli.search import search
-from machetli.tools import get_script_path
 
 # The Fast Downward issue we use for this example is from 2014. The code of the
 # planner from that time is only compatible with Python versions < 3.8.
@@ -38,9 +35,9 @@ problem_filename = os.path.join(script_dir, "cntr-problem.pddl")
 initial_state = {
     # We are  creating the entry "pddl_task" because our successor generators
     # and our evaluator expect this key.
-    "pddl_task": auxiliary.parse_pddl_task(domain_filename, problem_filename),
+    "pddl_task": pddl.parse_pddl_task(domain_filename, problem_filename),
 }
-successor_generators = [RemoveObjects(), ReplaceLiteralsWithTruth()]
+successor_generators = [pddl.RemoveObjects(), pddl.ReplaceLiteralsWithTruth()]
 evaluator_filename = os.path.join(script_dir, "evaluator.py")
 
 # The defined environment depends on where you want to execute the search:
@@ -60,7 +57,7 @@ result = search(initial_state, successor_generators, evaluator_filename, environ
 # If you want the modified PDDL task to be dumped to files (which you
 # probably do!), you need to explicitly do this here. Otherwise, it
 # will fall prey to the garbage collector when this script ends!
-write_PDDL(result["pddl_task"], "result-domain.pddl", "result-problem.pddl")
+pddl.write_pddl(result["pddl_task"], "result-domain.pddl", "result-problem.pddl")
 
 # A note on successor generators:
 # For this example, we chose to use two successor generators (RemoveObjects

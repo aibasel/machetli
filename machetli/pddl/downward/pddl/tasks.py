@@ -1,4 +1,4 @@
-from machetli.planning.downward_lib.pddl.task_element import TaskElement
+from machetli.pddl.downward.pddl.task_element import TaskElement
 
 from . import axioms
 from . import predicates

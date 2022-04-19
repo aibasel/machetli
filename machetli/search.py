@@ -52,6 +52,8 @@ TODO: update line numbers and filename
     configure_logging(environment.loglevel)
     successor_generator = make_single_successor_generator(successor_generator)
 
+    logging.info("Starting search ...")
+
     current_state = initial_state
     batch_size = environment.batch_size
     batch_num = 0

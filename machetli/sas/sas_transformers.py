@@ -2,7 +2,7 @@ from collections import Generator
 import copy
 import random
 
-from machetli.planning.downward_lib.sas_tasks import SASTask, SASMutexGroup, SASGoal, SASOperator, SASInit, SASAxiom
+from machetli.sas.sas_tasks import SASTask, SASMutexGroup, SASGoal, SASOperator, SASInit, SASAxiom
 
 SEED = 42
 

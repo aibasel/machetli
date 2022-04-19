@@ -15,7 +15,7 @@ import pprint
 from machetli.grid import environments
 from machetli.search import search
 from machetli.tools import get_script_path
-from machetli.planning.generators import Successor, SuccessorGenerator
+from machetli.successors import Successor, SuccessorGenerator
 
 
 class MyGenerator(SuccessorGenerator):

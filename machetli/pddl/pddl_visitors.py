@@ -1,10 +1,10 @@
 import io
 from contextlib import redirect_stdout
 
-from machetli.planning.downward_lib.pddl import Task, TypedObject, Predicate, Action, Axiom, Function, Truth, Conjunction, \
-    Disjunction, Falsity, \
+from machetli.pddl.downward.pddl import Task, TypedObject, Predicate, Action, \
+    Axiom, Function, Truth, Conjunction, Disjunction, Falsity, \
     UniversalCondition, ExistentialCondition, Atom, NegatedAtom, Effect, Assign
-from machetli.planning.downward_lib.pddl.conditions import ConstantCondition
+from machetli.pddl.downward.pddl.conditions import ConstantCondition
 
 
 class TaskElementVisitor:
