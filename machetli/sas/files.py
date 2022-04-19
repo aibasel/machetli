@@ -2,20 +2,41 @@ import tempfile
 import contextlib
 import os
 
-# from machetli.sas.sas_reader import sas_file_to_SASTask
+from machetli.sas.constants import KEY_IN_STATE
 from machetli.sas.sas_tasks import SASTask, SASVariables, SASMutexGroup, \
     SASInit, SASGoal, SASOperator, SASAxiom
 
-SAS_TASK = "sas_task"
 
-
-def parse_sas_task(sas_file) -> SASTask:
+def generate_initial_state(sas_file) -> dict:
     """Parse the SAS\ :sup:`+` task defined in the SAS\ :sup:`+` file
-    *task_filename* and return an instance of the parsed SAS\ :sup:`+` task.
-
-    The returned task object is an instance of the ``SASTask`` class used internally
-    in `Fast Downward <https://www.fast-downward.org>`_.
+    *task_filename* and return an initial state containing the parsed
+    SAS\ :sup:`+` task.
     """
+    return {
+        KEY_IN_STATE: _read_task(sas_file)
+    }
+
+
+@contextlib.contextmanager
+def temporary_file(state):
+    """Context manager that generates a temporary SAS\ :sup:`+` file
+    containing the task stored under the ``"sas_task"`` key in the *state*
+    dictionary. After the context is left, the generated file is deleted.
+
+    Example:
+
+    >>> with temporary_file(state) as sas_filename:
+    ...     cmd = ["fast-downward.py", f"{sas_filename}", "--search", "astar(lmcut())"]
+    ...
+    """
+    f = tempfile.NamedTemporaryFile(mode="w+t", suffix=".sas", delete=False)
+    state[KEY_IN_STATE].output(f)
+    f.close()
+    yield f.name
+    os.remove(f.name)
+
+
+def _read_task(sas_file) -> SASTask:
     with open(sas_file, "r") as sf:
         while True:
             # pos = sf.tell()
@@ -44,25 +65,6 @@ def parse_sas_task(sas_file) -> SASTask:
     sas_task = SASTask(variables, mutexes, init, goal, operators, axioms, metric)
     sas_task.validate()
     return sas_task
-
-
-@contextlib.contextmanager
-def generated_sas_file(state):
-    """Context manager that generates a temporary SAS\ :sup:`+` file
-    containing the task stored under the ``"sas_task"`` key in the *state*
-    dictionary. After the context is left, the generated file is deleted.
-
-    Example:
-
-    >>> with generated_sas_file(state) as sas_filename:
-    ...     cmd = ["fast-downward.py", f"{sas_filename}", "--search", "astar(lmcut())"]
-    ...
-    """
-    f = tempfile.NamedTemporaryFile(mode="w+t", suffix=".sas", delete=False)
-    state[SAS_TASK].output(f)
-    f.close()
-    yield f.name
-    os.remove(f.name)
 
 
 def _read_variables(sf, num_vars):
@@ -176,6 +178,6 @@ def _read_axioms(sf, num_axioms):
     return axioms
 
 
-def write_sas(sas_task, filename):
+def write_file(state, filename):
     with open(filename, "w") as file:
-        sas_task.output(file)
+        state[KEY_IN_STATE].output(file)

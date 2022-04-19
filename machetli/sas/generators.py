@@ -7,7 +7,7 @@ from machetli.sas.sas_tasks import SASTask, SASMutexGroup, SASInit, SASGoal, \
 from machetli.successors import Successor, SuccessorGenerator
 
 
-class RemoveSASOperators(SuccessorGenerator):
+class RemoveOperators(SuccessorGenerator):
     def get_successors(self, state):
         task = state["sas_task"]
         operator_names = [op.name for op in task.operators]
@@ -26,7 +26,7 @@ class RemoveSASOperators(SuccessorGenerator):
                        new_operators, task.axioms, task.metric)
 
 
-class RemoveSASVariables(SuccessorGenerator):
+class RemoveVariables(SuccessorGenerator):
     def get_successors(self, state):
         task = state["sas_task"]
         variables = [var for var in range(len(task.variables.axiom_layers))]
@@ -127,7 +127,7 @@ class RemoveSASVariables(SuccessorGenerator):
         return SASTask(new_variables, new_mutexes, new_init, new_goal, new_operators, new_axioms, task.metric)
 
 
-class RemoveSASEffect(SuccessorGenerator):
+class RemoveEffect(SuccessorGenerator):
     def get_successors(self, state):
         task = state["sas_task"]
         num_ops = len(task.operators)
@@ -139,7 +139,7 @@ class RemoveSASEffect(SuccessorGenerator):
                 yield Successor(child_state, f"removed 1 operator effect.")
 
 
-class SetUnspecifiedSASPrevailCondition(SuccessorGenerator):
+class SetUnspecifiedPrevailCondition(SuccessorGenerator):
     def get_successors(self, state):
         task = state["sas_task"]
         num_ops = len(task.operators)
@@ -158,7 +158,7 @@ class SetUnspecifiedSASPrevailCondition(SuccessorGenerator):
                             f"removed the prevail condition of 1 operator.")
 
 
-class MergeSASOperators(SuccessorGenerator):
+class MergeOperators(SuccessorGenerator):
     def get_successors(self, state):
         task = state["sas_task"]
         for op1, op2 in itertools.permutations(task.operators, 2):
