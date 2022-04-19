@@ -6,7 +6,6 @@ from machetli.successors import make_single_successor_generator
 from machetli.tools import SubmissionError, TaskError, PollingError, configure_logging
 
 
-
 def search(initial_state, successor_generator, evaluator_path, environment=None):
     """Start a machetli search and return the resulting state.
 
@@ -39,6 +38,14 @@ TODO: update line numbers and filename
         :caption:
         :lines: 18-30
         :emphasize-lines: 9-12
+
+    Note that *initial_state* is never checked to have the evaluated property.
+    Consequently, if the result of the search is identical to the initial state,
+    this can have two reasons: (1) the initial state is minimal with respect to
+    the evaluated property and the used successor generators, or (2) the initial
+    state does not have the property and neither does any of its successors. (If
+    a successor has the property despite the initial state not having it,
+    Machetli will nevertheless minimize the task as intended.)
     """
     if environment is None:
         environment = LocalEnvironment()
