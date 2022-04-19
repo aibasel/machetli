@@ -67,4 +67,5 @@ TODO: update line numbers and filename
         batch_num += 1
         batch = list(islice(successors, batch_size))
 
+    logging.info("No improving successor found, terminating search.")
     return current_state
