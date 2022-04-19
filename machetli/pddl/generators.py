@@ -1,7 +1,8 @@
 import copy
 import random
 
-from machetli.pddl import pddl_visitors
+from machetli.pddl import visitors
+from machetli.pddl.constants import KEY_IN_STATE
 from machetli.successors import Successor, SuccessorGenerator
 
 
@@ -12,16 +13,16 @@ class RemoveActions(SuccessorGenerator):
     def get_successors(self, state):
         """Yield modified versions of *state* of which in each
         one a different action is removed from the PDDL task
-        stored in ``state["pddl_task"]``.
+        stored in ``state[KEY_IN_STATE]``.
         """
-        task = state["pddl_task"]
+        task = state[KEY_IN_STATE]
         action_names = [action.name for action in task.actions]
         random.Random().shuffle(action_names)
         for name in action_names:
             child_state = copy.deepcopy(state)
-            pre_child_task = child_state["pddl_task"]
-            child_state["pddl_task"] = pre_child_task.accept(
-                pddl_visitors.TaskElementEraseActionVisitor(name))
+            pre_child_task = child_state[KEY_IN_STATE]
+            child_state[KEY_IN_STATE] = pre_child_task.accept(
+                visitors.TaskElementEraseActionVisitor(name))
             yield Successor(child_state,
                             f"removed 1 of {len(action_names)} actions.")
 
@@ -36,17 +37,17 @@ class ReplaceAtomsWithTruth(SuccessorGenerator):
     def get_successors(self, state):
         """Yield modified versions of *state* of which in each
         one a different atom is removed from the PDDL task
-        stored in ``state["pddl_task"]``. 
+        stored in ``state[KEY_IN_STATE]``.
         """
-        task = state["pddl_task"]
+        task = state[KEY_IN_STATE]
         predicate_names = [predicate.name for predicate in task.predicates if
                            not (predicate.name == "dummy_axiom_trigger" or predicate.name == "=")]
         random.Random().shuffle(predicate_names)
         for name in predicate_names:
             child_state = copy.deepcopy(state)
-            pre_child_task = child_state["pddl_task"]
-            child_state["pddl_task"] = pre_child_task.accept(
-                pddl_visitors.TaskElementErasePredicateTrueAtomVisitor(name))
+            pre_child_task = child_state[KEY_IN_STATE]
+            child_state[KEY_IN_STATE] = pre_child_task.accept(
+                visitors.TaskElementErasePredicateTrueAtomVisitor(name))
             yield Successor(
                 child_state,
                 f"replaced 1 of {len(predicate_names)} atoms with Truth.")
@@ -61,17 +62,17 @@ class ReplaceAtomsWithFalsity(SuccessorGenerator):
     def get_successors(self, state):
         """Yield modified versions of *state* of which in each
         one a different atom is removed from the PDDL task
-        stored in ``state["pddl_task"]``. 
+        stored in ``state[KEY_IN_STATE]``.
         """
-        task = state["pddl_task"]
+        task = state[KEY_IN_STATE]
         predicate_names = [predicate.name for predicate in task.predicates if
                            not (predicate.name == "dummy_axiom_trigger" or predicate.name == "=")]
         random.Random().shuffle(predicate_names)
         for name in predicate_names:
             child_state = copy.deepcopy(state)
-            pre_child_task = child_state["pddl_task"]
-            child_state["pddl_task"] = pre_child_task.accept(
-                pddl_visitors.TaskElementErasePredicateFalseAtomVisitor(name))
+            pre_child_task = child_state[KEY_IN_STATE]
+            child_state[KEY_IN_STATE] = pre_child_task.accept(
+                visitors.TaskElementErasePredicateFalseAtomVisitor(name))
             yield Successor(
                 child_state,
                 f"replaced 1 of {len(predicate_names)} atoms with Falsity.")
@@ -79,15 +80,15 @@ class ReplaceAtomsWithFalsity(SuccessorGenerator):
 
 class ReplaceLiteralsWithTruth(SuccessorGenerator):
     def get_successors(self, state):
-        task = state["pddl_task"]
+        task = state[KEY_IN_STATE]
         predicate_names = [predicate.name for predicate in task.predicates if
                            not (predicate.name == "dummy_axiom_trigger" or predicate.name == "=")]
         random.Random().shuffle(predicate_names)
         for name in predicate_names:
             child_state = copy.deepcopy(state)
-            pre_child_task = child_state["pddl_task"]
-            child_state["pddl_task"] = pre_child_task.accept(
-                pddl_visitors.TaskElementErasePredicateTrueLiteralVisitor(name))
+            pre_child_task = child_state[KEY_IN_STATE]
+            child_state[KEY_IN_STATE] = pre_child_task.accept(
+                visitors.TaskElementErasePredicateTrueLiteralVisitor(name))
             yield Successor(
                 child_state,
                 f"replaced 1 of {len(predicate_names)} literals with Truth.")
@@ -95,13 +96,13 @@ class ReplaceLiteralsWithTruth(SuccessorGenerator):
 
 class RemoveObjects(SuccessorGenerator):
     def get_successors(self, state):
-        task = state["pddl_task"]
+        task = state[KEY_IN_STATE]
         object_names = [obj.name for obj in task.objects]
         random.Random().shuffle(object_names)
         for name in object_names:
             child_state = copy.deepcopy(state)
-            pre_child_task = child_state["pddl_task"]
-            child_state["pddl_task"] = pre_child_task.accept(
-                pddl_visitors.TaskElementEraseObjectVisitor(name))
+            pre_child_task = child_state[KEY_IN_STATE]
+            child_state[KEY_IN_STATE] = pre_child_task.accept(
+                visitors.TaskElementEraseObjectVisitor(name))
             yield Successor(child_state,
                             f"replaced 1 of {len(object_names)} objects.")

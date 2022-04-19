@@ -2,38 +2,35 @@ import tempfile
 import contextlib
 import os
 
+from machetli.pddl.constants import KEY_IN_STATE
 from machetli.pddl.downward import pddl_parser
 from machetli.pddl.downward.pddl import Task, Truth
 from machetli.pddl.downward.pddl.conditions import ConstantCondition, Atom
 
-PDDL_TASK = "pddl_task"
-
-CLOSING_BRACKET = ")"
 SIN = " "  # single indentation
 DIN = "  "  # double indentation
 
 
-def parse_pddl_task(dom_filename, prob_filename):
+def generate_initial_state(dom_filename, prob_filename):
     """Parse the PDDL task defined in PDDL files *dom_filename* (PDDL domain)
-    and *prob_filename* (PDDL problem) an return an instance of the parsed PDDL task.
-
-    The returned task object is an instance of the ``Task`` class used internally
-    in `Fast Downward <https://www.fast-downward.org>`_.
-
+    and *prob_filename* (PDDL problem) and return an initial state containing
+    the parsed PDDL task.
     """
-    return pddl_parser.open(domain_filename=dom_filename,
-                            task_filename=prob_filename)
+    return {
+        KEY_IN_STATE: pddl_parser.open(domain_filename=dom_filename,
+                                       task_filename=prob_filename)
+    }
 
 
 @contextlib.contextmanager
-def generated_pddl_files(state):
+def temporary_files(state):
     """Context manager that generates temporary PDDL files
     containing the task stored under the ``"pddl_task"`` key in the *state*
     dictionary. After the context is left, the generated files are deleted.
 
     Example:
 
-    >>> with generated_pddl_files(state) as (domain_filename, problem_filename):
+    >>> with temporary_files(state) as (domain_filename, problem_filename):
     ...     cmd = ["fast-downward.py", f"{domain_filename}", f"{problem_filename}", "--search", "astar(lmcut())"]
     ...
     """
@@ -43,9 +40,9 @@ def generated_pddl_files(state):
     problem_f = tempfile.NamedTemporaryFile(
         mode="w+t", suffix=".pddl", delete=False)
     problem_f.close()
-    write_pddl(state[PDDL_TASK], domain_filename=domain_f.name,
-               problem_filename=problem_f.name)
-    yield (domain_f.name, problem_f.name)
+    write_files(state, domain_filename=domain_f.name,
+                problem_filename=problem_f.name)
+    yield domain_f.name, problem_f.name
     os.remove(domain_f.name)
     os.remove(problem_f.name)
 
@@ -160,7 +157,7 @@ def _write_domain_axioms(task, df):
         df.write(SIN + ")\n")
 
 
-def _write_domain_pddl(task, domain_filename):
+def _write_domain(task, domain_filename):
     with open(domain_filename, "w") as df:
         df.write("\n(")
         _write_domain_header(task, df)
@@ -204,7 +201,7 @@ def _write_problem_metric(task, pf):
         pf.write("%s(:metric minimize (total-cost))\n" % SIN)
 
 
-def _write_problem_pddl(task, problem_filename):
+def _write_problem(task, problem_filename):
     with open(problem_filename, "w") as pf:
         pf.write("\n(")
         _write_problem_header(task, pf)
@@ -215,6 +212,6 @@ def _write_problem_pddl(task, problem_filename):
         pf.write(")\n")
 
 
-def write_pddl(task: Task, domain_filename: str, problem_filename: str):
-    _write_domain_pddl(task, domain_filename)
-    _write_problem_pddl(task, problem_filename)
+def write_files(state: dict, domain_filename: str, problem_filename: str):
+    _write_domain(state[KEY_IN_STATE], domain_filename)
+    _write_problem(state[KEY_IN_STATE], problem_filename)
