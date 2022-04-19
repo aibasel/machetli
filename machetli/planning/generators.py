@@ -3,9 +3,8 @@ import itertools
 import random
 
 from machetli.planning import pddl_visitors
-from machetli.planning.downward_lib import timers
 from machetli.planning.downward_lib.sas_tasks import SASTask, SASMutexGroup, SASInit, SASGoal, SASOperator, SASAxiom
-from machetli.successors import SuccessorGenerator
+from machetli.successors import Successor, SuccessorGenerator
 
 
 class RemoveActions(SuccessorGenerator):
@@ -23,11 +22,10 @@ class RemoveActions(SuccessorGenerator):
         for name in action_names:
             child_state = copy.deepcopy(state)
             pre_child_task = child_state["pddl_task"]
-            with timers.timing("Obtaining successor"):
-                child_task = pre_child_task.accept(
-                    pddl_visitors.TaskElementEraseActionVisitor(name))
-            child_state["pddl_task"] = child_task
-            yield child_state
+            child_state["pddl_task"] = pre_child_task.accept(
+                pddl_visitors.TaskElementEraseActionVisitor(name))
+            yield Successor(child_state,
+                            f"removed 1 of {len(action_names)} actions.")
 
 
 class ReplaceAtomsWithTruth(SuccessorGenerator):
@@ -49,11 +47,11 @@ class ReplaceAtomsWithTruth(SuccessorGenerator):
         for name in predicate_names:
             child_state = copy.deepcopy(state)
             pre_child_task = child_state["pddl_task"]
-            with timers.timing("Obtaining successor"):
-                child_task = pre_child_task.accept(
-                    pddl_visitors.TaskElementErasePredicateTrueAtomVisitor(name))
-            child_state["pddl_task"] = child_task
-            yield child_state
+            child_state["pddl_task"] = pre_child_task.accept(
+                pddl_visitors.TaskElementErasePredicateTrueAtomVisitor(name))
+            yield Successor(
+                child_state,
+                f"replaced 1 of {len(predicate_names)} atoms with Truth.")
 
 
 class ReplaceAtomsWithFalsity(SuccessorGenerator):
@@ -74,11 +72,11 @@ class ReplaceAtomsWithFalsity(SuccessorGenerator):
         for name in predicate_names:
             child_state = copy.deepcopy(state)
             pre_child_task = child_state["pddl_task"]
-            with timers.timing("Obtaining successor"):
-                child_task = pre_child_task.accept(
-                    pddl_visitors.TaskElementErasePredicateFalseAtomVisitor(name))
-            child_state["pddl_task"] = child_task
-            yield child_state
+            child_state["pddl_task"] = pre_child_task.accept(
+                pddl_visitors.TaskElementErasePredicateFalseAtomVisitor(name))
+            yield Successor(
+                child_state,
+                f"replaced 1 of {len(predicate_names)} atoms with Falsity.")
 
 
 class ReplaceLiteralsWithTruth(SuccessorGenerator):
@@ -90,11 +88,11 @@ class ReplaceLiteralsWithTruth(SuccessorGenerator):
         for name in predicate_names:
             child_state = copy.deepcopy(state)
             pre_child_task = child_state["pddl_task"]
-            with timers.timing("Obtaining successor"):
-                child_task = pre_child_task.accept(
-                    pddl_visitors.TaskElementErasePredicateTrueLiteralVisitor(name))
-            child_state["pddl_task"] = child_task
-            yield child_state
+            child_state["pddl_task"] = pre_child_task.accept(
+                pddl_visitors.TaskElementErasePredicateTrueLiteralVisitor(name))
+            yield Successor(
+                child_state,
+                f"replaced 1 of {len(predicate_names)} literals with Truth.")
 
 
 class RemoveObjects(SuccessorGenerator):
@@ -105,11 +103,10 @@ class RemoveObjects(SuccessorGenerator):
         for name in object_names:
             child_state = copy.deepcopy(state)
             pre_child_task = child_state["pddl_task"]
-            with timers.timing("Obtaining successor"):
-                child_task = pre_child_task.accept(
-                    pddl_visitors.TaskElementEraseObjectVisitor(name))
-            child_state["pddl_task"] = child_task
-            yield child_state
+            child_state["pddl_task"] = pre_child_task.accept(
+                pddl_visitors.TaskElementEraseObjectVisitor(name))
+            yield Successor(child_state,
+                            f"replaced 1 of {len(object_names)} objects.")
 
 
 class RemoveSASOperators(SuccessorGenerator):
@@ -120,16 +117,15 @@ class RemoveSASOperators(SuccessorGenerator):
         for name in operator_names:
             child_state = copy.deepcopy(state)
             pre_child_task = child_state["sas_task"]
-            with timers.timing("Obtaining successor"):
-                child_task = self.transform(pre_child_task, name)
-            child_state["sas_task"] = child_task
-            yield child_state
+            child_state["sas_task"] = self.transform(pre_child_task, name)
+            yield Successor(child_state,
+                            f"removed 1 of {len(operator_names)} operators.")
 
     def transform(self, task, op_name):
         new_operators = [op for op in task.operators if not op.name == op_name]
 
-        return SASTask(task.variables, task.mutexes, task.init, task.goal, new_operators,
-                       task.axioms, task.metric)
+        return SASTask(task.variables, task.mutexes, task.init, task.goal,
+                       new_operators, task.axioms, task.metric)
 
 
 class RemoveSASVariables(SuccessorGenerator):
@@ -140,10 +136,9 @@ class RemoveSASVariables(SuccessorGenerator):
         for var in variables:
             child_state = copy.deepcopy(state)
             pre_child_task = child_state["sas_task"]
-            with timers.timing("Obtaining successor"):
-                child_task = self.transform(pre_child_task, var)
-            child_state["sas_task"] = child_task
-            yield child_state
+            child_state["sas_task"] = self.transform(pre_child_task, var)
+            yield Successor(child_state,
+                            f"removed 1 of {len(variables)} variables.")
 
     def transform(self, task, var):
         # remove var attributes from variables object
@@ -242,9 +237,8 @@ class RemoveSASEffect(SuccessorGenerator):
             num_eff = len(task.operators[op].pre_post)
             for effect in random.sample(range(num_eff), num_eff):
                 child_state = copy.deepcopy(state)
-                with timers.timing("Obtaining successor"):
-                    del child_state["sas_task"].operators[op].pre_post[effect]
-                    yield child_state
+                del child_state["sas_task"].operators[op].pre_post[effect]
+                yield Successor(child_state, f"removed 1 operator effect.")
 
 
 class SetUnspecifiedSASPrevailCondition(SuccessorGenerator):
@@ -259,10 +253,11 @@ class SetUnspecifiedSASPrevailCondition(SuccessorGenerator):
                     num_val = task.variables.ranges[var]
                     for val in random.sample(range(num_val), num_val):
                         child_state = copy.deepcopy(state)
-                        with timers.timing("Obtaining successor"):
-                            child_state["sas_task"].operators[op].pre_post[
-                                effect] = (var, val, post, cond)
-                            yield child_state
+                        child_state["sas_task"].operators[op].pre_post[
+                            effect] = (var, val, post, cond)
+                        yield Successor(
+                            child_state,
+                            f"removed the prevail condition of 1 operator.")
 
 
 class MergeSASOperators(SuccessorGenerator):
@@ -270,11 +265,11 @@ class MergeSASOperators(SuccessorGenerator):
         task = state["sas_task"]
         for op1, op2 in itertools.permutations(task.operators, 2):
             child_state = copy.deepcopy(state)
-            with timers.timing("Obtaining successor"):
-                child_task = self.transform(child_state["sas_task"], op1, op2)
+            child_task = self.transform(child_state["sas_task"], op1, op2)
             if child_task:
                 child_state["sas_task"] = child_task
-                yield child_state
+                yield Successor(child_state,
+                                f"merge 2 of {len(task.operators)} operators.")
 
     def transform(self, task, op1, op2):
         def combined_pre_post(op):

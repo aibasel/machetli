@@ -13,7 +13,7 @@ import pprint
 import sys
 
 from machetli.grid import environments
-from machetli.planning.generators import SuccessorGenerator
+from machetli.planning.generators import Successor, SuccessorGenerator
 from machetli.search import search
 from machetli.tools import get_script_path
 
@@ -31,6 +31,7 @@ planning benchmarks repository (https://github.com/aibasel/downward-benchmarks).
 """
     sys.exit(msg)
 
+
 class MyGenerator(SuccessorGenerator):
     def get_successors(self, state):
         logging.info(f"Expanding:\n{pprint.pformat(state)}")
@@ -38,7 +39,8 @@ class MyGenerator(SuccessorGenerator):
             succ = copy.deepcopy(state)
             succ["level"] = state["level"] + 1
             succ["id"] = i
-            yield succ
+            yield Successor(succ, "incresed level.")
+
 
 environment = environments.LocalEnvironment()
 if platform.node().endswith((".scicore.unibas.ch", ".cluster.bc2.ch")):
