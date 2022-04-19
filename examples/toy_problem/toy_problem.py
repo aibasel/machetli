@@ -15,7 +15,8 @@ import pprint
 from machetli.grid import environments
 from machetli.search import search
 from machetli.tools import get_script_path
-from machetli.planning.generators import SuccessorGenerator
+from machetli.planning.generators import Successor, SuccessorGenerator
+
 
 class MyGenerator(SuccessorGenerator):
     def get_successors(self, state):
@@ -24,7 +25,8 @@ class MyGenerator(SuccessorGenerator):
             succ = copy.deepcopy(state)
             succ["level"] = state["level"] + 1
             succ["id"] = i
-            yield succ
+            yield Successor(succ, "increased level.")
+
 
 initial_state = {"level": 0, "id": 0}
 successor_generator = MyGenerator()

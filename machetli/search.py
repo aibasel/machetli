@@ -61,11 +61,8 @@ TODO: update line numbers and filename
             successor = None
 
         if successor:
-            if successor["change_msg"]:
-                logging.info(f"Found successor: {successor['change_msg']}")
-            else:
-                logging.info("Found successor!")
-            current_state = successor
+            logging.info(f"Found successor: {successor.change_msg}")
+            current_state = successor.state
             successors = successor_generator.get_successors(current_state)
         batch_num += 1
         batch = list(islice(successors, batch_size))

@@ -59,9 +59,9 @@ class LocalEnvironment(Environment):
     def submit(self, batch, batch_id, evaluator_path):
         assert self.successor is None
 
-        for state in batch:
-            if is_evaluator_successful(evaluator_path, state):
-                self.successor = state
+        for succ in batch:
+            if is_evaluator_successful(evaluator_path, succ.state):
+                self.successor = succ
             break
 
     def wait_until_finished(self):
@@ -186,7 +186,7 @@ class SlurmEnvironment(Environment):
             result_file = os.path.join(task["dir"], "exit_code")
             if self.wait_for_filesystem(result_file):
                 if st.parse_exit_code(result_file) == 0:
-                    successor = task["state"]
+                    successor = task["successor"]
                     break
             else:
                 if self.allow_nondeterministic_successor_choice:
@@ -215,12 +215,12 @@ class SlurmEnvironment(Environment):
         batch_dir_path = os.path.join(
             self.eval_dir, f"batch_{batch_num:03}")
         run_dirs = []
-        for rank, state in enumerate(batch):
+        for rank, successor in enumerate(batch):
             run_dir_name = f"{rank:03}"
             run_dir_path = os.path.join(batch_dir_path, run_dir_name)
             tools.makedirs(run_dir_path)
             state_file_path = os.path.join(run_dir_path, STATE_FILENAME)
-            write_state(state, state_file_path)
+            write_state(successor.state, state_file_path)
             run_dirs.append(run_dir_path)
         # Give the NFS time to write the paths
         if not self.wait_for_filesystem(*run_dirs):
@@ -249,7 +249,8 @@ class SlurmEnvironment(Environment):
         run_dirs = self.build_batch_directories(batch, batch_num)
         batch_name = f"batch_{batch_num:03}"
         self.write_sbatch_file(run_dirs=" ".join(run_dirs), name=batch_name,
-                               num_tasks=len(batch)-1, evaluator_path=evaluator_path)
+                               num_tasks=len(batch)-1,
+                               evaluator_path=evaluator_path)
         submission_command = ["sbatch", "--export",
                               ",".join(self.export), self.sbatch_file]
         try:
@@ -263,8 +264,9 @@ class SlurmEnvironment(Environment):
         else:
             logging.info(match.group(0))
         job_id = match.group(1)
+        # TODO: This is strange.
         job = {"id": job_id,
-               "tasks": [{"state": s, "dir": d} for s, d in
+               "tasks": [{"successor": s, "dir": d} for s, d in
                          zip(batch, run_dirs)]}
         return job
 
