@@ -11,7 +11,7 @@ def search(initial_state, successor_generator, evaluator_path, environment=None)
 
     The search is started from *initial_state*, which is a dictionary
     describing the initial conditions of what you want to minimize.
-    
+
     *successor_generator* is a single :class:`SuccessorGenerator
     <machetli.planning.generators.SuccessorGenerator>` or a list of
     SuccessorGenerators. If a list [s1, ..., sn] is given, the search
@@ -26,8 +26,8 @@ def search(initial_state, successor_generator, evaluator_path, environment=None)
 
     *environment* determines whether the search should be done on a local
     machine or on a Slurm computing grid. Use
-    :class:`machetli.grid.environments.LocalEnvironment` or an implementation
-    of :class:`machetli.grid.environments.SlurmEnvironment`. If no environment
+    :class:`machetli.environments.LocalEnvironment` or an implementation
+    of :class:`machetli.environments.SlurmEnvironment`. If no environment
     is specified, a local environment will be used.
 
     Example usage:

@@ -345,9 +345,9 @@ def _parse_exit_code(result_file):
 
 def _fill_template(**parameters):
     template = tools.get_string(pkgutil.get_data(
-        "machetli", os.path.join("grid", TEMPLATE_FILE)))
+        "machetli", os.path.join("templates", TEMPLATE_FILE)))
     return template.format(**parameters)
-    
+
 
 ## TODO: call this when the search is done.
 def _launch_email_job(email):
@@ -385,4 +385,3 @@ class BaselSlurmEnvironment(SlurmEnvironment):
                     f"maximum amount allowed for partition {self.partition}: "
                     f"{self.MAX_MEM_INFAI_BASEL[self.partition]}."
                 )
-

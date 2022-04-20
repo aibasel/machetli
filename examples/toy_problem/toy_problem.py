@@ -12,9 +12,7 @@ import os.path
 import platform
 import pprint
 
-from machetli.grid import environments
-from machetli.search import search
-from machetli.tools import get_script_path
+from machetli import environments, search, tools
 from machetli.successors import Successor, SuccessorGenerator
 
 
@@ -30,7 +28,7 @@ class MyGenerator(SuccessorGenerator):
 
 initial_state = {"level": 0, "id": 0}
 successor_generator = MyGenerator()
-evaluator_filename = os.path.join(os.path.dirname(get_script_path()), "evaluator.py")
+evaluator_filename = os.path.join(os.path.dirname(tools.get_script_path()), "evaluator.py")
 environment = environments.LocalEnvironment()
 if platform.node().endswith((".scicore.unibas.ch", ".cluster.bc2.ch")):
     environment = environments.BaselSlurmEnvironment(

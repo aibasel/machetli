@@ -12,7 +12,7 @@ import platform
 import pprint
 import sys
 
-from machetli.grid import environments
+from machetli import environments
 from machetli.successors import Successor, SuccessorGenerator
 from machetli.search import search
 from machetli.tools import get_script_path
