@@ -1,6 +1,6 @@
 import os
 
-from machetli import pddl as pddl
+from machetli import pddl
 from machetli.run import Run
 
 PYTHON37 = os.environ["PYTHON_3_7"]
