@@ -1,7 +1,7 @@
 from itertools import islice
 import logging
 
-from machetli.grid.environments import LocalEnvironment
+from machetli.environments import LocalEnvironment
 from machetli.successors import make_single_successor_generator
 from machetli.tools import SubmissionError, TaskError, PollingError, configure_logging
 

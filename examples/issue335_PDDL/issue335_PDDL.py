@@ -4,10 +4,7 @@ import os
 import platform
 import sys
 
-from machetli import pddl as pddl
-from machetli import tools
-from machetli.grid import environments
-from machetli.search import search
+from machetli import environments, pddl, search, tools
 
 # The Fast Downward issue we use for this example is from 2014. The code of the
 # planner from that time is only compatible with Python versions < 3.8.
