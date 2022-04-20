@@ -24,7 +24,7 @@ class RemoveActions(SuccessorGenerator):
             child_state[KEY_IN_STATE] = pre_child_task.accept(
                 visitors.TaskElementEraseActionVisitor(name))
             yield Successor(child_state,
-                            f"removed 1 of {len(action_names)} actions.")
+                            f"Removed action '{name}'. Remaining actions: {len(action_names) - 1}")
 
 
 class ReplaceAtomsWithTruth(SuccessorGenerator):
@@ -50,7 +50,7 @@ class ReplaceAtomsWithTruth(SuccessorGenerator):
                 visitors.TaskElementErasePredicateTrueAtomVisitor(name))
             yield Successor(
                 child_state,
-                f"replaced 1 of {len(predicate_names)} atoms with Truth.")
+                f"Replaced atom '{name}' with Truth. Remaining atoms {len(predicate_names) - 1}")
 
 
 class ReplaceAtomsWithFalsity(SuccessorGenerator):
@@ -75,7 +75,7 @@ class ReplaceAtomsWithFalsity(SuccessorGenerator):
                 visitors.TaskElementErasePredicateFalseAtomVisitor(name))
             yield Successor(
                 child_state,
-                f"replaced 1 of {len(predicate_names)} atoms with Falsity.")
+                f"Replaced atom '{name}' with Falsity. Remaining atoms: {len(predicate_names) - 1}")
 
 
 class ReplaceLiteralsWithTruth(SuccessorGenerator):
@@ -91,7 +91,7 @@ class ReplaceLiteralsWithTruth(SuccessorGenerator):
                 visitors.TaskElementErasePredicateTrueLiteralVisitor(name))
             yield Successor(
                 child_state,
-                f"replaced 1 of {len(predicate_names)} literals with Truth.")
+                f"Replaced literal '{name}' with Truth. Remaining atoms: {len(predicate_names) - 1}")
 
 
 class RemoveObjects(SuccessorGenerator):
@@ -105,4 +105,4 @@ class RemoveObjects(SuccessorGenerator):
             child_state[KEY_IN_STATE] = pre_child_task.accept(
                 visitors.TaskElementEraseObjectVisitor(name))
             yield Successor(child_state,
-                            f"replaced 1 of {len(object_names)} objects.")
+                            f"Removed object '{name}'. Remaining objects: {len(object_names) - 1}")

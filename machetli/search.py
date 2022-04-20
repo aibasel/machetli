@@ -70,7 +70,7 @@ TODO: update line numbers and filename
             successor = None
 
         if successor:
-            logging.info(f"Found successor: {successor.change_msg}")
+            logging.info(successor.change_msg)
             current_state = successor.state
             successors = successor_generator.get_successors(current_state)
         batch_num += 1

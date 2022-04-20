@@ -7,3 +7,5 @@ slurm.log
 slurm-array-job.sbatch
 machetli.egg-info/
 _build/
+sas_plan
+

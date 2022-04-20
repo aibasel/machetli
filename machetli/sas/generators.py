@@ -17,7 +17,7 @@ class RemoveOperators(SuccessorGenerator):
             pre_child_task = child_state["sas_task"]
             child_state["sas_task"] = self.transform(pre_child_task, name)
             yield Successor(child_state,
-                            f"removed 1 of {len(operator_names)} operators.")
+                            f"Removed operator '{name}'. Remaining operators: {len(operator_names) - 1}")
 
     def transform(self, task, op_name):
         new_operators = [op for op in task.operators if not op.name == op_name]
@@ -36,7 +36,7 @@ class RemoveVariables(SuccessorGenerator):
             pre_child_task = child_state["sas_task"]
             child_state["sas_task"] = self.transform(pre_child_task, var)
             yield Successor(child_state,
-                            f"removed 1 of {len(variables)} variables.")
+                            f"Removed 1 of {len(variables)} variables.")
 
     def transform(self, task, var):
         # remove var attributes from variables object
@@ -136,7 +136,7 @@ class RemoveEffect(SuccessorGenerator):
             for effect in random.sample(range(num_eff), num_eff):
                 child_state = copy.deepcopy(state)
                 del child_state["sas_task"].operators[op].pre_post[effect]
-                yield Successor(child_state, f"removed 1 operator effect.")
+                yield Successor(child_state, f"Removed an effect of operator '{task.operators[op].name}'.")
 
 
 class SetUnspecifiedPrevailCondition(SuccessorGenerator):
@@ -155,7 +155,7 @@ class SetUnspecifiedPrevailCondition(SuccessorGenerator):
                             effect] = (var, val, post, cond)
                         yield Successor(
                             child_state,
-                            f"removed the prevail condition of 1 operator.")
+                            f"Removed a prevail condition of operator '{task.operators[op].name}'.")
 
 
 class MergeOperators(SuccessorGenerator):
@@ -167,7 +167,8 @@ class MergeOperators(SuccessorGenerator):
             if child_task:
                 child_state["sas_task"] = child_task
                 yield Successor(child_state,
-                                f"merge 2 of {len(task.operators)} operators.")
+                                f"Merged operators '{op1.name}' and '{op2.name}'. " +
+                                f"Remaining operators: {len(task.operators) - 1}")
 
     def transform(self, task, op1, op2):
         def combined_pre_post(op):
