@@ -2,114 +2,12 @@ import copy
 import itertools
 import random
 
-from machetli.planning import pddl_visitors
-from machetli.planning.downward_lib.sas_tasks import SASTask, SASMutexGroup, SASInit, SASGoal, SASOperator, SASAxiom
+from machetli.sas.sas_tasks import SASTask, SASMutexGroup, SASInit, SASGoal, \
+    SASOperator, SASAxiom
 from machetli.successors import Successor, SuccessorGenerator
 
 
-class RemoveActions(SuccessorGenerator):
-    """Successor generator that removes 
-    randomly selected actions from the PDDL task in a state.
-    """
-    def get_successors(self, state):
-        """Yield modified versions of *state* of which in each
-        one a different action is removed from the PDDL task
-        stored in ``state["pddl_task"]``.
-        """
-        task = state["pddl_task"]
-        action_names = [action.name for action in task.actions]
-        random.Random().shuffle(action_names)
-        for name in action_names:
-            child_state = copy.deepcopy(state)
-            pre_child_task = child_state["pddl_task"]
-            child_state["pddl_task"] = pre_child_task.accept(
-                pddl_visitors.TaskElementEraseActionVisitor(name))
-            yield Successor(child_state,
-                            f"removed 1 of {len(action_names)} actions.")
-
-
-class ReplaceAtomsWithTruth(SuccessorGenerator):
-    """Successor generator that removes 
-    randomly selected atoms from the PDDL task in a state.
-    This is accomplished by scanning the entire task for the
-    atom to be removed, instantiating each instance of this atom
-    with the *truth* value and then simplifying all logical expressions.
-    """
-    def get_successors(self, state):
-        """Yield modified versions of *state* of which in each
-        one a different atom is removed from the PDDL task
-        stored in ``state["pddl_task"]``. 
-        """
-        task = state["pddl_task"]
-        predicate_names = [predicate.name for predicate in task.predicates if
-                           not (predicate.name == "dummy_axiom_trigger" or predicate.name == "=")]
-        random.Random().shuffle(predicate_names)
-        for name in predicate_names:
-            child_state = copy.deepcopy(state)
-            pre_child_task = child_state["pddl_task"]
-            child_state["pddl_task"] = pre_child_task.accept(
-                pddl_visitors.TaskElementErasePredicateTrueAtomVisitor(name))
-            yield Successor(
-                child_state,
-                f"replaced 1 of {len(predicate_names)} atoms with Truth.")
-
-
-class ReplaceAtomsWithFalsity(SuccessorGenerator):
-    """Successor generator that removes 
-    randomly selected atoms from the PDDL task in a state.
-    The same mechanism is used as in :class:`ReplaceAtomsWithTruth <machetli.planning.generators.ReplaceAtomsWithTruth>`,
-    but replacing atoms with *falsity* instead.
-    """
-    def get_successors(self, state):
-        """Yield modified versions of *state* of which in each
-        one a different atom is removed from the PDDL task
-        stored in ``state["pddl_task"]``. 
-        """
-        task = state["pddl_task"]
-        predicate_names = [predicate.name for predicate in task.predicates if
-                           not (predicate.name == "dummy_axiom_trigger" or predicate.name == "=")]
-        random.Random().shuffle(predicate_names)
-        for name in predicate_names:
-            child_state = copy.deepcopy(state)
-            pre_child_task = child_state["pddl_task"]
-            child_state["pddl_task"] = pre_child_task.accept(
-                pddl_visitors.TaskElementErasePredicateFalseAtomVisitor(name))
-            yield Successor(
-                child_state,
-                f"replaced 1 of {len(predicate_names)} atoms with Falsity.")
-
-
-class ReplaceLiteralsWithTruth(SuccessorGenerator):
-    def get_successors(self, state):
-        task = state["pddl_task"]
-        predicate_names = [predicate.name for predicate in task.predicates if
-                           not (predicate.name == "dummy_axiom_trigger" or predicate.name == "=")]
-        random.Random().shuffle(predicate_names)
-        for name in predicate_names:
-            child_state = copy.deepcopy(state)
-            pre_child_task = child_state["pddl_task"]
-            child_state["pddl_task"] = pre_child_task.accept(
-                pddl_visitors.TaskElementErasePredicateTrueLiteralVisitor(name))
-            yield Successor(
-                child_state,
-                f"replaced 1 of {len(predicate_names)} literals with Truth.")
-
-
-class RemoveObjects(SuccessorGenerator):
-    def get_successors(self, state):
-        task = state["pddl_task"]
-        object_names = [obj.name for obj in task.objects]
-        random.Random().shuffle(object_names)
-        for name in object_names:
-            child_state = copy.deepcopy(state)
-            pre_child_task = child_state["pddl_task"]
-            child_state["pddl_task"] = pre_child_task.accept(
-                pddl_visitors.TaskElementEraseObjectVisitor(name))
-            yield Successor(child_state,
-                            f"replaced 1 of {len(object_names)} objects.")
-
-
-class RemoveSASOperators(SuccessorGenerator):
+class RemoveOperators(SuccessorGenerator):
     def get_successors(self, state):
         task = state["sas_task"]
         operator_names = [op.name for op in task.operators]
@@ -128,7 +26,7 @@ class RemoveSASOperators(SuccessorGenerator):
                        new_operators, task.axioms, task.metric)
 
 
-class RemoveSASVariables(SuccessorGenerator):
+class RemoveVariables(SuccessorGenerator):
     def get_successors(self, state):
         task = state["sas_task"]
         variables = [var for var in range(len(task.variables.axiom_layers))]
@@ -229,7 +127,7 @@ class RemoveSASVariables(SuccessorGenerator):
         return SASTask(new_variables, new_mutexes, new_init, new_goal, new_operators, new_axioms, task.metric)
 
 
-class RemoveSASEffect(SuccessorGenerator):
+class RemoveEffect(SuccessorGenerator):
     def get_successors(self, state):
         task = state["sas_task"]
         num_ops = len(task.operators)
@@ -241,7 +139,7 @@ class RemoveSASEffect(SuccessorGenerator):
                 yield Successor(child_state, f"removed 1 operator effect.")
 
 
-class SetUnspecifiedSASPrevailCondition(SuccessorGenerator):
+class SetUnspecifiedPrevailCondition(SuccessorGenerator):
     def get_successors(self, state):
         task = state["sas_task"]
         num_ops = len(task.operators)
@@ -260,7 +158,7 @@ class SetUnspecifiedSASPrevailCondition(SuccessorGenerator):
                             f"removed the prevail condition of 1 operator.")
 
 
-class MergeSASOperators(SuccessorGenerator):
+class MergeOperators(SuccessorGenerator):
     def get_successors(self, state):
         task = state["sas_task"]
         for op1, op2 in itertools.permutations(task.operators, 2):

@@ -1,7 +1,73 @@
-from machetli.planning.downward_lib.sas_tasks import SASTask, SASVariables, SASMutexGroup, SASInit, SASGoal, SASOperator, SASAxiom
+import tempfile
+import contextlib
+import os
+
+from machetli.sas.constants import KEY_IN_STATE
+from machetli.sas.sas_tasks import SASTask, SASVariables, SASMutexGroup, \
+    SASInit, SASGoal, SASOperator, SASAxiom
 
 
-def read_variables(sf, num_vars):
+def generate_initial_state(sas_file) -> dict:
+    """Parse the SAS\ :sup:`+` task defined in the SAS\ :sup:`+` file
+    *task_filename* and return an initial state containing the parsed
+    SAS\ :sup:`+` task.
+    """
+    return {
+        KEY_IN_STATE: _read_task(sas_file)
+    }
+
+
+@contextlib.contextmanager
+def temporary_file(state):
+    """Context manager that generates a temporary SAS\ :sup:`+` file
+    containing the task stored under the ``"sas_task"`` key in the *state*
+    dictionary. After the context is left, the generated file is deleted.
+
+    Example:
+
+    >>> with temporary_file(state) as sas_filename:
+    ...     cmd = ["fast-downward.py", f"{sas_filename}", "--search", "astar(lmcut())"]
+    ...
+    """
+    f = tempfile.NamedTemporaryFile(mode="w+t", suffix=".sas", delete=False)
+    state[KEY_IN_STATE].output(f)
+    f.close()
+    yield f.name
+    os.remove(f.name)
+
+
+def _read_task(sas_file) -> SASTask:
+    with open(sas_file, "r") as sf:
+        while True:
+            # pos = sf.tell()
+            line = sf.readline().replace("\n", "")
+            if line == "begin_metric":
+                break
+        metric = bool(sf.readline().replace("\n", ""))
+        sf.readline()  # skip end_metric
+        # read variables
+        num_vars = int(sf.readline().replace("\n", ""))
+        variables = _read_variables(sf, num_vars)
+        # read mutexes
+        num_mutexes = int(sf.readline().replace("\n", ""))
+        mutexes = _read_mutexes(sf, num_mutexes)
+        # read init state
+        init = _read_init_state(sf, num_vars)
+        # read goal
+        goal = _read_goal(sf)
+        # read operators
+        num_operators = int(sf.readline().replace("\n", ""))
+        operators = _read_operators(sf, num_operators)
+        # read axioms
+        num_axioms = int(sf.readline().replace("\n", ""))
+        axioms = _read_axioms(sf, num_axioms)
+
+    sas_task = SASTask(variables, mutexes, init, goal, operators, axioms, metric)
+    sas_task.validate()
+    return sas_task
+
+
+def _read_variables(sf, num_vars):
     axiom_layers = []
     ranges = []
     value_name_lists = []
@@ -20,7 +86,7 @@ def read_variables(sf, num_vars):
     return SASVariables(ranges, axiom_layers, value_name_lists)
 
 
-def read_mutexes(sf, num_mutexes):
+def _read_mutexes(sf, num_mutexes):
     mutexes = []
     for mutex_group in range(num_mutexes):
         beginning_line = sf.readline().replace("\n", "")
@@ -36,7 +102,7 @@ def read_mutexes(sf, num_mutexes):
     return mutexes
 
 
-def read_init_state(sf, num_vars):
+def _read_init_state(sf, num_vars):
     init = []
     beginning_line = sf.readline().replace("\n", "")
     assert beginning_line == "begin_state"
@@ -48,7 +114,7 @@ def read_init_state(sf, num_vars):
     return SASInit(init)
 
 
-def read_goal(sf):
+def _read_goal(sf):
     beginning_line = sf.readline().replace("\n", "")
     assert beginning_line == "begin_goal"
     num_pairs = int(sf.readline().replace("\n", ""))
@@ -61,7 +127,7 @@ def read_goal(sf):
     return SASGoal(pairs)
 
 
-def read_operators(sf, num_operators):
+def _read_operators(sf, num_operators):
     operators = []
     for op in range(num_operators):
         beginning_line = sf.readline().replace("\n", "")
@@ -91,7 +157,7 @@ def read_operators(sf, num_operators):
     return operators
 
 
-def read_axioms(sf, num_axioms):
+def _read_axioms(sf, num_axioms):
     axioms = []
     for ax in range(num_axioms):
         beginning_line = sf.readline().replace("\n", "")
@@ -112,37 +178,6 @@ def read_axioms(sf, num_axioms):
     return axioms
 
 
-def sas_file_to_SASTask(sas_file) -> SASTask:
-    with open(sas_file, "r") as sf:
-        while True:
-            # pos = sf.tell()
-            line = sf.readline().replace("\n", "")
-            if line == "begin_metric":
-                break
-        metric = bool(sf.readline().replace("\n", ""))
-        sf.readline()  # skip end_metric
-        # read variables
-        num_vars = int(sf.readline().replace("\n", ""))
-        variables = read_variables(sf, num_vars)
-        # read mutexes
-        num_mutexes = int(sf.readline().replace("\n", ""))
-        mutexes = read_mutexes(sf, num_mutexes)
-        # read init state
-        init = read_init_state(sf, num_vars)
-        # read goal
-        goal = read_goal(sf)
-        # read operators
-        num_operators = int(sf.readline().replace("\n", ""))
-        operators = read_operators(sf, num_operators)
-        # read axioms
-        num_axioms = int(sf.readline().replace("\n", ""))
-        axioms = read_axioms(sf, num_axioms)
-
-    sas_task = SASTask(variables, mutexes, init, goal, operators, axioms, metric)
-    sas_task.validate()
-    return sas_task
-
-
-def write_SAS(sas_task, filename):
+def write_file(state, filename):
     with open(filename, "w") as file:
-        sas_task.output(file)
+        state[KEY_IN_STATE].output(file)

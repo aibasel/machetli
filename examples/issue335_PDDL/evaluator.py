@@ -1,6 +1,6 @@
 import os
 
-from machetli.planning import auxiliary
+from machetli import pddl
 from machetli.run import Run
 
 PYTHON37 = os.environ["PYTHON_3_7"]
@@ -13,7 +13,7 @@ TRANSLATOR = os.path.join(PLANNER_REPO, "src/translate/translate.py")
 def evaluate(state):
     # The following context manager temporarily write the task stored in *state*
     # to files that are automatically deleted afterwards.
-    with auxiliary.generated_pddl_files(state) as (domain_filename, problem_filename):
+    with pddl.temporary_files(state) as (domain_filename, problem_filename):
         command = [PYTHON37, TRANSLATOR, f"{domain_filename}", f"{problem_filename}"]
         run = Run(command, time_limit=20, memory_limit=3338)
 

@@ -1,5 +1,6 @@
 import logging
 import os
+import pkgutil
 import pprint
 import re
 import subprocess
@@ -7,13 +8,15 @@ import time
 
 from machetli import tools
 from machetli.evaluator import is_evaluator_successful
-from machetli.grid import slurm_tools as st
 from machetli.tools import SubmissionError, TaskError, PollingError, write_state
 
 
 EVAL_DIR = "eval_dir"
 STATE_FILENAME = "state.pickle"
+
+TEMPLATE_FILE = "slurm-array-job.template"
 SBATCH_FILE = "slurm-array-job.sbatch"
+
 FILESYSTEM_TIME_INTERVAL = 3
 FILESYSTEM_TIME_LIMIT = 60
 POLLING_TIME_INTERVAL = 15
@@ -116,7 +119,8 @@ class SlurmEnvironment(Environment):
         script_dir = os.path.dirname(self.script_path)
         self.eval_dir = os.path.join(script_dir, EVAL_DIR)
         tools.makedirs(self.eval_dir)
-        st.check_for_whitespace(self.eval_dir)
+        if re.search(r"\s+", self.eval_dir):
+            logging.critical("The script path must not contain any whitespace characters.")
         self.sbatch_file = os.path.join(script_dir, SBATCH_FILE)
         self.wait_for_filesystem(self.eval_dir)
         self.critical = False
@@ -185,7 +189,7 @@ class SlurmEnvironment(Environment):
         for task in self.job["tasks"]:
             result_file = os.path.join(task["dir"], "exit_code")
             if self.wait_for_filesystem(result_file):
-                if st.parse_exit_code(result_file) == 0:
+                if _parse_exit_code(result_file) == 0:
                     successor = task["successor"]
                     break
             else:
@@ -235,7 +239,7 @@ class SlurmEnvironment(Environment):
         dictionary.update(kwargs)
         logging.debug(
             f"Dictionary before filling:\n{pprint.pformat(dictionary)}")
-        filled_text = st.fill_template(**dictionary)
+        filled_text = _fill_template(**dictionary)
         with open(self.sbatch_file, "w") as f:
             f.write(filled_text)
         # TODO: Implement check whether file was updated
@@ -332,6 +336,33 @@ class SlurmEnvironment(Environment):
         return memory
 
 
+
+def _parse_exit_code(result_file):
+    with open(result_file, "r") as rf:
+        exitcode = int(rf.read())
+    return exitcode
+
+
+def _fill_template(**parameters):
+    template = tools.get_string(pkgutil.get_data(
+        "machetli", os.path.join("templates", TEMPLATE_FILE)))
+    return template.format(**parameters)
+
+
+## TODO: call this when the search is done.
+def _launch_email_job(email):
+    try:
+        subprocess.run(["sbatch",
+                        "--job-name='Search terminated'",
+                        "--mail-type=BEGIN",
+                        f"--mail-user={email}"],
+                    input=b"#! /bin/bash\n")
+    except:
+        logging.warning(
+            "Something went wrong while trying to send the "
+            "notification email.")
+
+
 class BaselSlurmEnvironment(SlurmEnvironment):
     """Environment for Basel's AI group."""
     DEFAULT_PARTITION = "infai_1"
@@ -354,4 +385,3 @@ class BaselSlurmEnvironment(SlurmEnvironment):
                     f"maximum amount allowed for partition {self.partition}: "
                     f"{self.MAX_MEM_INFAI_BASEL[self.partition]}."
                 )
-

@@ -1,3 +1,5 @@
+# This File was taken from Fast Downward.
+
 SAS_FILE_VERSION = 3
 
 DEBUG = False

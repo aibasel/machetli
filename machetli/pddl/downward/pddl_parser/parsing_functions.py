@@ -1,7 +1,6 @@
 import sys
 
-from machetli.planning.downward_lib import pddl
-from machetli.planning.downward_lib import graph
+from machetli.pddl.downward import pddl, graph
 
 
 def parse_typed_list(alist, only_variables=False,

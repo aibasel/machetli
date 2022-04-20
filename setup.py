@@ -29,6 +29,6 @@ setup(
     python_requires=">=3.7",
     include_package_data=True,
     package_data={
-        "machetli": ["grid/slurm-array-job.template"],
+        "machetli": ["templates/slurm-array-job.template"],
     },
 )

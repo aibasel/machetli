@@ -4,7 +4,7 @@
 
 import itertools
 
-from machetli.planning.downward_lib.pddl.task_element import TaskElement
+from machetli.pddl.downward.pddl.task_element import TaskElement
 
 
 def _get_type_predicate_name(type_name):

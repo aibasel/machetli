@@ -3,7 +3,7 @@
 # based on a precomputed hash value.
 #
 # Careful: Most other classes (e.g. Effects, Axioms, Actions) are not!
-from machetli.planning.downward_lib.pddl.task_element import TaskElement
+from machetli.pddl.downward.pddl.task_element import TaskElement
 
 
 class Condition(TaskElement):
