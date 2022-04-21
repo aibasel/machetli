@@ -1,5 +1,6 @@
 import logging
-from machetli.run import Run
+from machetli import tools
+
 
 def evaluate(state):
     """
@@ -25,7 +26,7 @@ def evaluate(state):
     level = state["level"]
     logging.info(f"Evaluating: <id={state_id}, level={level}>")
 
-    run = Run(["echo", "Hello", "world"])
+    run = tools.Run(["echo", "Hello", "world"])
     run.start()
 
     return level + state_id == 3

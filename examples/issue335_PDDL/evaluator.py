@@ -1,7 +1,6 @@
 import os
 
-from machetli import pddl
-from machetli.run import Run
+from machetli import pddl, tools
 
 PYTHON37 = os.environ["PYTHON_3_7"]
 PLANNER_REPO = os.environ["DOWNWARD_REPO"]
@@ -15,7 +14,7 @@ def evaluate(state):
     # to files that are automatically deleted afterwards.
     with pddl.temporary_files(state) as (domain_filename, problem_filename):
         command = [PYTHON37, TRANSLATOR, f"{domain_filename}", f"{problem_filename}"]
-        run = Run(command, time_limit=20, memory_limit=3338)
+        run = tools.Run(command, time_limit=20, memory_limit=3338)
 
         ## TODO: add functionality to store logs {always, only on error} to the Run class. See run.py run_all.
         stdout, stderr, returncode = run.start()
