@@ -18,7 +18,7 @@ def evaluate(state):
         run = Run(command, time_limit=20, memory_limit=3338)
 
         ## TODO: add functionality to store logs {always, only on error} to the Run class. See run.py run_all.
-        stdout, stderr, returncode = run.start(state)
+        stdout, stderr, returncode = run.start()
 
         ## TODO: add parsing methods?
         return "AssertionError: Negated axiom impossible" in stderr

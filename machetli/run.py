@@ -9,7 +9,7 @@ from machetli import tools
 
 
 # This function is copied from lab.calls.call (<https://lab.readthedocs.org>).
-def set_limit(kind, soft_limit, hard_limit):
+def _set_limit(kind, soft_limit, hard_limit):
     try:
         resource.setrlimit(kind, (soft_limit, hard_limit))
     except (OSError, ValueError) as err:
@@ -47,7 +47,7 @@ class Run:
     def __repr__(self):
         return f'Run(\"{" ".join([os.path.basename(part) for part in self.command])}\")'
 
-    def start(self, state):
+    def start(self):
         """Format the command with the entries of *state* and execute it with
         `subprocess.Popen <https://docs.python.org/3/library/subprocess.html#subprocess.Popen>`_.
         Return the 3-tuple (stdout, stderr, returncode) with the values obtained 
@@ -62,30 +62,28 @@ class Run:
             # reach the higher hard time limit, SIGKILL is sent. Having some
             # padding between the two limits allows programs to handle SIGXCPU.
             if time_limit is not None:
-                set_limit(resource.RLIMIT_CPU, time_limit, time_limit + 5)
+                _set_limit(resource.RLIMIT_CPU, time_limit, time_limit + 5)
             if memory_limit is not None:
                 _, hard_mem_limit = resource.getrlimit(resource.RLIMIT_AS)
                 # Convert memory from MiB to Bytes.
-                set_limit(resource.RLIMIT_AS, memory_limit *
+                _set_limit(resource.RLIMIT_AS, memory_limit *
                           1024 * 1024, hard_mem_limit)
-            set_limit(resource.RLIMIT_CORE, 0, 0)
+            _set_limit(resource.RLIMIT_CORE, 0, 0)
 
-        formatted_command = [part.format(**state) for part in self.command]
-        logging.debug(f"Formatted command:\n{formatted_command}")
-
-        cwd = state["cwd"] if "cwd" in state else None
+        logging.debug(f"Command:\n{self.command}")
 
         try:
-            process = subprocess.Popen(formatted_command,
+            logging.info(self.command)
+            process = subprocess.Popen(self.command,
                                        preexec_fn=_prepare_call,
                                        stdout=subprocess.PIPE,
                                        stderr=subprocess.PIPE,
-                                       text=True,
-                                       cwd=cwd)
+                                       text=True)
         except OSError as err:
             if err.errno == errno.ENOENT:
-                sys.exit('Error: Call "{}" failed. One of the files was not found.'.format(
-                    ' '.join(formatted_command)))
+                cmd = " ".join(self.command)
+                sys.exit(f"Error: Call '{cmd}' failed. "
+                         "One of the files was not found.")
             else:
                 raise
 
@@ -107,7 +105,7 @@ class RunWithInputFile(Run):
         super().__init__(command, **kwargs)
         self.input_file = input_file
 
-    def start(self, state):
+    def start(self):
         """Same as the :meth:`base method <machetli.run.Run.start>`, with
         the addition of the content from *input_file* being passed to the
         stdin of the executed *command*.
@@ -121,34 +119,31 @@ class RunWithInputFile(Run):
             # reach the higher hard time limit, SIGKILL is sent. Having some
             # padding between the two limits allows programs to handle SIGXCPU.
             if time_limit is not None:
-                set_limit(resource.RLIMIT_CPU, time_limit, time_limit + 5)
+                _set_limit(resource.RLIMIT_CPU, time_limit, time_limit + 5)
             if memory_limit is not None:
                 _, hard_mem_limit = resource.getrlimit(resource.RLIMIT_AS)
                 # Convert memory from MiB to Bytes.
-                set_limit(resource.RLIMIT_AS, memory_limit *
+                _set_limit(resource.RLIMIT_AS, memory_limit *
                           1024 * 1024, hard_mem_limit)
-            set_limit(resource.RLIMIT_CORE, 0, 0)
-
-        formatted_command = [part.format(**state) for part in self.command]
-
-        cwd = state["cwd"] if "cwd" in state else None
+            _set_limit(resource.RLIMIT_CORE, 0, 0)
 
         try:
-            process = subprocess.Popen(formatted_command,
+            logging.info(self.command)
+            process = subprocess.Popen(self.command,
                                        preexec_fn=_prepare_call,
                                        stdout=subprocess.PIPE,
                                        stderr=subprocess.PIPE,
                                        stdin=subprocess.PIPE,
-                                       text=True,
-                                       cwd=cwd)
+                                       text=True)
         except OSError as err:
             if err.errno == errno.ENOENT:
-                sys.exit('Error: Call "{}" failed. One of the files was not found.'.format(
-                    ' '.join(formatted_command)))
+                cmd = " ".join(self.command)
+                sys.exit(f"Error: Call '{cmd}' failed. "
+                         "One of the files was not found.")
             else:
                 raise
 
-        with open(self.input_file.format(**state), "r") as file:
+        with open(self.input_file, "r") as file:
             input_text = file.read()
 
         out_str, err_str = process.communicate(input=input_text)

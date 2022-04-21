@@ -26,6 +26,6 @@ def evaluate(state):
     logging.info(f"Evaluating: <id={state_id}, level={level}>")
 
     run = Run(["echo", "Hello", "world"])
-    run.start(state)
+    run.start()
 
     return level + state_id == 3

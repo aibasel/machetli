@@ -21,5 +21,5 @@ def evaluate(state):
         run = RunWithInputFile(command, 
                                input_file=f"{sas_filename}",
                                time_limit=10, memory_limit=3338)
-        stdout, stderr, returncode = run.start(state)
+        stdout, stderr, returncode = run.start()
     return "caught signal 11" in stdout or "caught signal 6" in stdout

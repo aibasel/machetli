@@ -38,7 +38,7 @@ def evaluate(state):
         runs = [RUN_SUCCEED, RUN_EXCEED_TIME_LIMIT, RUN_EXCEED_MEMORY_LIMIT]
 
     for run in runs:
-        run.start(state)
+        run.start()
 
     return state["level"] <= 3 and state["id"] == 4
 
