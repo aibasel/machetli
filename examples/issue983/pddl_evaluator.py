@@ -1,21 +1,34 @@
+import os
+import re
+
 from machetli import pddl, tools
 
-import constants
+PLANNER_REPO = os.environ["DOWNWARD_REPO"]
+PLANNER = os.path.join(PLANNER_REPO, "builds/release/bin/downward")
 
 
 def evaluate(state):
     with pddl.temporary_files(state) as (domain, problem):
-        print("evaluate")
+        reference_command = [
+            PLANNER, domain, problem, "--search", "astar(lmcut())",
+            "--translate-options", "--relaxed"
+        ]
         run_reference = tools.Run(
-            constants.get_reference_command([domain, problem]),
-            time_limit=20, memory_limit=3000)
+            reference_command, time_limit=20, memory_limit=3000)
         stdout, _, _ = run_reference.start()
-        cost = constants.COST_RE.search(stdout).group()
+        cost_re = re.compile("Plan cost: (\d+)$")
+        cost = cost_re.search(stdout).group()
 
+        mip_command = [
+            PLANNER, domain, problem, "--search",
+            "astar(operatorcounting([delete_relaxation_constraints("
+            "use_time_vars=true, use_integer_vars=true)], "
+            "use_integer_operator_counts=True), bound=0)"
+        ]
         run_mip = tools.Run(
-            constants.get_mip_command([domain, problem]),
-            time_limit=20, memory_limit=3000)
+            mip_command, time_limit=20, memory_limit=3000)
         stdout, _, _ = run_mip.start()
-        initial_h = constants.INITIAL_H_RE.search(stdout).group()
+        initial_h_re = re.compile("Initial heuristic value * (\d+)$")
+        initial_h = initial_h_re.search(stdout).group()
 
         return cost < initial_h

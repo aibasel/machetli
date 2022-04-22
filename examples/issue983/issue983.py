@@ -6,13 +6,12 @@ import platform
 import subprocess
 import sys
 
-import constants
-
 from machetli import environments, pddl, sas, search, tools
 
-TRANSLATOR = os.path.join(constants.PLANNER_REPO, "src/translate/translate.py")
+PLANNER_REPO = os.environ["DOWNWARD_REPO"]
+TRANSLATOR = os.path.join(PLANNER_REPO, "src/translate/translate.py")
 
-if platform.node().endswith((".scicore.unibas.ch", ".cluster.bc.ch")):
+if platform.node().endswith((".scicore.unibas.ch", ".cluster.bc2.ch")):
     environment = environments.BaselSlurmEnvironment(
         batch_size=10, export=["DOWNWARD_REPO"])
 else:
