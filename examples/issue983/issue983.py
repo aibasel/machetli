@@ -21,8 +21,8 @@ else:
 # h+ was inadmissible.
 
 script_dir = os.path.dirname(tools.get_script_path())
-domain = "problem/p27-domain.pddl"
-problem = "problem/p27.pddl"
+domain = os.path.join(script_dir, "problem/p27-domain.pddl")
+problem = os.path.join(script_dir, "problem/p27.pddl")
 
 initial_state = pddl.generate_initial_state(domain, problem)
 successor_generators = [

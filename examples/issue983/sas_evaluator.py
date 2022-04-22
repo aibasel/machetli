@@ -4,7 +4,7 @@ import re
 from machetli import sas, tools
 
 PLANNER_REPO = os.environ["DOWNWARD_REPO"]
-PLANNER = os.path.join(PLANNER_REPO, "builds/release/bin/downward")
+PLANNER = os.path.join(PLANNER_REPO, "fast-downward.py")
 
 
 def evaluate(state):
@@ -26,7 +26,7 @@ def evaluate(state):
             PLANNER, "--search",
             "astar(operatorcounting([delete_relaxation_constraints("
             "use_time_vars=true, use_integer_vars=true)], "
-            "use_integer_operator_counts=True), bound=0)"
+            "use_integer_operator_counts=True), bound=0)",
         ]
         run_mip = tools.RunWithInputFile(
             mip_command, input_file=f"{sas_filename}", time_limit=20, memory_limit=3000)
