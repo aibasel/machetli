@@ -15,11 +15,15 @@ def evaluate(state):
         ]
         run_reference = tools.Run(
             reference_command, time_limit=20, memory_limit=3000)
-        stdout, _, _ = run_reference.start()
-        cost_re = re.compile("Plan cost: (\d+)$")
+        stdout, stderr, _ = run_reference.start()
+        # with open("run1.log", "w") as log:
+        #     log.write(stdout)
+        # with open("run1.err", "w") as err:
+        #     err.write(stderr)
+        cost_re = re.compile("Plan cost: (\d+)")
         match = cost_re.search(stdout)
         if match:
-            cost = int(match.group())
+            cost = int(match.group(1))
         else:
             return False
 
@@ -31,12 +35,16 @@ def evaluate(state):
         ]
         run_mip = tools.Run(
             mip_command, time_limit=20, memory_limit=3000)
-        stdout, _, _ = run_mip.start()
-        initial_h_re = re.compile("Initial heuristic value * (\d+)$")
+        stdout, stderr, _ = run_mip.start()
+        # with open("run2.log", "w") as log:
+        #     log.write(stdout)
+        # with open("run2.err", "w") as err:
+        #     err.write(stderr)
+        initial_h_re = re.compile("Initial heuristic value .* (\d+)")
         match = initial_h_re.search(stdout)
         if match:
-            initial_h = int(match.group())
+            initial_h = int(match.group(1))
         else:
             return False
 
-        return cost < initial_h
+        return cost != initial_h

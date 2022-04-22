@@ -1,6 +1,5 @@
 #!/usr/bin/env python
 
-import errno
 import os
 import platform
 import subprocess
@@ -13,7 +12,7 @@ TRANSLATOR = os.path.join(PLANNER_REPO, "src/translate/translate.py")
 
 if platform.node().endswith((".scicore.unibas.ch", ".cluster.bc2.ch")):
     environment = environments.BaselSlurmEnvironment(
-        batch_size=10, export=["DOWNWARD_REPO"])
+        batch_size=100, export=["DOWNWARD_REPO"])
 else:
     environment = environments.LocalEnvironment()
 
@@ -34,23 +33,23 @@ evaluator_filename = os.path.join(script_dir, "pddl_evaluator.py")
 result = search(initial_state, successor_generators, evaluator_filename,
                 environment)
 
-pddl_result_names = ("small-domain", "small-problem")
+pddl_result_names = (
+    os.path.join(script_dir, "problem/small-domain.pddl"),
+    os.path.join(script_dir, "problem/small-problem.pddl"),
+)
 pddl.write_files(result, pddl_result_names[0], pddl_result_names[1])
 
 translate = [
     TRANSLATOR, pddl_result_names[0], pddl_result_names[1],
 ]
 try:
-    process = subprocess.Popen(translate, stdout=subprocess.PIPE,
-                               stderr=subprocess.PIPE, text=True)
-except OSError as err:
-    if err.errno == errno.ENOENT:
-        cmd = " ".join(translate)
-        sys.exit(f"Error: Call '{cmd}' failed.")
-    else:
-        raise
+    subprocess.check_call(translate)
+except subprocess.CalledProcessError as err:
+    cmd = " ".join(translate)
+    sys.exit(f"Error: Call '{cmd}' failed.")
 
-initial_state = sas.generate_initial_state("output.sas")
+sas_file = os.path.join(script_dir, "output.sas")
+initial_state = sas.generate_initial_state(sas_file)
 successor_generators = [
     sas.RemoveOperators(),
     sas.RemoveVariables(),
@@ -58,7 +57,7 @@ successor_generators = [
     sas.SetUnspecifiedPrevailCondition(),
     sas.MergeOperators(),
 ]
-evaluator_filename = "sas_evaluator.py"
+evaluator_filename = os.path.join(script_dir, "sas_evaluator.py")
 result = search(initial_state, successor_generators, evaluator_filename,
                 environment)
-sas.write_file(result, "problem/result")
+sas.write_file(result, "problem/result.sas")
