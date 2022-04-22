@@ -16,7 +16,11 @@ def evaluate(state):
             reference_command, input_file=f"{sas_filename}", time_limit=20, memory_limit=3000)
         stdout, _, _ = run_reference.start()
         cost_re = re.compile("Plan cost: (\d+)$")
-        cost = cost_re.search(stdout).group()
+        match = cost_re.search(stdout)
+        if match:
+            cost = int(match.group())
+        else:
+            return False
 
         mip_command = [
             PLANNER, "--search",
@@ -28,6 +32,10 @@ def evaluate(state):
             mip_command, input_file=f"{sas_filename}", time_limit=20, memory_limit=3000)
         stdout, _, _ = run_mip.start()
         initial_h_re = re.compile("Initial heuristic value * (\d+)$")
-        initial_h = initial_h_re.search(stdout).group()
+        match = initial_h_re.search(stdout)
+        if match:
+            initial_h = int(match.group())
+        else:
+            return False
 
         return cost < initial_h
