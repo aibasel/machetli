@@ -1,3 +1,4 @@
+from importlib import resources
 import logging
 import os
 import pkgutil
@@ -6,25 +7,9 @@ import re
 import subprocess
 import time
 
-from machetli import tools
+from machetli import tools, templates
 from machetli.evaluator import is_evaluator_successful
 from machetli.tools import SubmissionError, TaskError, PollingError, write_state
-
-
-EVAL_DIR = "eval_dir"
-STATE_FILENAME = "state.pickle"
-
-TEMPLATE_FILE = "slurm-array-job.template"
-SBATCH_FILE = "slurm-array-job.sbatch"
-
-FILESYSTEM_TIME_INTERVAL = 3
-FILESYSTEM_TIME_LIMIT = 60
-POLLING_TIME_INTERVAL = 15
-TIME_LIMIT_FACTOR = 1.5
-
-# Sets of slurm job state codes
-DONE_STATE = {"COMPLETED"}
-BUSY_STATES = {"PENDING", "RUNNING", "REQUEUED", "SUSPENDED"}
 
 
 """
@@ -87,6 +72,16 @@ class SlurmEnvironment(Environment):
     DEFAULT_SETUP = ""
     DEFAULT_NICE = 0
 
+    STATE_FILENAME = "state.pickle"
+
+    # Sets of slurm job state codes
+    DONE_STATES = {"COMPLETED"}
+    BUSY_STATES = {"PENDING", "RUNNING", "REQUEUED", "SUSPENDED"}
+
+    FILESYSTEM_TIME_INTERVAL = 3
+    FILESYSTEM_TIME_LIMIT = 60
+    POLLING_TIME_INTERVAL = 15
+
     # TODO: are differences to Lab reasonable? e.g., here we have no time limit.
     def __init__(
         self,
@@ -117,11 +112,12 @@ class SlurmEnvironment(Environment):
         self.job = None
 
         script_dir = os.path.dirname(self.script_path)
-        self.eval_dir = os.path.join(script_dir, EVAL_DIR)
+        self.eval_dir = os.path.join(script_dir, "eval_dir")
         tools.makedirs(self.eval_dir)
         if re.search(r"\s+", self.eval_dir):
             logging.critical("The script path must not contain any whitespace characters.")
-        self.sbatch_file = os.path.join(script_dir, SBATCH_FILE)
+        self.sbatch_template = resources.read_text(templates, "slurm-array-job.template")
+        self.sbatch_filename = os.path.join(script_dir, "slurm-array-job.sbatch")
         self.wait_for_filesystem(self.eval_dir)
         self.critical = False
 
@@ -142,6 +138,7 @@ class SlurmEnvironment(Environment):
                 self.memory_per_cpu))
         job_params["python"] = tools.get_python_executable()
         job_params["script_path"] = self.script_path
+        job_params["state_filename"] = self.STATE_FILENAME
         return job_params
 
     def submit(self, batch, batch_id, evaluator_path):
@@ -207,9 +204,9 @@ class SlurmEnvironment(Environment):
         return successor
 
     def wait_for_filesystem(self, *paths):
-        attempts = int(FILESYSTEM_TIME_LIMIT / FILESYSTEM_TIME_INTERVAL)
+        attempts = int(self.FILESYSTEM_TIME_LIMIT / self.FILESYSTEM_TIME_INTERVAL)
         for _ in range(attempts):
-            time.sleep(FILESYSTEM_TIME_INTERVAL)
+            time.sleep(self.FILESYSTEM_TIME_INTERVAL)
             paths = [path for path in paths if not os.path.exists(path)]
             if not paths:
                 return True
@@ -223,7 +220,7 @@ class SlurmEnvironment(Environment):
             run_dir_name = f"{rank:03}"
             run_dir_path = os.path.join(batch_dir_path, run_dir_name)
             tools.makedirs(run_dir_path)
-            state_file_path = os.path.join(run_dir_path, STATE_FILENAME)
+            state_file_path = os.path.join(run_dir_path, self.STATE_FILENAME)
             write_state(successor.state, state_file_path)
             run_dirs.append(run_dir_path)
         # Give the NFS time to write the paths
@@ -239,9 +236,8 @@ class SlurmEnvironment(Environment):
         dictionary.update(kwargs)
         logging.debug(
             f"Dictionary before filling:\n{pprint.pformat(dictionary)}")
-        filled_text = _fill_template(**dictionary)
-        with open(self.sbatch_file, "w") as f:
-            f.write(filled_text)
+        with open(self.sbatch_filename, "w") as f:
+            f.write(self.sbatch_template.format(**dictionary))
         # TODO: Implement check whether file was updated
 
     def submit_array_job(self, batch, batch_num, evaluator_path):
@@ -256,7 +252,7 @@ class SlurmEnvironment(Environment):
                                num_tasks=len(batch)-1,
                                evaluator_path=evaluator_path)
         submission_command = ["sbatch", "--export",
-                              ",".join(self.export), self.sbatch_file]
+                              ",".join(self.export), self.sbatch_filename]
         try:
             output = subprocess.check_output(submission_command).decode()
         except subprocess.CalledProcessError as cpe:
@@ -277,7 +273,7 @@ class SlurmEnvironment(Environment):
     def poll_job(self):
         job_id = self.job["id"]
         while True:
-            time.sleep(POLLING_TIME_INTERVAL)
+            time.sleep(self.POLLING_TIME_INTERVAL)
             try:
                 output = subprocess.check_output(
                     ["sacct", "-j", str(job_id), "--format=jobid,state",
@@ -288,9 +284,9 @@ class SlurmEnvironment(Environment):
                 critical = []
                 logging.debug(f"Task states:\n{pprint.pformat(task_states)}")
                 for task_id, task_state in task_states.items():
-                    if task_state in DONE_STATE:
+                    if task_state in self.DONE_STATES:
                         done.append(task_id)
-                    elif task_state in BUSY_STATES:
+                    elif task_state in self.BUSY_STATES:
                         busy.append(task_id)
                     else:
                         critical.append(task_id)
@@ -341,12 +337,6 @@ def _parse_exit_code(result_file):
     with open(result_file, "r") as rf:
         exitcode = int(rf.read())
     return exitcode
-
-
-def _fill_template(**parameters):
-    template = tools.get_string(pkgutil.get_data(
-        "machetli", os.path.join("templates", TEMPLATE_FILE)))
-    return template.format(**parameters)
 
 
 ## TODO: call this when the search is done.

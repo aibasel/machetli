@@ -32,7 +32,7 @@ RUN_DIR=${{RUN_DIRS[$SLURM_ARRAY_TASK_ID]}}
 cd $RUN_DIR
 
 (
-{python} -m machetli.evaluator "{evaluator_path}" "state.pickle"
+{python} -m machetli.evaluator "{evaluator_path}" "{state_filename}"
 RETCODE=$?
 
 echo "$RETCODE" > exit_code
