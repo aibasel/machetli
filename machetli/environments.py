@@ -206,10 +206,10 @@ class SlurmEnvironment(Environment):
     def wait_for_filesystem(self, *paths):
         attempts = int(self.FILESYSTEM_TIME_LIMIT / self.FILESYSTEM_TIME_INTERVAL)
         for _ in range(attempts):
-            time.sleep(self.FILESYSTEM_TIME_INTERVAL)
             paths = [path for path in paths if not os.path.exists(path)]
             if not paths:
                 return True
+            time.sleep(self.FILESYSTEM_TIME_INTERVAL)
         return False  # At least one path from paths does not exist
 
     def build_batch_directories(self, batch, batch_num):
