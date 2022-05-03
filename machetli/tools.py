@@ -113,7 +113,6 @@ def read_state(file_path, wait_time, repetitions):
 
 class SubmissionError(Exception):
     def __init__(self, cpe):
-        print(cpe)
         self.returncode = cpe.returncode
         self.cmd = cpe.cmd
         self.output = cpe.output
@@ -134,7 +133,7 @@ class SubmissionError(Exception):
                         f"ignored: {self}")
 
     def warn_abort(self):
-        logging.warning(
+        logging.error(
             f"Task order cannot be kept because the following batch "
             f"submission failed: {self} Aborting search.")
 
@@ -164,8 +163,8 @@ class TaskError(Exception):
         first_failed = self.indices_critical[0]
         job["tasks"] = job["tasks"][:first_failed]
         if not job["tasks"]:
-            logging.warning("Since the first task failed, the order "
-                            "cannot be kept. Aborting search.")
+            logging.error("Since the first task failed, the order "
+                          "cannot be kept. Aborting search.")
         else:
             logging.warning(
                 f"At least one task from job {job['id']} entered a "
@@ -186,7 +185,7 @@ def _set_limit(kind, soft_limit, hard_limit):
     try:
         resource.setrlimit(kind, (soft_limit, hard_limit))
     except (OSError, ValueError) as err:
-        logging.error(
+        logging.critical(
             f"Resource limit for {kind} could not be set to "
             f"[{soft_limit}, {hard_limit}] ({err})"
         )
@@ -254,8 +253,8 @@ class Run:
         except OSError as err:
             if err.errno == errno.ENOENT:
                 cmd = " ".join(self.command)
-                sys.exit(f"Error: Call '{cmd}' failed. "
-                         "One of the files was not found.")
+                logging.critical(f"Error: Call '{cmd}' failed. "
+                                 "One of the files was not found.")
             else:
                 raise
 
@@ -309,8 +308,8 @@ class RunWithInputFile(Run):
         except OSError as err:
             if err.errno == errno.ENOENT:
                 cmd = " ".join(self.command)
-                sys.exit(f"Error: Call '{cmd}' failed. "
-                         "One of the files was not found.")
+                logging.critical(f"Error: Call '{cmd}' failed. "
+                                 "One of the files was not found.")
             else:
                 raise
 

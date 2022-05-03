@@ -195,12 +195,12 @@ class SlurmEnvironment(Environment):
             else:
                 if self.allow_nondeterministic_successor_choice:
                     logging.warning(
-                        f"Result file {result_file} does not exist. "
+                        f"Result file '{result_file}' does not exist. "
                         "Continuing with next task.")
                     continue
                 else:
                     logging.warning("Aborting search because evaluation "
-                                    f"in {task['dir']} failed.")
+                                    f"in '{task['dir']}' failed.")
                     # TODO: raise an error that can be handled by the caller.
                     return None
         self.job = None

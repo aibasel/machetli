@@ -1,3 +1,4 @@
+import logging
 import sys
 
 from machetli.pddl.downward import pddl, graph
@@ -128,7 +129,7 @@ def _get_predicate_id_and_arity(text, type_dict, predicate_dict):
         if the_type is not None and not SEEN_WARNING_TYPE_PREDICATE_NAME_CLASH:
             msg = ("Warning: name clash between type and predicate %r.\n"
                    "Interpreting as predicate in conditions.") % text
-            print(msg, file=sys.stderr)
+            logging.warn(msg)
             SEEN_WARNING_TYPE_PREDICATE_NAME_CLASH = True
         return the_predicate.name, the_predicate.get_arity()
     else:
@@ -342,7 +343,7 @@ def parse_domain_pddl(domain_pddl):
         if (seen_fields and
             correct_order.index(seen_fields[-1]) > correct_order.index(field)):
             msg = "\nWarning: %s specification not allowed here (cf. PDDL BNF)" % field
-            print(msg, file=sys.stderr)
+            logging.warn(msg)
         seen_fields.append(field)
         if field == ":requirements":
             requirements = pddl.Requirements(opt[1:])
@@ -438,7 +439,7 @@ def parse_task_pddl(task_pddl, type_dict, predicate_dict):
             if assignment.fluent in initial_assignments:
                 prev = initial_assignments[assignment.fluent]
                 if assignment.expression == prev.expression:
-                    print("Warning: %s is specified twice" % assignment,
+                    logging.warn("Warning: %s is specified twice" % assignment,
                           "in initial state specification")
                 else:
                     raise SystemExit("Error in initial state specification\n" +
@@ -482,7 +483,7 @@ def check_atom_consistency(atom, same_truth_value, other_truth_value, atom_is_tr
     if atom in same_truth_value:
         if not atom_is_true:
             atom = atom.negate()
-        print("Warning: %s is specified twice in initial state specification" % atom)
+        logging.warn("Warning: %s is specified twice in initial state specification" % atom)
 
 
 def check_for_duplicates(elements, errmsg, finalmsg):
