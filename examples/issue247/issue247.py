@@ -22,7 +22,7 @@ problem = os.path.join(script_dir, "robert-tony/problem.pddl")
 
 initial_state = pddl.generate_initial_state(domain, problem)
 successor_generators = [
-    pddl.ReplaceLiteralsWithTruth(),
+    pddl.RemovePredicates(replace_with="true"),
     pddl.RemoveActions(),
     pddl.RemoveObjects(),
 ]

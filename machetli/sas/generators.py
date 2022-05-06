@@ -36,7 +36,7 @@ class RemoveVariables(SuccessorGenerator):
             pre_child_task = child_state["sas_task"]
             child_state["sas_task"] = self.transform(pre_child_task, var)
             yield Successor(child_state,
-                            f"Removed 1 of {len(variables)} variables.")
+                            f"Removed a variable. Remaining variables: {len(variables) - 1}")
 
     def transform(self, task, var):
         # remove var attributes from variables object

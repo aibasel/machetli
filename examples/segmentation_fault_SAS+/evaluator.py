@@ -12,7 +12,7 @@ def evaluate(state):
     # to a file that is automatically deleted afterwards.
     with sas.temporary_file(state) as sas_filename:
         command = [
-            PLANNER, "--search",
+            PLANNER, sas_filename, "--search",
             "astar(operatorcounting(constraint_generators=[state_equation_constraints()]))"]
         # The downward binary we are using takes stdin arguments, so we use the Run
         # implementation RunWithInputFile which enables us to pass the contents of

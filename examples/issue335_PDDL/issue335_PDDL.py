@@ -30,7 +30,7 @@ problem_filename = os.path.join(script_dir, "cntr-problem.pddl")
 # Here, we define the initial state the search should be started from. Generally, you can
 # store anything in this dictionary that could be useful for the minimization task.
 initial_state = pddl.generate_initial_state(domain_filename, problem_filename)
-successor_generators = [pddl.RemoveObjects(), pddl.ReplaceLiteralsWithTruth()]
+successor_generators = [pddl.RemoveObjects(), pddl.RemovePredicates(replace_with="true")]
 evaluator_filename = os.path.join(script_dir, "evaluator.py")
 
 # The defined environment depends on where you want to execute the search:
