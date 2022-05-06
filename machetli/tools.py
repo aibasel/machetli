@@ -8,6 +8,7 @@ import os
 import pickle
 import pprint
 import random
+import re
 import resource
 import subprocess
 import sys
@@ -190,6 +191,26 @@ def _set_limit(kind, soft_limit, hard_limit):
             f"Resource limit for {kind} could not be set to "
             f"[{soft_limit}, {hard_limit}] ({err})"
         )
+
+
+def parse(content, pattern, type=int):
+    if type == bool:
+        logging.warning(
+            "Casting any non-empty string to boolean will always "
+            "evaluate to true. Are you sure you want to use type=bool?"
+        )
+
+    regex = re.compile(pattern)
+    match = regex.search(content)
+    if match:
+        try:
+            value = match.group(1)
+        except IndexError:
+            logging.critical(f"Regular expression '{regex}' has no groups.")
+        else:
+            return type(value)
+    else:
+        logging.debug(f"Failed to find pattern '{regex}'.")
 
 
 class Run:
