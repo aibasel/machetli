@@ -206,9 +206,11 @@ def parse(content, pattern, type=int):
         try:
             value = match.group(1)
         except IndexError:
-            logging.error(f"Failed to find pattern '{regex}'.")
+            logging.critical(f"Regular expression '{regex}' has no groups.")
         else:
             return type(value)
+    else:
+        logging.debug(f"Failed to find pattern '{regex}'.")
 
 
 class Run:

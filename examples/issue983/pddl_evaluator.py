@@ -1,5 +1,4 @@
 import os
-import re
 
 from machetli import pddl, tools
 
@@ -13,13 +12,9 @@ def evaluate(state):
             PLANNER, domain, problem, "--search", "astar(lmcut())",
             "--translate-options", "--relaxed",
         ]
-        run_reference = tools.Run(
+        reference_run = tools.Run(
             reference_command, time_limit=20, memory_limit=3000)
-        stdout, stderr, _ = run_reference.start()
-        # with open("run1.log", "w") as log:
-        #     log.write(stdout)
-        # with open("run1.err", "w") as err:
-        #     err.write(stderr)
+        stdout, stderr, _ = reference_run.start()
         cost = tools.parse(stdout, r"Plan cost: (\d+)")
 
         mip_command = [
@@ -28,16 +23,10 @@ def evaluate(state):
             "use_time_vars=true, use_integer_vars=true)], "
             "use_integer_operator_counts=True), bound=0)",
         ]
-        run_mip = tools.Run(
-            mip_command, time_limit=20, memory_limit=3000)
-        stdout, stderr, _ = run_mip.start()
-        # with open("run2.log", "w") as log:
-        #     log.write(stdout)
-        # with open("run2.err", "w") as err:
-        #     err.write(stderr)
+        mip_run = tools.Run(mip_command, time_limit=20, memory_limit=3000)
+        stdout, stderr, _ = mip_run.start()
         initial_h = tools.parse(stdout, r"Initial heuristic value .* (\d+)")
 
-        if cost and initial_h:
-            return cost != initial_h
-        else:
+        if cost is None or initial_h is None:
             return False
+        return cost != initial_h
