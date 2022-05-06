@@ -19,12 +19,7 @@ def evaluate(state):
         #     log.write(stdout)
         # with open("run1.err", "w") as err:
         #     err.write(stderr)
-        cost_re = re.compile("Plan cost: (\d+)")
-        match = cost_re.search(stdout)
-        if match:
-            cost = int(match.group(1))
-        else:
-            return False
+        cost = tools.parse(stdout, r"Plan cost: (\d+)")
 
         mip_command = [
             PLANNER, sas_filename, "--search",
@@ -39,11 +34,9 @@ def evaluate(state):
         #     log.write(stdout)
         # with open("run2.err", "w") as err:
         #     err.write(stderr)
-        initial_h_re = re.compile("Initial heuristic value .* (\d+)")
-        match = initial_h_re.search(stdout)
-        if match:
-            initial_h = int(match.group(1))
+        initial_h = tools.parse(stdout, r"Initial heuristic value .* (\d+)")
+
+        if cost and initial_h:
+            return cost != initial_h
         else:
             return False
-
-        return cost != initial_h
