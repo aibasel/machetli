@@ -7,6 +7,10 @@ PDDL Grid Example
 -----------------
 Below, you see an example application of Machetli on a Slurm computing grid. The script is excessively commented to provide insight into as many details as possible. If you have the two required environment variables set (``PYTHON_3_7`` and ``DOWNWARD_REPO`` (at commit 09ccef5fd)), you can execute the script (on a Slurm computing node) and see Machetli in action.
 
+   .. note::
+
+        Unlike in `Lab <https://lab.readthedocs.io>`_, the Minimizer (currently) does not build a project at a specified revision when it is executed. It expects the user to do this in advance and specify the built executable to be used.
+
 For an example on your local machine, jump to the :ref:`next example <local_335>`.
 
 .. literalinclude:: ../examples/issue335_PDDL/grid_test.py
