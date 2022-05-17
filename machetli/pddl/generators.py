@@ -34,10 +34,12 @@ class RemovePredicates(SuccessorGenerator):
     a state. This is accomplished by scanning the entire task for the
     atom to be removed, instantiating each instance of this atom with a
     constant according to *replace_with*:
-    - "true" replaces all atoms of the removed predicate with true,
-    - "false" replaces all atoms of the removed predicate with false, and
-    - "dynamic" (default) replaces an atom of the removed predicate with
+
+    * ``"true"`` replaces all atoms of the removed predicate with true,
+    * ``"false"`` replaces all atoms of the removed predicate with false, and
+    * ``"dynamic"`` (default) replaces an atom of the removed predicate with
       true if it occurs positively and with false otherwise.
+
     Predicates are removed in a random order.
     """
     def __init__(self, replace_with="dynamic"):

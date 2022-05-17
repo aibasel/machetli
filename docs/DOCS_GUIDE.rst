@@ -54,7 +54,8 @@ If you simply want to work on the API documentation, go to the function, class o
 
 After writing the docstrings, you can `auto-generate documentation <https://www.sphinx-doc.org/en/master/usage/extensions/autodoc.html#module-sphinx.ext.autodoc>`_ on different levels (module, class, etc.). As an example, here is how this was done for the :mod:`machetli.parser` module:
 
-.. literalinclude:: machetli.parser.rst
+.. 
+  literalinclude:: machetli.parser.rst
     :language: reST
     :caption:
 

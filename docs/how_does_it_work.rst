@@ -49,7 +49,9 @@ As mentioned above, a state is a Python dictionary. You can store in it anything
 Successor Generators
 --------------------
 A successor generator is a class defining how successors of a :ref:`state<state_concept>` are created.
-It should implement the :class:`SuccessorGenerator<machetli.planning.generators.SuccessorGenerator>` interface with the :meth:`get_successors(state)<machetli.planning.generators.SuccessorGenerator.get_successors>` method. Machetli expects :meth:`get_successors(state)<machetli.planning.generators.SuccessorGenerator.get_successors>` to return a `Python generator <https://docs.python.org/3/glossary.html#term-generator>`_ that yields successors of a state. Successor generators can be passed to Machetli :ref:`search function<search_function>` via their class name:
+It should implement the :class:`SuccessorGenerator<machetli.planning.generators.SuccessorGenerator>` interface with the :meth:`get_successors(state)<machetli.planning.generators.SuccessorGenerator.get_successors>` method. Machetli expects :meth:`get_successors(state)<machetli.planning.generators.SuccessorGenerator.get_successors>` to return a `Python generator <https://docs.python.org/3/glossary.html#term-generator>`_ that yields successors of a state. Successor generators can be passed to Machetli 
+
+.. :ref:`search function<search_function>` via their class name:
 
 .. code-block:: python
     :emphasize-lines: 2,12

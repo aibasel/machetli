@@ -1,27 +1,32 @@
 .. include:: ../README.rst
 
 .. toctree::
-   :caption: Getting Started
+   :caption: User Documentation
+   :titlesonly:
 
    installation
-   how_does_it_work
    tutorial
-   
-.. extension
+   how_does_it_work
+   extending-machetli
 
 .. toctree::
-   :caption: API
+   :caption: API Documentation - Planning
 
-   machetli.evaluate
-   machetli.main
-   machetli.parser
-   machetli.run
-   machetli.search
-   machetli.planning.auxiliary
-   machetli.planning.generators
+   machetli.pddl
+   machetli.sas
 
 .. toctree::
-   :caption: General
+   :caption: API Documentation - General
+
+   machetli
+   machetli.environments
+   machetli.evaluator
+   machetli.successors
+   machetli.tools
+
+.. toctree::
+   :caption: Meta Documentation
    :titlesonly:
 
    DOCS_GUIDE
+
