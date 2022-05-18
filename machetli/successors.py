@@ -5,7 +5,7 @@ how successors of a *state* should be constructed. This module contains the
 abstract base class :class:`SuccessorGenerator <SuccessorGenerator>` and some
 additional basic functionality. The concrete implementation of a successor
 generator depends on the instances it should work on. Some concrete successor
-generators for PDDL and SAS\ :sup:`+` files are implemented in the modules
+generators for PDDL and SAS\ :sup:`+` files are implemented in the packages
 :mod:`machetli.pddl` and :mod:`machetli.sas`. More can be added by
 :ref:`extending Machetli<extending-machetli>`.
 """

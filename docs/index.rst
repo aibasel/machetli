@@ -2,10 +2,11 @@
 
 .. toctree::
    :caption: User Documentation
-   :titlesonly:
+   :maxdepth: 3
 
    installation
-   tutorial
+   overview
+   usage
    how_does_it_work
    extending-machetli
 

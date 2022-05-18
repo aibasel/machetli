@@ -34,7 +34,7 @@ examples in the directory `examples
 <https://github.com/aibasel/machetli/tree/main/examples>`_.
 
 For a more detailed description, please refer to the `documentation
-<https://machetli.readthedocs.io>`_.
+<https://machetli.readthedocs.io/en/latest/usage.html>`_.
 
 
 Support
