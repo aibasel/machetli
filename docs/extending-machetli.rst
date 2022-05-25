@@ -8,6 +8,8 @@ Machetli comes with some existing methods to simplify PDDL and SAS\ :sup:`+`
 tasks. If those are not sufficient for your case or if your instances are in a
 different format, you can easily extend Machetli.
 
+.. _extending-machetli-successor-generator:
+
 Adding a new successor generator
 --------------------------------
 
@@ -72,6 +74,7 @@ message passed to the successor will be displayed on the command line if this
 successor is picked by the search (i.e., if it is the first one that still
 exhibits the behavior the user is trying to isolate).
 
+.. _extending-machetli-file-type:
 
 Supporting a new file type
 --------------------------

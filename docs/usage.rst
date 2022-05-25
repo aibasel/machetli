@@ -8,6 +8,7 @@ To use Machetli, you have to write two Python scripts:
 * a search script that tells Machetli how to explore the
   space of intance modifications.
 
+.. _usage-evaluator:
 
 Writing an evaluator script
 ---------------------------
@@ -16,7 +17,7 @@ The evaluator script is run for each state to check if the desired behavior (for
 example, the bug we are trying to find) is still present after some modifications
 of the instance. For technical reasons, it has to be implemented in its own
 Python file. To write an evaluator, simply create a new Python file and
-implement a function called ``evaluate`` in it that takes a single argument (the
+implement a function called :meth:`evaluate` in it that takes a single argument (the
 state to evaluate) and returns ``True`` if the behavior is present. Here is a
 simple example:
 
