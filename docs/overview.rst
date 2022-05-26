@@ -1,13 +1,14 @@
 Overview
 ========
 
-Demo Video
-----------
-
 .. raw:: html
 
-    <div class="video">
-    <embed src="https://ai.dmi.unibas.ch/videos/machetli-icaps2022demo.mp4" autostart="false" />
+    <div class="videoframe">
+    <video autostart="false" controls>
+        <source src="https://ai.dmi.unibas.ch/videos/machetli-icaps2022demo.mp4" type="video/mp4">
+        Your browser does not support the video tag. You can download the video
+        <a href="https://ai.dmi.unibas.ch/videos/machetli-icaps2022demo.mp4">here</a>
+    </video>
     </div>
 
 

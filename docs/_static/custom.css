@@ -3,8 +3,7 @@
     max-width: 900px !important;
 }
 
-/* */
-div.video {
+div.videoframe {
     border: 1px solid black;
     border-radius: 10px;
     background-color: #2980b9;
@@ -16,7 +15,7 @@ div.video {
     margin-bottom: 30px;
 }
 
-div.video embed {
+div.videoframe video {
     position: absolute;
     top: 2%;
     left: 2%;
