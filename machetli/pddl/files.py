@@ -4,35 +4,43 @@ import os
 
 from machetli.pddl.constants import KEY_IN_STATE
 from machetli.pddl.downward import pddl_parser
-from machetli.pddl.downward.pddl import Task, Truth
+from machetli.pddl.downward.pddl import Truth
 from machetli.pddl.downward.pddl.conditions import ConstantCondition, Atom
 
 SIN = " "  # single indentation
 DIN = "  "  # double indentation
 
 
-def generate_initial_state(dom_filename, prob_filename):
-    """Parse the PDDL task defined in PDDL files *dom_filename* (PDDL domain)
-    and *prob_filename* (PDDL problem) and return an initial state containing
-    the parsed PDDL task.
+def generate_initial_state(domain_filename: str, problem_filename: str) -> dict:
+    """
+    Parse the PDDL task defined in PDDL files `domain_filename` (PDDL
+    domain) and `problem_filename` (PDDL problem) and return an initial
+    state containing the parsed PDDL task.
+
+    :return: a dictionary pointing to the PDDL task specified in the
+             files `domain_filename` and `problem_filename`.
     """
     return {
-        KEY_IN_STATE: pddl_parser.open(domain_filename=dom_filename,
-                                       task_filename=prob_filename)
+        KEY_IN_STATE: pddl_parser.open(domain_filename=domain_filename,
+                                       task_filename=problem_filename)
     }
 
 
 @contextlib.contextmanager
-def temporary_files(state):
-    """Context manager that generates temporary PDDL files
-    containing the task stored under the ``"pddl_task"`` key in the *state*
-    dictionary. After the context is left, the generated files are deleted.
+def temporary_files(state: dict) -> tuple:
+    """
+    Context manager that generates temporary PDDL files containing the
+    task stored in the `state` dictionary. After the context is left,
+    the generated files are deleted.
 
     Example:
 
-    >>> with temporary_files(state) as (domain_filename, problem_filename):
-    ...     cmd = ["fast-downward.py", f"{domain_filename}", f"{problem_filename}", "--search", "astar(lmcut())"]
-    ...
+    .. code-block:: python
+
+        with temporary_files(state) as domain, problem:
+            cmd = ["fast-downward.py", f"{domain}", f"{problem}", "--search", "astar(lmcut())"]
+
+    :return: a tuple containing domain and problem filename.
     """
     domain_f = tempfile.NamedTemporaryFile(
         mode="w+t", suffix=".pddl", delete=False)
@@ -213,5 +221,8 @@ def _write_problem(task, problem_filename):
 
 
 def write_files(state: dict, domain_filename: str, problem_filename: str):
+    """
+    Write the domain and problem files represented in `state` to disk.
+    """
     _write_domain(state[KEY_IN_STATE], domain_filename)
     _write_problem(state[KEY_IN_STATE], problem_filename)

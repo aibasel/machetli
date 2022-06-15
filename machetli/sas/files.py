@@ -7,10 +7,14 @@ from machetli.sas.sas_tasks import SASTask, SASVariables, SASMutexGroup, \
     SASInit, SASGoal, SASOperator, SASAxiom
 
 
-def generate_initial_state(sas_file) -> dict:
-    """Parse the SAS\ :sup:`+` task defined in the SAS\ :sup:`+` file
-    *task_filename* and return an initial state containing the parsed
+def generate_initial_state(sas_file: str) -> dict:
+    """
+    Parse the SAS\ :sup:`+` task defined in the SAS\ :sup:`+` file
+    `sas_file` and return an initial state containing the parsed
     SAS\ :sup:`+` task.
+
+    :return: a dictionary pointing to the SAS\ :sup:`+` task specified
+             in the file `sas_file`.
     """
     return {
         KEY_IN_STATE: _read_task(sas_file)
@@ -18,16 +22,19 @@ def generate_initial_state(sas_file) -> dict:
 
 
 @contextlib.contextmanager
-def temporary_file(state):
-    """Context manager that generates a temporary SAS\ :sup:`+` file
-    containing the task stored under the ``"sas_task"`` key in the *state*
-    dictionary. After the context is left, the generated file is deleted.
+def temporary_file(state: dict) -> str:
+    """
+    Context manager that generates a temporary SAS\ :sup:`+` file
+    containing the task stored in the `state` dictionary. After the
+    context is left, the generated file is deleted.
 
     Example:
 
-    >>> with temporary_file(state) as sas_filename:
-    ...     cmd = ["fast-downward.py", f"{sas_filename}", "--search", "astar(lmcut())"]
-    ...
+    .. code-block:: python
+        with temporary_file(state) as sas_filename:
+            cmd = ["fast-downward.py", f"{sas_filename}", "--search", "astar(lmcut())"]
+
+    :return: the filename.
     """
     f = tempfile.NamedTemporaryFile(mode="w+t", suffix=".sas", delete=False)
     state[KEY_IN_STATE].output(f)
@@ -178,6 +185,9 @@ def _read_axioms(sf, num_axioms):
     return axioms
 
 
-def write_file(state, filename):
+def write_file(state: dict, filename: str):
+    """
+    Write the problem represented in `state` to disk.
+    """
     with open(filename, "w") as file:
         state[KEY_IN_STATE].output(file)

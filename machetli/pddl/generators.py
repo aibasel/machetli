@@ -9,14 +9,11 @@ from machetli.successors import Successor, SuccessorGenerator
 
 class RemoveActions(SuccessorGenerator):
     """
-    Successor generator that removes actions from the PDDL task in a
-    state. Actions are removed in a random order.
+    For each action schema in the PDDL domain, generate a successor
+    where this action schema is removed. The order of the successors is
+    randomized.
     """
     def get_successors(self, state):
-        """
-        Yield modified versions of *state* of which in each one a different
-        action is removed from the PDDL task stored in ``state[KEY_IN_STATE]``.
-        """
         task = state[KEY_IN_STATE]
         action_names = [action.name for action in task.actions]
         random.Random().shuffle(action_names)
@@ -30,17 +27,18 @@ class RemoveActions(SuccessorGenerator):
 
 
 class RemovePredicates(SuccessorGenerator):
-    """Successor generator that removes predicates from the PDDL task in
-    a state. This is accomplished by scanning the entire task for the
-    atom to be removed, instantiating each instance of this atom with a
-    constant according to *replace_with*:
+    """
+    For each predicate in the PDDL domain, generate a successor where
+    this predicate is compiled away. This is accomplished by scanning
+    the entire task for the atom to be removed, instantiating each
+    instance of this atom with a constant according to ``replace_with``:
 
     * ``"true"`` replaces all atoms of the removed predicate with true,
     * ``"false"`` replaces all atoms of the removed predicate with false, and
     * ``"dynamic"`` (default) replaces an atom of the removed predicate with
       true if it occurs positively and with false otherwise.
 
-    Predicates are removed in a random order.
+    The order of the successors is randomized.
     """
     def __init__(self, replace_with="dynamic"):
         self.replace_with = replace_with
@@ -70,8 +68,9 @@ class RemovePredicates(SuccessorGenerator):
 
 class RemoveObjects(SuccessorGenerator):
     """
-    Successor generator that removes objects from the PDDL task in a
-    state. Objects are removed in a random order.
+    For each object in the PDDL problem, generate a successor that
+    removes this object from the PDDL task. The order of the successors
+    is randomized.
     """
     def get_successors(self, state):
         task = state[KEY_IN_STATE]

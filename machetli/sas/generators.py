@@ -8,6 +8,10 @@ from machetli.successors import Successor, SuccessorGenerator
 
 
 class RemoveOperators(SuccessorGenerator):
+    """
+    For each operator, generate a successor where this operator is
+    removed. The order of the successors is randomized.
+    """
     def get_successors(self, state):
         task = state["sas_task"]
         operator_names = [op.name for op in task.operators]
@@ -27,6 +31,13 @@ class RemoveOperators(SuccessorGenerator):
 
 
 class RemoveVariables(SuccessorGenerator):
+    """
+    For each variable, generate a successor where this variable is
+    compiled away by removing it from the initial state as well as every
+    place where it is mentioned in the prevail condition, effect
+    condition, effect fact, or goal. The order of the successors is
+    randomized.
+    """
     def get_successors(self, state):
         task = state["sas_task"]
         variables = [var for var in range(len(task.variables.axiom_layers))]
@@ -128,6 +139,12 @@ class RemoveVariables(SuccessorGenerator):
 
 
 class RemoveEffect(SuccessorGenerator):
+    """
+    For each effect in each operator, generate a successor where this
+    effect is removed. The order in which operators are considered is
+    randomized, as is the order of the effects of the same operator, but
+    all successors stemming from the same operator follow consecutively.
+    """
     def get_successors(self, state):
         task = state["sas_task"]
         num_ops = len(task.operators)
@@ -140,6 +157,14 @@ class RemoveEffect(SuccessorGenerator):
 
 
 class SetUnspecifiedPrevailCondition(SuccessorGenerator):
+    """
+    For each prevail condition, generate a successor where this prevail
+    condition is removed. This relaxes the conditions to apply the
+    corresponding operator. The order in which operators are considered
+    is randomized, as is the order of the prevail conditions of the same
+    operator, but all successors stemming from the same operator follow
+    consecutively.
+    """
     def get_successors(self, state):
         task = state["sas_task"]
         num_ops = len(task.operators)
@@ -159,6 +184,14 @@ class SetUnspecifiedPrevailCondition(SuccessorGenerator):
 
 
 class MergeOperators(SuccessorGenerator):
+    """
+    For each pair of operators, generate a successor where these two
+    operators are merged into one. More specifically, these operators
+    are removed from the successor and instead a new operator containing
+    the union of prevail conditions and the union of effects. (Cases
+    where both operators have a different prevail condition or effect on
+    the same variable are skipped.)
+    """
     def get_successors(self, state):
         task = state["sas_task"]
         for op1, op2 in itertools.permutations(task.operators, 2):
