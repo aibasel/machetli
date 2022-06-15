@@ -14,7 +14,7 @@ setup(
     url="https://github.com/aibasel/machetli",
     license="GPL3+",
     project_urls={
-        "Documentation": "https://minimizer.readthedocs.io/",
+        "Documentation": "https://machetli.readthedocs.io/",
     },
     classifiers=[
         "Environment :: Console",
