@@ -1,3 +1,15 @@
+"""
+Successor generators in the scope of Machetli are classes with a
+:meth:`get_successors(state)<SuccessorGenerator.get_successors>` method defining
+how successors of a *state* should be constructed. This module contains the
+abstract base class :class:`SuccessorGenerator <SuccessorGenerator>` and some
+additional basic functionality. The concrete implementation of a successor
+generator depends on the instances it should work on. Some concrete successor
+generators for PDDL and SAS\ :sup:`+` files are implemented in the packages
+:mod:`machetli.pddl` and :mod:`machetli.sas`. More can be added by
+:ref:`extending Machetli<extending-machetli>`.
+"""
+
 class Successor:
     def __init__(self, state, msg):
         self.state = state
@@ -5,10 +17,12 @@ class Successor:
 
 
 class SuccessorGenerator:
-    """Base class for all successor generators.
+    """
+    Base class for all successor generators.
     """
     def get_successors(self, state):
-        """Yield successors of *state*.
+        """
+        Yield successors of *state*.
         """
         raise NotImplementedError
 

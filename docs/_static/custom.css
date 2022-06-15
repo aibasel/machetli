@@ -2,3 +2,23 @@
 .wy-nav-content {
     max-width: 900px !important;
 }
+
+div.videoframe {
+    border: 1px solid black;
+    border-radius: 10px;
+    background-color: #2980b9;
+    padding-bottom: 56.25%;
+    padding-top: 30px;
+    padding-left: 15px;
+    padding-right: 15px;
+    position: relative;
+    margin-bottom: 30px;
+}
+
+div.videoframe video {
+    position: absolute;
+    top: 2%;
+    left: 2%;
+    width: 96%;
+    height: 96%;
+}
