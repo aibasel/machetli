@@ -254,3 +254,15 @@ class MergeOperators(SuccessorGenerator):
                        task.axioms, task.metric)
 
 
+class RemoveGoals(SuccessorGenerator):
+    """
+    For each goal condition, generate a successor where this goal condition
+    is removed. The order of the successors is randomized
+    """
+    def get_successors(self, state):
+        task = state[KEY_IN_STATE]
+        num_goals = len(task.goal.pairs)
+        for goal_id in random.sample(range(num_goals), num_goals):
+            child_state = copy.deepcopy(state)
+            del child_state[KEY_IN_STATE].goal.pairs[goal_id]
+            yield Successor(child_state, f"Removed a goal. Remaining goals: {num_goals - 1}")

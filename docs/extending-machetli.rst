@@ -26,7 +26,9 @@ Example: removing goal conditions
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 As an example, consider a successor generator that simplifies the goal of an
-SAS\ :sup:`+` task. We start by importing the necessary classes and constants.
+SAS\ :sup:`+` task (this successor generator actually is already implemented but
+for this example we pretend it isn't). We start by importing the necessary
+classes and constants.
 
 .. code-block:: python
     :linenos:
@@ -46,7 +48,7 @@ Within the state we can access the parsed SAS\ :sup:`+` task with the constant `
     :linenos:
     :lineno-start: 7
 
-    class RemoveGoal(SuccessorGenerator):
+    class RemoveGoals(SuccessorGenerator):
         def get_successors(self, state):
             task = state[KEY_IN_STATE]
             # ...
