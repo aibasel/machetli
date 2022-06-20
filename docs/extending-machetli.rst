@@ -22,6 +22,9 @@ Your implementation should yield objects of the class
 :class:`Successor <machetli.successors.Successor>` that contain a modified
 state and a message that will be printed if the search follows this successor.
 
+Example: removing goal conditions
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
 As an example, consider a successor generator that simplifies the goal of an
 SAS\ :sup:`+` task. We start by importing the necessary classes and constants.
 
@@ -102,7 +105,7 @@ As an example, consider the methods provided in the module
 
 
 Example: finding bugs in LaTeX documents
-----------------------------------------
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 In the following example, we combine what we discussed in the previous sections
 to create rudimentary support for LaTeX documents.
