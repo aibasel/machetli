@@ -2,6 +2,7 @@ import copy
 import itertools
 import random
 
+from machetli.sas.constants import KEY_IN_STATE
 from machetli.sas.sas_tasks import SASTask, SASMutexGroup, SASInit, SASGoal, \
     SASOperator, SASAxiom
 from machetli.successors import Successor, SuccessorGenerator
@@ -13,13 +14,13 @@ class RemoveOperators(SuccessorGenerator):
     removed. The order of the successors is randomized.
     """
     def get_successors(self, state):
-        task = state["sas_task"]
+        task = state[KEY_IN_STATE]
         operator_names = [op.name for op in task.operators]
         random.Random().shuffle(operator_names)
         for name in operator_names:
             child_state = copy.deepcopy(state)
-            pre_child_task = child_state["sas_task"]
-            child_state["sas_task"] = self.transform(pre_child_task, name)
+            pre_child_task = child_state[KEY_IN_STATE]
+            child_state[KEY_IN_STATE] = self.transform(pre_child_task, name)
             yield Successor(child_state,
                             f"Removed operator '{name}'. Remaining operators: {len(operator_names) - 1}")
 
@@ -39,13 +40,13 @@ class RemoveVariables(SuccessorGenerator):
     randomized.
     """
     def get_successors(self, state):
-        task = state["sas_task"]
+        task = state[KEY_IN_STATE]
         variables = [var for var in range(len(task.variables.axiom_layers))]
         random.Random().shuffle(variables)
         for var in variables:
             child_state = copy.deepcopy(state)
-            pre_child_task = child_state["sas_task"]
-            child_state["sas_task"] = self.transform(pre_child_task, var)
+            pre_child_task = child_state[KEY_IN_STATE]
+            child_state[KEY_IN_STATE] = self.transform(pre_child_task, var)
             yield Successor(child_state,
                             f"Removed a variable. Remaining variables: {len(variables) - 1}")
 
@@ -147,13 +148,13 @@ class RemovePrePosts(SuccessorGenerator):
     successors stemming from the same operator follow consecutively.
     """
     def get_successors(self, state):
-        task = state["sas_task"]
+        task = state[KEY_IN_STATE]
         num_ops = len(task.operators)
         for op in random.sample(range(num_ops), num_ops):
             num_eff = len(task.operators[op].pre_post)
             for effect in random.sample(range(num_eff), num_eff):
                 child_state = copy.deepcopy(state)
-                del child_state["sas_task"].operators[op].pre_post[effect]
+                del child_state[KEY_IN_STATE].operators[op].pre_post[effect]
                 yield Successor(child_state, f"Removed an effect of operator '{task.operators[op].name}'.")
 
 
@@ -162,14 +163,14 @@ class SetUnspecifiedPreconditions(SuccessorGenerator):
     For each operator and each variable this operator on which this operator 
     has an effect but no precondition, and for each possible value of this
     variable, generate a successor with an additional precondition on the
-    variable. This limits the situtations where the operator can be applied,
+    variable. This limits the situations where the operator can be applied,
     potentially limiting branching in the search. The order in which operators
     are considered is randomized, as is the order of effects of the same
     operator, but all successors stemming from the same operator follow
     consecutively.
     """
     def get_successors(self, state):
-        task = state["sas_task"]
+        task = state[KEY_IN_STATE]
         num_ops = len(task.operators)
         for op in random.sample(range(num_ops), num_ops):
             num_eff = len(task.operators[op].pre_post)
@@ -179,7 +180,7 @@ class SetUnspecifiedPreconditions(SuccessorGenerator):
                     num_val = task.variables.ranges[var]
                     for val in random.sample(range(num_val), num_val):
                         child_state = copy.deepcopy(state)
-                        child_state["sas_task"].operators[op].pre_post[
+                        child_state[KEY_IN_STATE].operators[op].pre_post[
                             effect] = (var, val, post, cond)
                         yield Successor(
                             child_state,
@@ -195,12 +196,12 @@ class MergeOperators(SuccessorGenerator):
     possible (e.g., with conflicting prevail conditions) are skipped.
     """
     def get_successors(self, state):
-        task = state["sas_task"]
+        task = state[KEY_IN_STATE]
         for op1, op2 in itertools.permutations(task.operators, 2):
             child_state = copy.deepcopy(state)
-            child_task = self.transform(child_state["sas_task"], op1, op2)
+            child_task = self.transform(child_state[KEY_IN_STATE], op1, op2)
             if child_task:
-                child_state["sas_task"] = child_task
+                child_state[KEY_IN_STATE] = child_task
                 yield Successor(child_state,
                                 f"Merged operators '{op1.name}' and '{op2.name}'. " +
                                 f"Remaining operators: {len(task.operators) - 1}")
