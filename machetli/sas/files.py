@@ -31,6 +31,7 @@ def temporary_file(state: dict) -> str:
     Example:
 
     .. code-block:: python
+
         with temporary_file(state) as sas_filename:
             cmd = ["fast-downward.py", f"{sas_filename}", "--search", "astar(lmcut())"]
 

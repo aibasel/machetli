@@ -7,45 +7,76 @@ from machetli.tools import SubmissionError, TaskError, PollingError, configure_l
 
 
 def search(initial_state, successor_generator, evaluator_path, environment=None):
-    """Start a machetli search and return the resulting state.
+    """Start a Machetli search and return the resulting state.
 
-    The search is started from *initial_state*, which is a dictionary
-    describing the initial conditions of what you want to minimize.
+    The search is started from the *initial state* and *successor generators*
+    are then used to create transformed instances. Each instance created this
+    way is evaluated with the given *evaluator* that checks if the behavior we
+    are interested in is still present in the transformed instance. The search
+    always commits to the transformation of the first instance where the
+    evaluator succeeds (first-choice hill climbing).
+    
+    :param initial_state: is a dictionary describing the instance you want to
+        simplify. The internal format of this dictionary has to match what the
+        successor generators expect. Modules that include successor generators
+        also provide a function to create an initial state in the correct
+        format.
 
-    *successor_generator* is a single :class:`SuccessorGenerator
-    <machetli.planning.generators.SuccessorGenerator>` or a list of
-    SuccessorGenerators. If a list [s1, ..., sn] is given, the search
-    first tries all successors from s1, then from s2, and so on.
+    :param successor_generator: is a single :class:`SuccessorGenerator
+        <machetli.successors.SuccessorGenerator>` or a list of
+        SuccessorGenerators. If a list [s1, ..., sn] is given, the search first
+        tries all successors from s1, then from s2, and so on.
 
-    *evaluator_path* is the path to a Python file that contains a function
-    *evaluate(state)* that is used to check if the behaviour that the search
-    is analyzing is still present in the state. The function has to take a single
-    parameter that is the state of the search as a dictionary like the one given
-    to *search* as the *initial_state* parameter. It has to return True if the
-    behaviour is present and False otherwise.
+    :param evaluator_path: is the path to a Python file that contains a function
+        *evaluate(state)* that is used to check if the behaviour that the search
+        is analyzing is still present in the state. The function has to take a
+        single parameter that is the state of the search as a dictionary like
+        the one given to *search* as the *initial_state* parameter. It has to
+        return True if the behaviour is present and False otherwise. The
+        documentation has addition information on :ref:`how to write an
+        evaluator <usage-evaluator>`.
+        
+    :param environment: determines how the search should be executed. If no
+        environment is specified, a :class:`LocalEnvironment
+        <machetli.environments.LocalEnvironment>` is used that executes
+        everything on sequence on the local machine. Alternatively, an
+        implementation of :class:`SlurmEnvironment
+        <machetli.environments.SlurmEnvironment>` can be used to parallelize the
+        search on a cluster running the Slurm engine.
 
-    *environment* determines whether the search should be done on a local
-    machine or on a Slurm computing grid. Use
-    :class:`machetli.environments.LocalEnvironment` or an implementation
-    of :class:`machetli.environments.SlurmEnvironment`. If no environment
-    is specified, a local environment will be used.
+    :return: the last state where the evaluator was successful, i.e., all
+        successors of the resulting state no longer have the evaluated property.
 
-    Example usage:
+    .. note:: 
+        The initial state is never checked to have the evaluated property.
+        If the result of the search is identical to the initial
+        state, this can have two reasons: 
 
-TODO: update line numbers and filename
-    .. literalinclude:: ../examples/issue335_PDDL/local_test.py
-        :language: python
-        :caption:
-        :lines: 18-30
-        :emphasize-lines: 9-12
+        1. The initial state is minimal with respect to the evaluated property
+           and the used successor generators. In this case, you can try
+           repeating the search with additional successor generators.
+        2. The initial state does not have the property and neither does any of
+           its successors. (If a successor has the property despite the initial
+           state not having it, Machetli will nevertheless minimize the task as
+           intended.) If you started from an instance that should have the
+           property, this could indicate a bug in your evaluator script, which
+           either doesn't reproduce the property correctly, or fails to
+           recognize it.
 
-    Note that *initial_state* is never checked to have the evaluated property.
-    Consequently, if the result of the search is identical to the initial state,
-    this can have two reasons: (1) the initial state is minimal with respect to
-    the evaluated property and the used successor generators, or (2) the initial
-    state does not have the property and neither does any of its successors. (If
-    a successor has the property despite the initial state not having it,
-    Machetli will nevertheless minimize the task as intended.)
+    :Example:
+
+    .. code-block:: python
+        :linenos:
+        :emphasize-lines: 4
+
+        initial_state = sas.generate_initial_state("bugged.sas")
+        evaluator_filename = os.path.join(os.path.dirname(tools.get_script_path()), "evaluator.py")
+
+        result = search(initial_state, [sas.RemoveVariables(), sas.RemoveOperators()], evaluator_filename)
+
+        sas.write_file(result, "result.sas")
+
+
     """
     if environment is None:
         environment = LocalEnvironment()
