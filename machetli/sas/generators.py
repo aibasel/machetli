@@ -138,12 +138,13 @@ class RemoveVariables(SuccessorGenerator):
         return SASTask(new_variables, new_mutexes, new_init, new_goal, new_operators, new_axioms, task.metric)
 
 
-class RemoveEffect(SuccessorGenerator):
+class RemovePrePosts(SuccessorGenerator):
     """
-    For each effect in each operator, generate a successor where this
-    effect is removed. The order in which operators are considered is
-    randomized, as is the order of the effects of the same operator, but
-    all successors stemming from the same operator follow consecutively.
+    For each precondition/effect pair in each operator, generate a successor
+    where this pair is removed. This essentially ignores the variable in the
+    operator. The order in which operators are considered is randomized, as is
+    the order of precondition/effect pairs of the same operator, but all
+    successors stemming from the same operator follow consecutively.
     """
     def get_successors(self, state):
         task = state["sas_task"]
@@ -156,12 +157,14 @@ class RemoveEffect(SuccessorGenerator):
                 yield Successor(child_state, f"Removed an effect of operator '{task.operators[op].name}'.")
 
 
-class SetUnspecifiedPrevailCondition(SuccessorGenerator):
+class SetUnspecifiedPreconditions(SuccessorGenerator):
     """
-    For each prevail condition, generate a successor where this prevail
-    condition is removed. This relaxes the conditions to apply the
-    corresponding operator. The order in which operators are considered
-    is randomized, as is the order of the prevail conditions of the same
+    For each operator and each variable this operator on which this operator 
+    has an effect but no precondition, and for each possible value of this
+    variable, generate a successor with an additional precondition on the
+    variable. This limits the situtations where the operator can be applied,
+    potentially limiting branching in the search. The order in which operators
+    are considered is randomized, as is the order of effects of the same
     operator, but all successors stemming from the same operator follow
     consecutively.
     """
@@ -186,11 +189,10 @@ class SetUnspecifiedPrevailCondition(SuccessorGenerator):
 class MergeOperators(SuccessorGenerator):
     """
     For each pair of operators, generate a successor where these two
-    operators are merged into one. More specifically, these operators
-    are removed from the successor and instead a new operator containing
-    the union of prevail conditions and the union of effects. (Cases
-    where both operators have a different prevail condition or effect on
-    the same variable are skipped.)
+    operators are merged into one. Specifically, these operators
+    are removed and instead a new operator is added that is equivalent to
+    executing the two operators in sequence. Cases where this is not
+    possible (e.g., with conflicting prevail conditions) are skipped.
     """
     def get_successors(self, state):
         task = state["sas_task"]

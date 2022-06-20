@@ -50,8 +50,8 @@ initial_state = sas.generate_initial_state(sas_file)
 successor_generators = [
     sas.RemoveOperators(),
     sas.RemoveVariables(),
-    sas.RemoveEffect(),
-    sas.SetUnspecifiedPrevailCondition(),
+    sas.RemovePrePosts(),
+    sas.SetUnspecifiedPreconditions(),
     sas.MergeOperators(),
 ]
 evaluator_filename = os.path.join(script_dir, "sas_evaluator.py")
