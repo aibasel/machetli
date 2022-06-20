@@ -1,3 +1,12 @@
+"""
+Environments determine how Machetli executes its search. In a local environment,
+everything is executed sequentially on your local machine. However, the search
+can also be parallelized in a grid environment. In that case multiple successors
+of a state will be evaluated in parallel on the compute nodes of the grid with
+the main search running on the login node, generating successors and dispatching
+and waiting for jobs. 
+"""
+
 from importlib import resources
 import logging
 import os
@@ -12,16 +21,41 @@ from machetli.evaluator import is_evaluator_successful
 from machetli.tools import SubmissionError, TaskError, PollingError, write_state
 
 
-"""
-When performing the search on a Slurm grid, the possibility of
-failure at some point is increased due to the introduced parallelism
-on multiple nodes and an I/O load over the network filesystem. When
-setting *allow_nondeterministic_successor_choice* to ``False``, the
-:func:`search <machetli.search.search>` function will enforce that
-the search is aborted if a single task fails and no successor from
-an earlier task is accepted.
-"""
 class Environment:
+    """
+    Abstract base class of all environments. Concrete environments should
+    inherit from this class and override its methods.
+
+    :param allow_nondeterministic_successor_choice:
+        When evaluating successors in parallel, situations can occur that are
+        impossible in a sequential environment, as results arrive not
+        necessarily in the order in which the jobs are started: for example, if
+        a state has successors [s1, s2, s3], a successful result for s3 could be
+        available before results for s1 are available. Additionally, if the
+        evaluation of s2 throws an exception, a sequential evaluation would
+        never have evaluated s3. By allowing a non-deterministic successor
+        choice (default) the search commits to the first successfully evaluated
+        successor even if it would not have come first in a sequential order. If
+        the order of the successor generators is important in your case, you can
+        switch this off. The search then behaves deterministically, simulating
+        sequential execution.
+
+    :param batch_size:
+        Number of successors evaluated in parallel. No effect on sequential
+        environments.
+
+    :param loglevel:
+        Amount of logging output to generate. Use constants from the module
+        :mod:`logging` to control the level of detail in the logs.
+
+        * `DEBUG`: detailed information usually only useful during development
+        * `INFO` (default): provides feedback on the execution of the program
+        * `WARNING`: silent unless something unexpected happens
+        * `ERROR`: silent unless an error occured that causes the search to
+          terminate
+        * `CRITICAL`: silent unless the program crashes
+
+    """
     def __init__(self, allow_nondeterministic_successor_choice=True,
                  batch_size=1, loglevel=logging.INFO):
         self.batch_size = batch_size
@@ -30,16 +64,51 @@ class Environment:
             allow_nondeterministic_successor_choice
 
     def submit(self, batch, batch_id, evaluator_path):
+        """
+        start evaluating the given batch of successors with the given evaluator.
+
+        :param batch: list of :class:`Successors
+            <machetli.successors.Successor>` to be evaluated.
+
+        :param batch_id: increasing ID to identify the batch. Should increase by
+            1 in each call.
+        
+        :param evaluator_path: path to a script that is used to evaluate
+            successors. The documentation more information on :ref:`how to write
+            an evaluator<usage-evaluator>`.
+        """
         raise NotImplementedError
 
     def wait_until_finished(self):
+        """
+        Calling this function after submitting a batch of successors will block
+        until sufficient results from the batch are available (either an
+        successor that the search should commit to, or a negative evaluation of
+        all successors in the batch).
+
+        Calling this function before submitting a batch or after the results of
+        the batch have been collected is an error.
+        """
         raise NotImplementedError
 
     def get_improving_successor(self):
+        """
+        Calling this function after waiting will collect the results of the
+        batch. Returns either the successor that the search should commit to, or
+        None if no such successor was found.
+
+        Calling this function before submitting a batch or waiting for its
+        result is an error.
+        """
         raise NotImplementedError
 
 
 class LocalEnvironment(Environment):
+    """
+    This environment evaluates all successors sequentially on the local machine.
+
+    See :class:`Environment` for inherited options.
+    """
     def __init__(self, **kwargs):
         Environment.__init__(self, **kwargs)
         self.successor = None
@@ -48,6 +117,7 @@ class LocalEnvironment(Environment):
         assert self.successor is None
 
         for succ in batch:
+            # TODO: react to self.allow_nondeterministic_successor_choice by ignoring evaluator crashes?
             if is_evaluator_successful(evaluator_path, succ.state):
                 self.successor = succ
             break
@@ -62,25 +132,101 @@ class LocalEnvironment(Environment):
 
 
 class SlurmEnvironment(Environment):
-    # Must be overridden in derived classes.
-    DEFAULT_PARTITION = None
-    DEFAULT_QOS = None
-    DEFAULT_MEMORY_PER_CPU = None
+    """
+    This environment evaluates multiple successors in parallel on the compute nodes
+    of a cluster accessed through the Slurm grid engine.
 
-    # Can be overridden in derived classes.
+    :param email:
+        Email address for notification once the search finished
+    :param extra_options:
+        Additional options passed to the Slurm script
+    :param partition:
+        Slurm partition to use for job submission
+    :param qos:
+        Slurm QOS to use for job submission
+    :param memory_per_cpu:
+        Memory limit per CPU to use for Slurm job
+    :param cpus_per_task:
+        Number of CPUs to reserve for evaluating a single successor
+    :param nice:
+        Nice value to use for Slurm jobs (higher nice value = lower priority).
+    :param export:
+        Environment variables to export from the login node to the compute nodes.
+    :param setup:
+        Additional bash script to set up the compute nodes (loading modules, etc.).
+    :param batch_size: (default 200)
+        Number of successors evaluated in parallel.
+
+    See :class:`Environment` for inherited options.
+    """
+
+    DEFAULT_PARTITION = None
+    """
+    Slurm partition to use for job submission if no other partition is passed to
+    the constructor. Must be overridden in derived classes.
+    """
+    DEFAULT_QOS = None
+    """
+    Slurm QOS to use for job submission if no other QOS is passed to the
+    constructor. Must be overridden in derived classes.
+    """
+    DEFAULT_MEMORY_PER_CPU = None
+    """
+    Memory limit per CPU to use for Slurm job if no limit is passed to the
+    constructor. Must be overridden in derived classes.
+    """
+
     DEFAULT_EXPORT = ["PATH"]
+    """
+    Environment variables to export from the login node to the compute nodes.
+    May be overridden in derived classes or with a constructor argument.
+    """
     DEFAULT_SETUP = ""
+    """
+    Additional bash script to set up the compute nodes (loading modules, etc.).
+    May be overridden in derived classes or with a constructor argument.
+    """
     DEFAULT_NICE = 0
+    """
+    Nice value to use for Slurm jobs (higher nice value = lower priority).
+    May be overridden in derived classes or with a constructor argument.
+    """
 
     STATE_FILENAME = "state.pickle"
+    """
+    Filename for stored states. States are written to disk and loaded on the
+    compute nodes (assuming a shared file system of the compute and login
+    nodes). 
+    """
 
     # Sets of slurm job state codes
     DONE_STATES = {"COMPLETED"}
+    """
+    Slurm status codes that indicate that a job successfully terminated.
+    """
     BUSY_STATES = {"PENDING", "RUNNING", "REQUEUED", "SUSPENDED"}
+    """
+    Slurm status codes that indicate that a job has not yet terminated.
+    """
 
     FILESYSTEM_TIME_INTERVAL = 3
+    """
+    Files that one node writes are not necessarily immediately available on
+    all other nodes. If a file we expect to be there is not found, we check again
+    after waiting for some seconds.
+    """
     FILESYSTEM_TIME_LIMIT = 60
+    """
+    When a file is not found after repeated checks, we eventually give up and
+    treat this as an error. This constant controls after how many seconds to
+    give up.
+    """
     POLLING_TIME_INTERVAL = 15
+    """
+    While running jobs the login nodes periodically checks if all running jobs
+    are finished. This constant controls how many seconds to wait before polling
+    again.
+    """
 
     # TODO: are differences to Lab reasonable? e.g., here we have no time limit.
     def __init__(
@@ -118,10 +264,10 @@ class SlurmEnvironment(Environment):
             logging.critical("The script path must not contain any whitespace characters.")
         self.sbatch_template = resources.read_text(templates, "slurm-array-job.template")
         self.sbatch_filename = os.path.join(script_dir, "slurm-array-job.sbatch")
-        self.wait_for_filesystem(self.eval_dir)
+        self._wait_for_filesystem(self.eval_dir)
         self.critical = False
 
-    def get_job_params(self):
+    def _get_job_params(self):
         job_params = dict()
         job_params["logfile"] = "slurm.log"
         job_params["errfile"] = "slurm.err"
@@ -144,7 +290,7 @@ class SlurmEnvironment(Environment):
     def submit(self, batch, batch_id, evaluator_path):
         assert not self.job
         try:
-            self.job = self.submit_array_job(batch, batch_id, evaluator_path)
+            self.job = self._submit_array_job(batch, batch_id, evaluator_path)
         except SubmissionError as se:
             if self.allow_nondeterministic_successor_choice:
                 se.warn_abort()
@@ -157,7 +303,7 @@ class SlurmEnvironment(Environment):
     def wait_until_finished(self):
         assert self.job
         try:
-            self.poll_job()
+            self._poll_job()
         except TaskError as te:
             if self.allow_nondeterministic_successor_choice:
                 te.remove_critical_tasks(self.job)
@@ -185,7 +331,7 @@ class SlurmEnvironment(Environment):
         successor = None
         for task in self.job["tasks"]:
             result_file = os.path.join(task["dir"], "exit_code")
-            if self.wait_for_filesystem(result_file):
+            if self._wait_for_filesystem(result_file):
                 if _parse_exit_code(result_file) == 0:
                     successor = task["successor"]
                     break
@@ -203,7 +349,7 @@ class SlurmEnvironment(Environment):
         self.job = None
         return successor
 
-    def wait_for_filesystem(self, *paths):
+    def _wait_for_filesystem(self, *paths):
         attempts = int(self.FILESYSTEM_TIME_LIMIT / self.FILESYSTEM_TIME_INTERVAL)
         for _ in range(attempts):
             paths = [path for path in paths if not os.path.exists(path)]
@@ -212,7 +358,7 @@ class SlurmEnvironment(Environment):
             time.sleep(self.FILESYSTEM_TIME_INTERVAL)
         return False  # At least one path from paths does not exist
 
-    def build_batch_directories(self, batch, batch_num):
+    def _build_batch_directories(self, batch, batch_num):
         batch_dir_path = os.path.join(
             self.eval_dir, f"batch_{batch_num:03}")
         run_dirs = []
@@ -224,15 +370,15 @@ class SlurmEnvironment(Environment):
             write_state(successor.state, state_file_path)
             run_dirs.append(run_dir_path)
         # Give the NFS time to write the paths
-        if not self.wait_for_filesystem(*run_dirs):
+        if not self._wait_for_filesystem(*run_dirs):
             logging.critical(
                 f"One of the following paths is missing:\n"
                 f"{pprint.pformat(run_dirs)}"
             )
         return run_dirs
 
-    def write_sbatch_file(self, **kwargs):
-        dictionary = self.get_job_params()
+    def _write_sbatch_file(self, **kwargs):
+        dictionary = self._get_job_params()
         dictionary.update(kwargs)
         logging.debug(
             f"Dictionary before filling:\n{pprint.pformat(dictionary)}")
@@ -240,15 +386,15 @@ class SlurmEnvironment(Environment):
             f.write(self.sbatch_template.format(**dictionary))
         # TODO: Implement check whether file was updated
 
-    def submit_array_job(self, batch, batch_num, evaluator_path):
+    def _submit_array_job(self, batch, batch_num, evaluator_path):
         """
         Writes pickled version of each state in *batch* to its own file.
         Then, submits a slurm array job which will evaluate each state
         in parallel. Returns the array job ID of the submitted array job.
         """
-        run_dirs = self.build_batch_directories(batch, batch_num)
+        run_dirs = self._build_batch_directories(batch, batch_num)
         batch_name = f"batch_{batch_num:03}"
-        self.write_sbatch_file(run_dirs=" ".join(run_dirs), name=batch_name,
+        self._write_sbatch_file(run_dirs=" ".join(run_dirs), name=batch_name,
                                num_tasks=len(batch)-1,
                                evaluator_path=evaluator_path)
         submission_command = ["sbatch", "--export",
@@ -270,7 +416,7 @@ class SlurmEnvironment(Environment):
                          zip(batch, run_dirs)]}
         return job
 
-    def poll_job(self):
+    def _poll_job(self):
         job_id = self.job["id"]
         while True:
             time.sleep(self.POLLING_TIME_INTERVAL)
@@ -354,12 +500,39 @@ def _launch_email_job(email):
 
 
 class BaselSlurmEnvironment(SlurmEnvironment):
-    """Environment for Basel's AI group."""
+    """
+    Environment for Basel's AI group. This will only be useful if you are
+    running Machetli on the grid in Basel. If you want to specialize
+    :class:`SlurmEnvironment<machetli.environments.SlurmEnvironment>` for your
+    grid, use this class as a template.
+
+    See :class:`SlurmEnvironment` for inherited options.
+    """
     DEFAULT_PARTITION = "infai_1"
+    """
+    Unless otherwise specified, we execute jobs on partition "infai_1".
+    To change this use `partition="infai_2"` in the constructor.
+    """
     DEFAULT_QOS = "normal"
+    """
+    All jobs run in QOS group "normal".
+    """
     DEFAULT_MEMORY_PER_CPU = "3872M"
+    """
+    Unless otherwise specified, we reserve 3.8 GB of memory per core which is
+    available on both partitions. 
+    To change this use `memory_per_cpu` in the constructor and either run on
+    "infai_2" (up to 6354 MB) or reserve more cores per task.
+    """
     MAX_MEM_INFAI_BASEL = {"infai_1": "3872M", "infai_2": "6354M"}
+    """
+    Maximally available memory per CPU on the infai partitions.
+    """
     DEFAULT_NICE = 5000
+    """
+    We schedule all jobs with a nice value of 5000 so autonice has the option to
+    adjust it.
+    """
 
     def __init__(self, **kwargs):
         SlurmEnvironment.__init__(self, **kwargs)
