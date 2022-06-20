@@ -33,7 +33,7 @@ def search(initial_state, successor_generator, evaluator_path, environment=None)
     Example usage:
 
 TODO: update line numbers and filename
-    .. literalinclude:: ../examples/issue335_PDDL/local_test.py
+    .. literalinclude:: ../examples/issue335_pddl/local_test.py
         :language: python
         :caption:
         :lines: 18-30
