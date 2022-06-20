@@ -49,7 +49,8 @@ if platform.node().endswith((".scicore.unibas.ch", ".cluster.bc2.ch")):
         extra_options="#SBATCH --cpus-per-task=2",
         allow_nondeterministic_successor_choice=False)
 
-evaluator_filename = os.path.join(os.path.dirname(get_script_path()), "evaluator.py")
+evaluator_filename = os.path.join(os.path.dirname(get_script_path()),
+                                  "evaluator.py")
 
 search_result = search(
     {"level": 1, "id": 1},

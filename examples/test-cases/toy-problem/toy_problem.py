@@ -28,7 +28,8 @@ class MyGenerator(SuccessorGenerator):
 
 initial_state = {"level": 0, "id": 0}
 successor_generator = MyGenerator()
-evaluator_filename = os.path.join(os.path.dirname(tools.get_script_path()), "evaluator.py")
+evaluator_filename = os.path.join(os.path.dirname(tools.get_script_path()),
+                                  "evaluator.py")
 environment = environments.LocalEnvironment()
 if platform.node().endswith((".scicore.unibas.ch", ".cluster.bc2.ch")):
     environment = environments.BaselSlurmEnvironment(

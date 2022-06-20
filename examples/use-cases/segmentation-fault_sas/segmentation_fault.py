@@ -22,7 +22,8 @@ sas_filename = os.path.join(script_dir, "output_petri_sokobanp01.sas")
 
 initial_state = sas.generate_initial_state(sas_filename)
 
-evaluator_filename = os.path.join(os.path.dirname(tools.get_script_path()), "evaluator.py")
+evaluator_filename = os.path.join(os.path.dirname(tools.get_script_path()),
+                                  "evaluator.py")
 
 environment = environments.LocalEnvironment()
 if platform.node().endswith((".scicore.unibas.ch", ".cluster.bc2.ch")):
