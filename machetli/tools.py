@@ -1,5 +1,5 @@
 """
-This file is derived from ``tools.py`` of Lab (<https://lab.readthedocs.io>).
+This module is derived from ``tools.py`` of Lab (<https://lab.readthedocs.io>).
 Functions and classes that are not needed for this project were removed.
 """
 import errno
@@ -19,6 +19,9 @@ DEFAULT_ENCODING = "utf-8"
 
 
 def get_string(s):
+    """
+    Decode a byte string.
+    """
     if isinstance(s, bytes):
         return s.decode(DEFAULT_ENCODING)
     else:
@@ -26,15 +29,26 @@ def get_string(s):
 
 
 def get_script_path():
-    """Get absolute path to main script."""
+    """
+    Get absolute path to main script.
+    """
     return os.path.abspath(sys.argv[0])
 
 
 def get_python_executable():
+    """
+    Get path to the main Python executable.
+    """
     return sys.executable or "python"
 
 
 def configure_logging(level=logging.INFO):
+    """
+    Set up internal loggers to only print messages at least as important as the
+    given log level.Warnings and error messages will be printed on
+    stderr, and critical messages will terminate the program.
+    All messages will be prefixed with the current time.
+    """
     # Python adds a default handler if some log is written before this
     # function is called. We therefore remove all handlers that have
     # been added automatically.
@@ -76,6 +90,11 @@ def configure_logging(level=logging.INFO):
 
 # TODO: only used by a deprecated parser function. will be removed.
 def make_list(value):
+    """
+    Turn tuples, sets, lists and single objects into lists of objects.
+
+    .. note:: Deprecated (might be removed soon)
+    """
     if value is None:
         return []
     elif isinstance(value, list):
@@ -98,11 +117,20 @@ def makedirs(path):
 
 
 def write_state(state, file_path):
+    """
+    Use pickle to write a given state to disk.
+    """
     with open(file_path, "wb") as state_file:
         pickle.dump(state, state_file)
 
 
 def read_state(file_path, wait_time, repetitions):
+    """
+    Use pickle to read a state from disk. We expect this operation to occur on a
+    network file system that might take some time to synchronize, so we retry
+    the read operation multiple times if it fails, waiting a random amount
+    of time before each attempt (between 0 and *wait_time* seconds).
+    """
     for _ in range(repetitions):
         time.sleep(wait_time * random.random())
         if os.path.exists(file_path):
@@ -113,6 +141,11 @@ def read_state(file_path, wait_time, repetitions):
 
 
 class SubmissionError(Exception):
+    """
+    Exception thrown when submitting a slurm job on the grid fails.
+
+    .. note:: Deprecated (might be removed soon)
+    """
     def __init__(self, cpe):
         self.returncode = cpe.returncode
         self.cmd = cpe.cmd
@@ -140,6 +173,11 @@ class SubmissionError(Exception):
 
 
 class TaskError(Exception):
+    """
+    Exception thrown when a slurm job on the grid enters a critical state.
+
+    .. note:: Deprecated (might be removed soon)
+    """
     def __init__(self, critical_tasks):
         self.critical_tasks = critical_tasks
         self.indices_critical = [int(parts[1]) for parts in (
@@ -174,6 +212,11 @@ class TaskError(Exception):
 
 
 class PollingError(Exception):
+    """
+    Exception thrown when querying the status of a slurm job on the grid fails.
+
+    .. note:: Deprecated (might be removed soon)
+    """
     def __init__(self, job_id):
         self.job_id = job_id
 
@@ -193,6 +236,25 @@ def _set_limit(kind, soft_limit, hard_limit):
 
 
 def parse(content, pattern, type=int):
+    """
+    Look for matches of *pattern* in *content*. If any matches are found, the
+    first group present in the regular expression is cast as *type* and
+    returned.
+
+    :Example:
+
+    .. code-block:: python
+
+        content = '''
+        Runtime: 23.5s
+        Heuristic value: 42
+        Search successful
+        '''
+        t = parse(content, r"Runtime: (\.+)s", float)
+        h = parse(content, r"Heuristic value: (\d+)", int)
+
+
+    """
     if type == bool:
         logging.warning(
             "Casting any non-empty string to boolean will always "
@@ -213,25 +275,38 @@ def parse(content, pattern, type=int):
 
 
 class Run:
-    """Define an executable command with time and memory limits.
+    """
+    Define an executable command with time and memory limits.
+
+    :param command: is a list of strings defining the command to execute. For details, see
+        the Python module
+        `subprocess <https://docs.python.org/3/library/subprocess.html>`_.
+
+    :param time_limit: time in seconds after which the command is terminated.
+        Because states are evaluated in sequence in Machetli, it is important
+        to use resource limits to make sure a command eventually terminates.
+
+    :param memory_limit: memory limit in MiB to use for executing the command.
+
+    :param log_output:
+        the method :meth:`start` will return whatever the command writes to
+        stdout and stderr as strings. However, this log output will not be
+        written to the main log or to disk, unless you specify it otherwise in
+        this option. Use the *log_output* option ``"on_fail"`` if you want log
+        files to be written when *command* terminates on a non-zero exit code or
+        use the option ``"always"`` if you want them always to be written.
+
+        .. note:: This option currently does not work and is ignored.
+
+    :param input_file:
+        in case the process takes input on stdin, you can pass a path to a file
+        here that will be piped to stdin of the process. With the default value
+        of `None`, nothing is passed to stdin.
+
     """
 
     def __init__(self, command, time_limit=1800, memory_limit=None,
                  log_output=None, input_file=None):
-        """*command* is a list of strings that starts your program with
-        the desired parameters on a Linux machine.
-
-        After *time_limit* seconds, the subprocess of *command*
-        is killed.
-
-        Above a memory usage of *memory_limit* MiB, the subprocess of
-        *command* is killed.
-
-        Use the *log_output* option ``"on_fail"`` if you want log files to be
-        written when *command* terminates on a non-zero exit code or use the
-        option ``"always"`` if you want them always to be written. These options
-        only work in combination with the :func:`machetli.run.run_all` function.
-        """
         self.command = command
         self.time_limit = time_limit
         self.memory_limit = memory_limit
@@ -246,10 +321,11 @@ class Run:
         return f'Run(\"{cmd}\")'
 
     def start(self):
-        """Format the command with the entries of *state* and execute it with
-        `subprocess.Popen <https://docs.python.org/3/library/subprocess.html#subprocess.Popen>`_.
-        Return the 3-tuple (stdout, stderr, returncode) with the values obtained
-        from the executed command.
+        """
+        Run the command with the given resource limits
+        
+        :returns: the 3-tuple (stdout, stderr, returncode) with the values
+            obtained from the executed command.
         """
         # These declarations are needed for the _prepare_call() function.
         time_limit = self.time_limit

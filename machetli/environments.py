@@ -74,8 +74,8 @@ class Environment:
             1 in each call.
         
         :param evaluator_path: path to a script that is used to evaluate
-            successors. The documentation more information on :ref:`how to write
-            an evaluator<usage-evaluator>`.
+            successors. The user documentation contains more information on
+            :ref:`how to write an evaluator<usage-evaluator>`.
         """
         raise NotImplementedError
 

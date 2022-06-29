@@ -28,6 +28,15 @@ class SuccessorGenerator:
 
 
 class ChainingSuccessorGenerator(SuccessorGenerator):
+    """
+    Executes multiple evaluators in sequences. This successor generator will
+    first yield all successors of its first nested generator before yielding
+    successors of its second nested generator, and so on. Successors are
+    generated on demand, so an expensive-to-compute generator will only generate
+    successors that are actually evaluated.
+
+    :param nested_generators: list of other generators that should be chained.
+    """
     def __init__(self, nested_generators):
         self.nested_generators = nested_generators
     
@@ -38,6 +47,13 @@ class ChainingSuccessorGenerator(SuccessorGenerator):
 
 
 def make_single_successor_generator(generators):
+    """
+    :param nested_generators: a single :class:`SuccessorGenerator` or list of
+        :class:`SuccessorGenerators<SuccessorGenerator>`".
+
+    :returns: a single :class:`ChainingSuccessorGenerator` chaining all involved
+        generators.
+    """
     if generators is None:
         return ChainingSuccessorGenerator([])
     elif isinstance(generators, list):

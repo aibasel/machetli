@@ -1,3 +1,22 @@
+"""
+Machetli evaluators are Python files that define a function
+:meth:`evaluate(state)<>`. This function takes the current state of the search
+and should check if the behavior you are looking for still is present. The
+user documentation contains more information on :ref:`how to write an
+evaluator<usage-evaluator>`.
+
+This module provides a function to import and and run the evaluator given the
+filename. It can also be called from the command line for a pickled state:
+
+.. code-block:: bash
+
+    python -m machetli.evaluator /path/to/evaluator.py /path/to/state.pickle
+
+This is used when executing Machetli on the grid. The call will exit with an
+exit code of 0 if the evaluator is successful and with an exit code of 1
+otherwise.
+"""
+
 import importlib
 import logging
 import platform
@@ -15,6 +34,12 @@ def _import_evaluator(module_name, evaluator_path):
 
 
 def is_evaluator_successful(evaluator_path, state):
+    """
+    Import the Python module specified in *evaluator_path* and run its
+    :meth:`evaluate` function on *state*. Return the return value of
+    :meth:`evaluate`. See the user documentation on :ref:`how to write an
+    evaluator<usage-evaluator>`.
+    """
     module = _import_evaluator("custom_evaluator", evaluator_path)
     return module.evaluate(state)
 
