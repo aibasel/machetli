@@ -1,0 +1,105 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!-- Created with Inkscape (http://www.inkscape.org/) -->
+
+<svg
+   xmlns:dc="http://purl.org/dc/elements/1.1/"
+   xmlns:cc="http://creativecommons.org/ns#"
+   xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+   xmlns:svg="http://www.w3.org/2000/svg"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   width="96.344223mm"
+   height="100.52068mm"
+   viewBox="0 0 96.344223 100.52068"
+   version="1.1"
+   id="svg8"
+   inkscape:version="0.92.5 (2060ec1f9f, 2020-04-08)"
+   sodipodi:docname="machetli.svg"
+   inkscape:export-filename="/home/pommeren/Desktop/tmp/machetli.png"
+   inkscape:export-xdpi="96"
+   inkscape:export-ydpi="96">
+  <defs
+     id="defs2" />
+  <sodipodi:namedview
+     id="base"
+     pagecolor="#ffffff"
+     bordercolor="#666666"
+     borderopacity="1.0"
+     inkscape:pageopacity="0.0"
+     inkscape:pageshadow="2"
+     inkscape:zoom="0.49497475"
+     inkscape:cx="-483.77183"
+     inkscape:cy="163.50173"
+     inkscape:document-units="mm"
+     inkscape:current-layer="layer2"
+     showgrid="false"
+     inkscape:window-width="1848"
+     inkscape:window-height="1016"
+     inkscape:window-x="72"
+     inkscape:window-y="27"
+     inkscape:window-maximized="1"
+     fit-margin-top="0"
+     fit-margin-left="0"
+     fit-margin-right="0"
+     fit-margin-bottom="0" />
+  <metadata
+     id="metadata5">
+    <rdf:RDF>
+      <cc:Work
+         rdf:about="">
+        <dc:format>image/svg+xml</dc:format>
+        <dc:type
+           rdf:resource="http://purl.org/dc/dcmitype/StillImage" />
+        <dc:title></dc:title>
+      </cc:Work>
+    </rdf:RDF>
+  </metadata>
+  <g
+     inkscape:groupmode="layer"
+     id="layer2"
+     inkscape:label="Layer 2"
+     transform="translate(-44.464842,-23.922887)">
+    <path
+       style="fill:#bbbbce;fill-opacity:1;fill-rule:evenodd;stroke:#000000;stroke-width:0.26458332px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
+       d="M 70.464927,87.816084 C 95.238762,53.020658 123.66071,31.156601 140.65292,24.130604 138.0722,47.397959 119.13448,53.91276 104.11865,65.157439 90.786116,75.14158 91.542629,77.188341 77.528978,92.879212 Z"
+       id="path829"
+       inkscape:connector-curvature="0"
+       sodipodi:nodetypes="ccscc" />
+    <path
+       style="fill:#7c362c;fill-opacity:1;fill-rule:evenodd;stroke:#000000;stroke-width:0.26458332px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
+       d="m 44.532653,116.97033 c 6.92541,0.42699 6.588547,-10.01749 25.932273,-29.154245 l 7.064052,5.063127 C 74.01899,91.819629 72.153807,95.719485 69.840275,99.746115 60.144088,115.03827 56.015004,113.49175 56.646116,124.20188 Z"
+       id="path829-0"
+       inkscape:connector-curvature="0"
+       sodipodi:nodetypes="cccccc" />
+    <g
+       id="g844"
+       transform="matrix(0.26176524,0,0,0.26176524,45.422533,43.143225)">
+      <g
+         id="g849"
+         transform="matrix(0.56695289,0.40799491,-0.40799491,0.56695289,225.73657,-0.24041746)">
+        <rect
+           style="fill:#ff0000;fill-opacity:1;stroke:#100000;stroke-width:0;stroke-linejoin:round;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
+           id="rect822"
+           width="31.999998"
+           height="31.999998"
+           x="5e-07"
+           y="265" />
+        <rect
+           style="fill:#ffffff;fill-opacity:1;stroke:#100000;stroke-width:0;stroke-linejoin:round;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
+           id="rect824"
+           width="5.9999995"
+           height="20"
+           x="13.000001"
+           y="271" />
+        <rect
+           style="fill:#ffffff;fill-opacity:1;stroke:#100000;stroke-width:0;stroke-linejoin:round;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
+           id="rect824-6"
+           width="19.999998"
+           height="5.9999995"
+           x="6.0000005"
+           y="278" />
+      </g>
+    </g>
+  </g>
+</svg>

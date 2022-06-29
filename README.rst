@@ -1,3 +1,5 @@
+.. image:: docs/machetli.svg
+
 Machetli
 ========
 
