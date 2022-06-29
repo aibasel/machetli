@@ -1,8 +1,11 @@
 .. image:: docs/machetli.svg
-
+   :width: 20 %
+   :align: right
+   :alt: 
+   
 Machetli
 ========
-
+   
 **Machetli** is a Python package for reproducing characteristics of a program
 (such as bugs) with modified instances. It is meant to be helpful for debugging
 complex programs and narrowing down where specific behaviors are caused.
