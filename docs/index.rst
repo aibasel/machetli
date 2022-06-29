@@ -28,5 +28,5 @@
    :caption: Meta Documentation
    :titlesonly:
 
-   DOCS_GUIDE
+   documentation
 
