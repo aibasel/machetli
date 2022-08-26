@@ -310,3 +310,134 @@ class TaskElementEraseObjectVisitor(TaskElementVisitor):
 
     def visit_condition_negated_atom(self, negated_atom) -> NegatedAtom:
         return Falsity() if contains(negated_atom, self.object_name) else negated_atom
+
+
+class TaskElementEraseInitFactVisitor(TaskElementVisitor):
+    """Partial implementation of TaskElementVisitor interface for deletion of fact from init."""
+
+    def __init__(self, fact):
+        self.the_fact = fact
+
+    def visit_task(self, task):
+        new_init = [atom for atom in task.init if isinstance(atom, Assign) or atom != self.the_fact]
+
+        return Task(task.domain_name, task.task_name, task.requirements, task.types, task.objects, task.predicates,
+                    task.functions, new_init, task.goal, task.actions, task.axioms, task.use_min_cost_metric)
+
+
+class TaskElementEraseGoalLiteralVisitor(TaskElementVisitor):
+    """Partial implementation of TaskElementVisitor interface for deleting a literal from the goal."""
+
+    def __init__(self, literal):
+        self.the_literal = literal
+
+    def visit_task(self, task):
+        new_goal = task.goal.accept(self)
+
+        return Task(task.domain_name, task.task_name, task.requirements, task.types, task.objects, task.predicates,
+                    task.functions, task.init, new_goal, task.actions, task.axioms, task.use_min_cost_metric)
+
+    def visit_condition_falsity(self, falsity) -> Falsity:
+        return Falsity()
+
+    def visit_condition_truth(self, truth) -> Truth:
+        return Truth()
+
+    def visit_condition_conjunction(self, conjunction) -> Conjunction:
+        new_parts = []
+        for part in conjunction.parts:
+            new_parts.append(part.accept(self))
+        new_parts = [part for part in new_parts if part is not None]
+        return Conjunction(new_parts).simplified()
+
+    def visit_condition_disjunction(self, disjunction) -> Disjunction:
+        new_parts = []
+        for part in disjunction.parts:
+            new_parts.append(part.accept(self))
+        new_parts = [part for part in new_parts if part is not None]
+        return Disjunction(new_parts).simplified()
+
+    def visit_condition_universal(self, universal_condition) -> UniversalCondition:
+        new_parts = []
+        for part in universal_condition.parts:
+            new_parts.append(part.accept(self))
+        new_parts = [part for part in new_parts if part is not None]
+        return UniversalCondition(universal_condition.parameters, new_parts).simplified()
+
+    def visit_condition_existential(self, existential_condition) -> ExistentialCondition:
+        new_parts = []
+        for part in existential_condition.parts:
+            new_parts.append(part.accept(self))
+        new_parts = [part for part in new_parts if part is not None]
+        return ExistentialCondition(existential_condition.parameters, new_parts).simplified()
+
+    def visit_condition_atom(self, atom) -> Atom:
+        return Truth() if atom == self.the_literal else atom
+
+    def visit_condition_negated_atom(self, negated_atom) -> NegatedAtom:
+        return Truth() if atom == self.the_literal else negated_atom 
+
+
+class GetLiteralsVisitor:
+    """A visitor that returns the literals contains in a formula"""
+
+    def visit_condition(self, condition) -> list[Literal]:
+        if isinstance(condition, Falsity):
+            return self.visit_condition_falsity(condition)
+        elif isinstance(condition, Truth):
+            return self.visit_condition_truth(condition)
+        elif isinstance(condition, Conjunction):
+            return self.visit_condition_conjunction(condition)
+        elif isinstance(condition, Disjunction):
+            return self.visit_condition_disjunction(condition)
+        elif isinstance(condition, UniversalCondition):
+            return self.visit_condition_universal(condition)
+        elif isinstance(condition, ExistentialCondition):
+            return self.visit_condition_existential(condition)
+        elif isinstance(condition, Atom):
+            return self.visit_condition_atom(condition)
+        elif isinstance(condition, NegatedAtom):
+            return self.visit_condition_negated_atom(condition)
+        else:
+            raise NotImplementedError(
+                "No visiting function implemented for this type of condition.")
+
+    def visit_condition_falsity(self, falsity) -> list[Literal]:
+        return []
+
+    def visit_condition_truth(self, truth) -> list[Literal]:
+        return []
+
+    def visit_condition_conjunction(self, conjunction) -> list[Literal]:
+        literals = []
+        for part in conjunction.parts:
+            literals.extend(self.visit_condition(part))
+        return literals
+
+    def visit_condition_disjunction(self, disjunction) -> list[Literal]:
+        literals = []
+        for part in disjunction.parts:
+            literals.extend(self.visit_condition(part))
+        return literals
+
+    def visit_condition_universal(self, universal_condition) -> list[Literal]:
+        literals = []
+        for part in universal_condition.parts:
+            literals.extend(self.visit_condition(part))
+        return literals
+
+    def visit_condition_existential(self, existential_condition) -> list[Literal]:
+        literals = []
+        for part in existential_condition.parts:
+            literals.extend(self.visit_condition(part))
+        return literals
+
+    def visit_condition_atom(self, atom) -> list[Literal]:
+        return [atom]
+
+    def visit_condition_negated_atom(self, negated_atom) -> list[Literal]:
+        raise [negated_atom]
+
+
+
+
