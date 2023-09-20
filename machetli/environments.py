@@ -356,9 +356,8 @@ class SlurmEnvironment(Environment):
             time.sleep(self.FILESYSTEM_TIME_INTERVAL)
         return False  # At least one path from paths does not exist
 
-    def _build_batch_directories(self, batch, batch_id):
-        batch_dir_path = os.path.join(
-            self.eval_dir, f"batch_{batch_id:03}")
+    def _build_batch_directories(self, batch, batch_name):
+        batch_dir_path = os.path.join(self.eval_dir, batch_name)
         run_dirs = []
         for rank, successor in enumerate(batch):
             run_dir_name = f"{rank:03}"
@@ -391,8 +390,8 @@ class SlurmEnvironment(Environment):
         in parallel. Returns the array job ID of the submitted array job.
         """
         self.batch_id += 1
-        run_dirs = self._build_batch_directories(batch, self.batch_id)
         batch_name = f"batch_{self.batch_id:03}"
+        run_dirs = self._build_batch_directories(batch, batch_name)
         self._write_sbatch_file(run_dirs=" ".join(run_dirs), name=batch_name,
                                num_tasks=len(batch)-1,
                                evaluator_path=evaluator_path)
