@@ -1,9 +1,8 @@
-from itertools import islice
 import logging
 
 from machetli.environments import LocalEnvironment
 from machetli.successors import make_single_successor_generator
-from machetli.tools import SubmissionError, TaskError, PollingError, configure_logging
+from machetli.tools import SubmissionError, TaskError, PollingError, batched, configure_logging
 
 
 def search(initial_state, successor_generator, evaluator_path, environment=None):
@@ -84,28 +83,21 @@ def search(initial_state, successor_generator, evaluator_path, environment=None)
     successor_generator = make_single_successor_generator(successor_generator)
 
     logging.info("Starting search ...")
-
     current_state = initial_state
-    batch_size = environment.batch_size
-    batch_num = 0
-
-    successors = successor_generator.get_successors(current_state)
-    batch = list(islice(successors, batch_size))
-    while batch:
-        try:
-            environment.submit(batch, batch_num, evaluator_path)
-            environment.wait_until_finished()
-            successor = environment.get_improving_successor()
-        except (SubmissionError, TaskError, PollingError):
-            # FIXME: this is not proper error handling yet.
-            successor = None
-
-        if successor:
-            logging.info(successor.change_msg)
-            current_state = successor.state
-            successors = successor_generator.get_successors(current_state)
-        batch_num += 1
-        batch = list(islice(successors, batch_size))
-
-    logging.info("No improving successor found, terminating search.")
-    return current_state
+    while True:
+        successors = successor_generator.get_successors(current_state)
+        for batch in batched(successors, environment.batch_size):
+            try:
+                environment.submit(batch, evaluator_path)
+                environment.wait_until_finished()
+                successor = environment.get_improving_successor()
+            except (SubmissionError, TaskError, PollingError):
+                # FIXME: this is not proper error handling yet.
+                successor = None
+            if successor:
+                logging.info(successor.change_msg)
+                current_state = successor.state
+                break
+        else:
+            logging.info("No improving successor found, terminating search.")
+            return current_state

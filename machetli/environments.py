@@ -10,7 +10,7 @@ and waiting for jobs.
 from importlib import resources
 import logging
 import os
-import pkgutil
+from pathlib import Path
 import pprint
 import re
 import subprocess
@@ -63,16 +63,13 @@ class Environment:
         self.allow_nondeterministic_successor_choice = \
             allow_nondeterministic_successor_choice
 
-    def submit(self, batch, batch_id, evaluator_path):
+    def submit(self, batch, evaluator_path):
         """
         start evaluating the given batch of successors with the given evaluator.
 
         :param batch: list of :class:`Successors
             <machetli.successors.Successor>` to be evaluated.
 
-        :param batch_id: increasing ID to identify the batch. Should increase by
-            1 in each call.
-        
         :param evaluator_path: path to a script that is used to evaluate
             successors. The user documentation contains more information on
             :ref:`how to write an evaluator<usage-evaluator>`.
@@ -113,7 +110,7 @@ class LocalEnvironment(Environment):
         Environment.__init__(self, **kwargs)
         self.successor = None
 
-    def submit(self, batch, batch_id, evaluator_path):
+    def submit(self, batch, evaluator_path):
         assert self.successor is None
 
         for succ in batch:
@@ -266,6 +263,7 @@ class SlurmEnvironment(Environment):
         self.sbatch_filename = os.path.join(script_dir, "slurm-array-job.sbatch")
         self._wait_for_filesystem(self.eval_dir)
         self.critical = False
+        self.batch_id = 0
 
     def _get_job_params(self):
         job_params = dict()
@@ -287,10 +285,10 @@ class SlurmEnvironment(Environment):
         job_params["state_filename"] = self.STATE_FILENAME
         return job_params
 
-    def submit(self, batch, batch_id, evaluator_path):
+    def submit(self, batch, evaluator_path):
         assert not self.job
         try:
-            self.job = self._submit_array_job(batch, batch_id, evaluator_path)
+            self.job = self._submit_array_job(batch, Path(evaluator_path))
         except SubmissionError as se:
             if self.allow_nondeterministic_successor_choice:
                 se.warn_abort()
@@ -358,9 +356,8 @@ class SlurmEnvironment(Environment):
             time.sleep(self.FILESYSTEM_TIME_INTERVAL)
         return False  # At least one path from paths does not exist
 
-    def _build_batch_directories(self, batch, batch_num):
-        batch_dir_path = os.path.join(
-            self.eval_dir, f"batch_{batch_num:03}")
+    def _build_batch_directories(self, batch, batch_name):
+        batch_dir_path = os.path.join(self.eval_dir, batch_name)
         run_dirs = []
         for rank, successor in enumerate(batch):
             run_dir_name = f"{rank:03}"
@@ -386,17 +383,20 @@ class SlurmEnvironment(Environment):
             f.write(self.sbatch_template.format(**dictionary))
         # TODO: Implement check whether file was updated
 
-    def _submit_array_job(self, batch, batch_num, evaluator_path):
+    def _submit_array_job(self, batch, evaluator_path : Path):
         """
         Writes pickled version of each state in *batch* to its own file.
         Then, submits a slurm array job which will evaluate each state
         in parallel. Returns the array job ID of the submitted array job.
         """
-        run_dirs = self._build_batch_directories(batch, batch_num)
-        batch_name = f"batch_{batch_num:03}"
-        self._write_sbatch_file(run_dirs=" ".join(run_dirs), name=batch_name,
-                               num_tasks=len(batch)-1,
-                               evaluator_path=evaluator_path)
+        self.batch_id += 1
+        batch_name = f"batch_{self.batch_id:03}"
+        job_name = f"{evaluator_path.stem}_{batch_name}"
+        run_dirs = self._build_batch_directories(batch, batch_name)
+        self._write_sbatch_file(run_dirs=" ".join(run_dirs),
+                                name=job_name,
+                                num_tasks=len(batch)-1,
+                                evaluator_path=evaluator_path)
         submission_command = ["sbatch", "--export",
                               ",".join(self.export), self.sbatch_filename]
         try:
