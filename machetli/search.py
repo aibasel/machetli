@@ -88,19 +88,21 @@ def search(initial_state, successor_generator, evaluator_path, environment=None)
     while True:
         successors = successor_generator.get_successors(current_state)
         for batch in batched(successors, environment.batch_size):
+            successor = None
             try:
                 environment.submit(batch, evaluator_path)
                 environment.wait_until_finished()
                 successor = environment.get_improving_successor()
             except SubmissionError as e:
-                logging.critical(f"Job submission for successor evaluation failed:\n{e}")
+                logging.critical(f"Terminating search because job submission for successor evaluation failed:\n{e}")
             except PollingError as e:
-                logging.critical(f"Querying the status of a submitted successor evaluation failed:\n{e}")
-            except EvaluatorOutOfResourcesError as e:
-                if environment.
-            except EvaluatorError:
-                # FIXME: this is not proper error handling yet.
-                successor = None
+                logging.critical(f"Terminating search because querying the status of a submitted successor evaluation failed:\n{e}")
+            except EvaluatorError as e:
+                if e.deterministic:
+                    logging.critical(f"Terminating search because evaluating the next successor failed:\n{e}")
+                else:
+                    logging.info(f"Evaluation failed for some submitted successors:\n{e}")
+                    successor = e.successor
             if successor:
                 logging.info(successor.change_msg)
                 current_state = successor.state

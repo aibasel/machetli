@@ -17,8 +17,10 @@ import subprocess
 import time
 
 from machetli import tools, templates
+from machetli.errors import SubmissionError, PollingError, \
+    EvaluatorOutOfResourcesError, EvaluatorError, format_called_process_error
 from machetli.evaluator import is_evaluator_successful
-from machetli.tools import SubmissionError, TaskError, PollingError, write_state
+from machetli.tools import write_state
 
 
 class Environment:
@@ -117,7 +119,7 @@ class LocalEnvironment(Environment):
             # TODO: react to self.allow_nondeterministic_successor_choice by ignoring evaluator crashes?
             if is_evaluator_successful(evaluator_path, succ.state):
                 self.successor = succ
-            break
+                break
 
     def wait_until_finished(self):
         pass
@@ -127,6 +129,18 @@ class LocalEnvironment(Environment):
         self.successor = None
         return result
 
+
+class EvaluationTask():
+    def __init__(self, state, task_id, run_dir):
+        self.state = state
+        self.task_id = task_id
+        self.run_dir = run_dir
+        self.slurm_status = "PENDING"
+
+class EvaluationTaskBatch():
+    def __init__(self, job_id, tasks):
+        self.job_id = job_id
+        self.tasks = tasks
 
 class SlurmEnvironment(Environment):
     """
@@ -251,11 +265,11 @@ class SlurmEnvironment(Environment):
         self.nice = nice or self.DEFAULT_NICE
         self.export = export or self.DEFAULT_EXPORT
         self.setup = setup or self.DEFAULT_SETUP
-        self.script_path = tools.get_script_path()
-        self.job = None
+        self.script_path = Path(tools.get_script_path())
+        self.current_job = None
 
-        script_dir = os.path.dirname(self.script_path)
-        self.eval_dir = os.path.join(script_dir, "eval_dir")
+        script_dir = self.script_path.parent
+        self.eval_dir = script_dir/"eval_dir"
         tools.makedirs(self.eval_dir)
         if re.search(r"\s+", self.eval_dir):
             logging.critical("The script path must not contain any whitespace characters.")
@@ -285,21 +299,39 @@ class SlurmEnvironment(Environment):
         job_params["state_filename"] = self.STATE_FILENAME
         return job_params
 
-    def submit(self, batch, evaluator_path):
-        assert not self.job
+    def submit(self, batch, evaluator_path: Path):
+        assert not self.current_job
+        """
+        Writes pickled version of each state in *batch* to its own file.
+        Then, submits a slurm array job which will evaluate each state
+        in parallel. Returns the array job ID of the submitted array job.
+        """
+        self.batch_id += 1
+        batch_name = f"batch_{self.batch_id:03}"
+        job_name = f"{evaluator_path.stem}_{batch_name}"
+        tasks = self._build_batch_directories(batch, batch_name)
+        self._write_sbatch_file(tasks=tasks,
+                                name=job_name,
+                                num_tasks=len(batch)-1,
+                                evaluator_path=evaluator_path)
+        submission_command = ["sbatch", "--export",
+                              ",".join(self.export), self.sbatch_filename]
         try:
-            self.job = self._submit_array_job(batch, Path(evaluator_path))
-        except SubmissionError as se:
-            if self.allow_nondeterministic_successor_choice:
-                se.warn_abort()
-                # TODO: this means job is undefined, so we should also abort.
-            else:
-                se.warn()
-                self.job = None
-                raise se
+            output = subprocess.check_output(submission_command).decode()
+        except subprocess.CalledProcessError as cpe:
+            raise SubmissionError(format_called_process_error(cpe))
+
+        match = re.match(r"Submitted batch job (\d*)", output)
+        if not match:
+            raise SubmissionError(
+                "Something went wrong, no job ID printed after job submission.")
+
+        job_id = match.group(1)
+        logging.info(f"Submitted batch job {job_id}")
+        self.current_job = EvaluationTaskBatch(job_id, tasks)
 
     def wait_until_finished(self):
-        assert self.job
+        assert self.current_job
         try:
             self._poll_job()
         except TaskError as te:
@@ -315,24 +347,29 @@ class SlurmEnvironment(Environment):
                 if not self.job["tasks"]:
                     self.job = None
                     raise te
-        except PollingError as pe:
-            pe.warn_abort()
-            raise pe
 
     def get_improving_successor(self):
-        assert self.job
+        assert self.current_job
         if self.critical:
             self.critical = False
-            self.job = None
+            self.current_job = None
             return None
 
         successor = None
+        timeouts = 0
+        memouts = 0
         for task in self.job["tasks"]:
             result_file = os.path.join(task["dir"], "exit_code")
             if self._wait_for_filesystem(result_file):
-                if _parse_exit_code(result_file) == 0:
+                exit_code = _parse_exit_code(result_file)
+                if exit_code == 0:
                     successor = task["successor"]
                     break
+                elif exit_code == EXIT_CODE_TIMEOUT:
+                    timeouts += 1
+                elif exit_code == EXIT_CODE_MEMOUT:
+                    memouts += 1
+                else
             else:
                 if self.allow_nondeterministic_successor_choice:
                     logging.warning(
@@ -344,7 +381,7 @@ class SlurmEnvironment(Environment):
                                     f"in '{task['dir']}' failed.")
                     # TODO: raise an error that can be handled by the caller.
                     return None
-        self.job = None
+        self.current_job = None
         return successor
 
     def _wait_for_filesystem(self, *paths):
@@ -357,106 +394,118 @@ class SlurmEnvironment(Environment):
         return False  # At least one path from paths does not exist
 
     def _build_batch_directories(self, batch, batch_name):
-        batch_dir_path = os.path.join(self.eval_dir, batch_name)
-        run_dirs = []
-        for rank, successor in enumerate(batch):
-            run_dir_name = f"{rank:03}"
-            run_dir_path = os.path.join(batch_dir_path, run_dir_name)
-            tools.makedirs(run_dir_path)
-            state_file_path = os.path.join(run_dir_path, self.STATE_FILENAME)
-            write_state(successor.state, state_file_path)
-            run_dirs.append(run_dir_path)
+        batch_dir = self.eval_dir/batch_name
+        tasks = []
+        for task_id, successor in enumerate(batch):
+            run_dir = batch_dir/f"{task_id:03}"
+            # TODO: raise SubmissionError when directory exists
+            run_dir.mkdir(parents=True, exists_ok=False)
+            write_state(successor.state, run_dir/self.STATE_FILENAME)
+            tasks.append(EvaluationTask(successor.state, task_id, run_dir))
+
+        run_dirs = [t.run_dir for t in tasks]
         # Give the NFS time to write the paths
         if not self._wait_for_filesystem(*run_dirs):
             logging.critical(
                 f"One of the following paths is missing:\n"
                 f"{pprint.pformat(run_dirs)}"
             )
-        return run_dirs
+        return tasks
 
-    def _write_sbatch_file(self, **kwargs):
+    def _write_sbatch_file(self, tasks, **kwargs):
         dictionary = self._get_job_params()
         dictionary.update(kwargs)
+        dictionary["run_dirs"] = " ".join([str(t.run_dir) for t in tasks])
         logging.debug(
             f"Dictionary before filling:\n{pprint.pformat(dictionary)}")
         with open(self.sbatch_filename, "w") as f:
             f.write(self.sbatch_template.format(**dictionary))
         # TODO: Implement check whether file was updated
 
-    def _submit_array_job(self, batch, evaluator_path : Path):
-        """
-        Writes pickled version of each state in *batch* to its own file.
-        Then, submits a slurm array job which will evaluate each state
-        in parallel. Returns the array job ID of the submitted array job.
-        """
-        self.batch_id += 1
-        batch_name = f"batch_{self.batch_id:03}"
-        job_name = f"{evaluator_path.stem}_{batch_name}"
-        run_dirs = self._build_batch_directories(batch, batch_name)
-        self._write_sbatch_file(run_dirs=" ".join(run_dirs),
-                                name=job_name,
-                                num_tasks=len(batch)-1,
-                                evaluator_path=evaluator_path)
-        submission_command = ["sbatch", "--export",
-                              ",".join(self.export), self.sbatch_filename]
-        try:
-            output = subprocess.check_output(submission_command).decode()
-        except subprocess.CalledProcessError as cpe:
-            raise SubmissionError(cpe)
-        match = re.match(r"Submitted batch job (\d*)", output)
-        if not match:
-            logging.critical(
-                "Something went wrong, no job ID printed after job submission.")
-        else:
-            logging.info(match.group(0))
-        job_id = match.group(1)
-        # TODO: This is strange.
-        job = {"id": job_id,
-               "tasks": [{"successor": s, "dir": d} for s, d in
-                         zip(batch, run_dirs)]}
-        return job
 
     def _poll_job(self):
-        job_id = self.job["id"]
         while True:
             time.sleep(self.POLLING_TIME_INTERVAL)
-            try:
-                output = subprocess.check_output(
-                    ["sacct", "-j", str(job_id), "--format=jobid,state",
-                     "--noheader", "--allocations"]).decode()
-                task_states = self._build_task_state_dict(output)
-                done = []
-                busy = []
-                critical = []
-                logging.debug(f"Task states:\n{pprint.pformat(task_states)}")
-                for task_id, task_state in task_states.items():
-                    if task_state in self.DONE_STATES:
-                        done.append(task_id)
-                    elif task_state in self.BUSY_STATES:
-                        busy.append(task_id)
-                    else:
-                        critical.append(task_id)
-                if busy:
-                    logging.info(
-                        f"{len(busy)} task"
-                        f"{'s are' if len(busy) > 1 else ' is'} still busy.")
-                    continue
-                if critical:
-                    critical_tasks = [
-                        task for task in task_states if task in critical]
-                    raise TaskError(critical_tasks)
-                else:
-                    logging.info("Batch completed.")
-                    return
-            except subprocess.CalledProcessError:
-                raise PollingError(job_id)
+            self._update_slurm_status(self.current_job)
 
-    def _build_task_state_dict(self, sacct_output):
-        unclean_job_state_list = sacct_output.strip("\n").split("\n")
-        stripped_job_state_list = [pair.strip(
-            "+ ") for pair in unclean_job_state_list]
-        return {k: v for k, v in
-                (pair.split() for pair in stripped_job_state_list)}
+            num_busy_tasks = 0
+            num_critical_tasks = 0
+            for task in self.current_job.tasks:
+                if task.slurm_status in self.DONE_STATES:
+                    continue
+                elif task.slurm_status in self.BUSY_STATES:
+                    num_busy_tasks += 1
+                else:
+                    num_critical_tasks += 1
+                    if not num_busy_tasks and not self.allow_nondeterministic_successor_choice:
+                        # In this case all tasks up to this one are done. With
+                        # deterministic successor order we cannot ignore the
+                        # error here.
+                        raise EvaluatorError(
+                            f"Task {task.task_id} is in a critical state: {task.slurm_status}. (run_dir: {task.run_dir})")
+
+            if num_critical_tasks and not num_busy_tasks:
+
+            # TODO: Refactored until here (approximately).
+
+
+
+
+            for task_id, task_state in task_states.items():
+                if task_state in self.DONE_STATES:
+                    done.append(task_id)
+                elif task_state in self.BUSY_STATES:
+                    busy.append(task_id)
+                else:
+                    critical.append(task_id)
+
+            if busy:
+                logging.info(
+                    f"{len(busy)} task"
+                    f"{'s are' if len(busy) > 1 else ' is'} still busy.")
+                continue
+
+            if critical:
+                # TODO: How do we want to deal with critical tasks?
+                critical_tasks = [
+                    task for task in task_states if task in critical]
+                raise TaskError(critical_tasks)
+            else:
+                logging.info("Batch completed.")
+                return
+
+    def _update_slurm_status(self, job):
+        try:
+            output = subprocess.check_output(
+                ["sacct", "-j", str(job.job_id), "--format=jobid,state",
+                 "--noheader", "--allocations"]).decode()
+        except subprocess.CalledProcessError as cpe:
+            raise PollingError(format_called_process_error(cpe))
+
+        status_by_task_id = {}
+        pattern = re.compile(r"(?P<job_id>\d+)_(?P<task_id>\d+)\+?\s+(?P<status>\w+)\+?")
+        for line in output.splitlines():
+            m = re.match(pattern, line)
+            if m:
+                job_id = m.group("job_id")
+                assert job_id == job.job_id
+                task_id = m.group("task_id")
+                status = m.group("status")
+
+                status_by_task_id[task_id] = status
+            else:
+                raise PollingError(
+                    "Invalid format when querying `sacct` for task status.\n" +
+                    output)
+
+        for task in job.tasks:
+            try:
+                task.slurm_status = status_by_task_id[task.task_id]
+            except IndexError:
+                raise PollingError(
+                    f"Did not find status of slurm job {job.job_id}_{task.task_id}.")
+            logging.debug(
+                f"Task status of {job.job_id}_{task.task_id} is {task.slurm_status}")
 
     @staticmethod
     # This function is copied from lab.environment.SlurmEnvironment

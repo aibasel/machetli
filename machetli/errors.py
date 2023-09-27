@@ -20,5 +20,20 @@ class EvaluatorError(Exception):
     """
     Exception raised when an evaluator script did not exit with a valid return code.
     """
-    pass
+    def __init__(self, deterministic: bool, successor=None):
+        self.deterministic = deterministic
+        self.successor = successor
 
+
+def format_called_process_error(cpe):
+    return f"""Submission command: {cpe.cmd}
+Returncode: {cpe.returncode}
+Output: {cpe.output}
+Captured stdout:
+----------------
+{cpe.stdout}
+
+Captured stderr:
+----------------
+{cpe.stderr}
+"""
