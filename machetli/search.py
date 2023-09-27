@@ -1,8 +1,9 @@
 import logging
 
 from machetli.environments import LocalEnvironment
+from machetli.errors import SubmissionError, PollingError, EvaluatorOutOfResourcesError, EvaluatorError
 from machetli.successors import make_single_successor_generator
-from machetli.tools import SubmissionError, TaskError, PollingError, batched, configure_logging
+from machetli.tools import batched, configure_logging
 
 
 def search(initial_state, successor_generator, evaluator_path, environment=None):
@@ -91,7 +92,13 @@ def search(initial_state, successor_generator, evaluator_path, environment=None)
                 environment.submit(batch, evaluator_path)
                 environment.wait_until_finished()
                 successor = environment.get_improving_successor()
-            except (SubmissionError, TaskError, PollingError):
+            except SubmissionError as e:
+                logging.critical(f"Job submission for successor evaluation failed:\n{e}")
+            except PollingError as e:
+                logging.critical(f"Querying the status of a submitted successor evaluation failed:\n{e}")
+            except EvaluatorOutOfResourcesError as e:
+                if environment.
+            except EvaluatorError:
                 # FIXME: this is not proper error handling yet.
                 successor = None
             if successor:
