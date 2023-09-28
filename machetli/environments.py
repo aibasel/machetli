@@ -23,6 +23,21 @@ from machetli.evaluator import is_evaluator_successful
 from machetli.tools import write_state
 
 
+class EvaluationTask():
+    PENDING = "pending"
+    DONE_AND_IMPROVING = "improving"
+    DONE_AND_NOT_IMPROVING = "not improving"
+    OUT_OF_RESOURCES = "ran out of resources"
+    CRITICAL = "critical"
+
+    def __init__(self, successor, task_id, run_dir):
+        self.successor = successor
+        self.task_id = task_id
+        self.run_dir = run_dir
+        self.status = self.PENDING
+        self.error = ""
+
+
 class Environment:
     """
     Abstract base class of all environments. Concrete environments should
@@ -65,9 +80,12 @@ class Environment:
         self.allow_nondeterministic_successor_choice = \
             allow_nondeterministic_successor_choice
 
-    def submit(self, batch, evaluator_path):
+    def run(self, evaluator_path, batch, on_task_completed):
         """
-        start evaluating the given batch of successors with the given evaluator.
+        evaluate the given batch of successors with the given evaluator.
+        The evaluator is run on all successors (possibly in parallel, depending
+        on the environment). Every time an evaluation of a successor is
+        completed, the callback `on_task_completed` is called.
 
         :param batch: list of :class:`Successors
             <machetli.successors.Successor>` to be evaluated.
@@ -75,31 +93,15 @@ class Environment:
         :param evaluator_path: path to a script that is used to evaluate
             successors. The user documentation contains more information on
             :ref:`how to write an evaluator<usage-evaluator>`.
+        
+        :param on_task_completed: TODO explain semantics of on_task_completed(job_id, task_id, status)
         """
         raise NotImplementedError
 
-    def wait_until_finished(self):
-        """
-        Calling this function after submitting a batch of successors will block
-        until sufficient results from the batch are available (either an
-        successor that the search should commit to, or a negative evaluation of
-        all successors in the batch).
-
-        Calling this function before submitting a batch or after the results of
-        the batch have been collected is an error.
-        """
-        raise NotImplementedError
-
-    def get_improving_successor(self):
-        """
-        Calling this function after waiting will collect the results of the
-        batch. Returns either the successor that the search should commit to, or
-        None if no such successor was found.
-
-        Calling this function before submitting a batch or waiting for its
-        result is an error.
-        """
-        raise NotImplementedError
+    def cancel(self, job_id, after=0):
+        # not canceling should always be fine, it will just take longer to wait
+        # for the remaining tasks.
+        pass
 
 
 class LocalEnvironment(Environment):
@@ -129,18 +131,6 @@ class LocalEnvironment(Environment):
         self.successor = None
         return result
 
-
-class EvaluationTask():
-    def __init__(self, state, task_id, run_dir):
-        self.state = state
-        self.task_id = task_id
-        self.run_dir = run_dir
-        self.slurm_status = "PENDING"
-
-class EvaluationTaskBatch():
-    def __init__(self, job_id, tasks):
-        self.job_id = job_id
-        self.tasks = tasks
 
 class SlurmEnvironment(Environment):
     """
@@ -234,9 +224,9 @@ class SlurmEnvironment(Environment):
     """
     POLLING_TIME_INTERVAL = 15
     """
-    While running jobs the login nodes periodically checks if all running jobs
-    are finished. This constant controls how many seconds to wait before polling
-    again.
+    While running jobs the login node periodically checks the status of all
+    pending tasks. This constant controls how many seconds to wait before
+    polling again.
     """
 
     # TODO: are differences to Lab reasonable? e.g., here we have no time limit.
@@ -266,18 +256,37 @@ class SlurmEnvironment(Environment):
         self.export = export or self.DEFAULT_EXPORT
         self.setup = setup or self.DEFAULT_SETUP
         self.script_path = Path(tools.get_script_path())
-        self.current_job = None
 
         script_dir = self.script_path.parent
-        self.eval_dir = script_dir/"eval_dir"
-        tools.makedirs(self.eval_dir)
+        self.eval_dir = Path(script_dir/"eval_dir")
         if re.search(r"\s+", self.eval_dir):
             logging.critical("The script path must not contain any whitespace characters.")
+        # TODO: continue from existing directory, or handle possible error.
+        self.eval_dir.mkdir(parents=True, exist_ok=False)
+        self._wait_for_filesystem(self.eval_dir)
         self.sbatch_template = resources.read_text(templates, "slurm-array-job.template")
         self.sbatch_filename = os.path.join(script_dir, "slurm-array-job.sbatch")
-        self._wait_for_filesystem(self.eval_dir)
-        self.critical = False
         self.batch_id = 0
+
+    def run(self, evaluator_path: Path, batch, on_task_finished):
+        job_id, tasks = self._submit(evaluator_path, batch)
+        pending_task_ids = set(range(len(batch)))
+        while pending_task_ids:
+            time.sleep(self.POLLING_TIME_INTERVAL)
+            self._update_status(job_id, tasks)
+            for task_id in pending_task_ids:
+                if tasks[task_id].status != EvaluationTask.PENDING:
+                    pending_task_ids.remove(task_id)
+                    on_task_finished(job_id, task_id, tasks[task_id].status)
+            if pending_task_ids:
+                logging.info(
+                    f"{len(pending_task_ids)} task"
+                    f"{'s are' if len(pending_task_ids) > 1 else ' is'} still busy.")
+        return tasks
+
+    def cancel(self, job_id, after=0):
+        # TODO: cancel grid jobs with task IDs > `after`
+        pass
 
     def _get_job_params(self):
         job_params = dict()
@@ -299,7 +308,7 @@ class SlurmEnvironment(Environment):
         job_params["state_filename"] = self.STATE_FILENAME
         return job_params
 
-    def submit(self, batch, evaluator_path: Path):
+    def _submit(self, batch, evaluator_path: Path):
         assert not self.current_job
         """
         Writes pickled version of each state in *batch* to its own file.
@@ -328,61 +337,7 @@ class SlurmEnvironment(Environment):
 
         job_id = match.group(1)
         logging.info(f"Submitted batch job {job_id}")
-        self.current_job = EvaluationTaskBatch(job_id, tasks)
-
-    def wait_until_finished(self):
-        assert self.current_job
-        try:
-            self._poll_job()
-        except TaskError as te:
-            if self.allow_nondeterministic_successor_choice:
-                te.remove_critical_tasks(self.job)
-                if not self.job["tasks"]:
-                    # TODO: this is just a hack to replace the "continue"
-                    #  that occurred here in the original grid search.
-                    self.critical = True
-                    return
-            else:
-                te.remove_tasks_after_first_critical(self.job)
-                if not self.job["tasks"]:
-                    self.job = None
-                    raise te
-
-    def get_improving_successor(self):
-        assert self.current_job
-        if self.critical:
-            self.critical = False
-            self.current_job = None
-            return None
-
-        successor = None
-        timeouts = 0
-        memouts = 0
-        for task in self.job["tasks"]:
-            result_file = os.path.join(task["dir"], "exit_code")
-            if self._wait_for_filesystem(result_file):
-                exit_code = _parse_exit_code(result_file)
-                if exit_code == 0:
-                    successor = task["successor"]
-                    break
-                elif exit_code == EXIT_CODE_TIMEOUT:
-                    timeouts += 1
-                elif exit_code == EXIT_CODE_MEMOUT:
-                    memouts += 1
-                else
-            else:
-                if self.allow_nondeterministic_successor_choice:
-                    logging.warning(
-                        f"Result file '{result_file}' does not exist. "
-                        "Continuing with next task.")
-                    continue
-                else:
-                    logging.warning("Aborting search because evaluation "
-                                    f"in '{task['dir']}' failed.")
-                    # TODO: raise an error that can be handled by the caller.
-                    return None
-        self.current_job = None
-        return successor
+        return job_id, tasks
 
     def _wait_for_filesystem(self, *paths):
         attempts = int(self.FILESYSTEM_TIME_LIMIT / self.FILESYSTEM_TIME_INTERVAL)
@@ -422,62 +377,10 @@ class SlurmEnvironment(Environment):
             f.write(self.sbatch_template.format(**dictionary))
         # TODO: Implement check whether file was updated
 
-
-    def _poll_job(self):
-        while True:
-            time.sleep(self.POLLING_TIME_INTERVAL)
-            self._update_slurm_status(self.current_job)
-
-            num_busy_tasks = 0
-            num_critical_tasks = 0
-            for task in self.current_job.tasks:
-                if task.slurm_status in self.DONE_STATES:
-                    continue
-                elif task.slurm_status in self.BUSY_STATES:
-                    num_busy_tasks += 1
-                else:
-                    num_critical_tasks += 1
-                    if not num_busy_tasks and not self.allow_nondeterministic_successor_choice:
-                        # In this case all tasks up to this one are done. With
-                        # deterministic successor order we cannot ignore the
-                        # error here.
-                        raise EvaluatorError(
-                            f"Task {task.task_id} is in a critical state: {task.slurm_status}. (run_dir: {task.run_dir})")
-
-            if num_critical_tasks and not num_busy_tasks:
-
-            # TODO: Refactored until here (approximately).
-
-
-
-
-            for task_id, task_state in task_states.items():
-                if task_state in self.DONE_STATES:
-                    done.append(task_id)
-                elif task_state in self.BUSY_STATES:
-                    busy.append(task_id)
-                else:
-                    critical.append(task_id)
-
-            if busy:
-                logging.info(
-                    f"{len(busy)} task"
-                    f"{'s are' if len(busy) > 1 else ' is'} still busy.")
-                continue
-
-            if critical:
-                # TODO: How do we want to deal with critical tasks?
-                critical_tasks = [
-                    task for task in task_states if task in critical]
-                raise TaskError(critical_tasks)
-            else:
-                logging.info("Batch completed.")
-                return
-
-    def _update_slurm_status(self, job):
+    def _get_slurm_status(self, job_id):
         try:
             output = subprocess.check_output(
-                ["sacct", "-j", str(job.job_id), "--format=jobid,state",
+                ["sacct", "-j", str(job_id), "--format=jobid,state",
                  "--noheader", "--allocations"]).decode()
         except subprocess.CalledProcessError as cpe:
             raise PollingError(format_called_process_error(cpe))
@@ -487,25 +390,53 @@ class SlurmEnvironment(Environment):
         for line in output.splitlines():
             m = re.match(pattern, line)
             if m:
-                job_id = m.group("job_id")
-                assert job_id == job.job_id
+                assert m.group("job_id") == job_id
                 task_id = m.group("task_id")
                 status = m.group("status")
-
                 status_by_task_id[task_id] = status
             else:
                 raise PollingError(
                     "Invalid format when querying `sacct` for task status.\n" +
                     output)
+        return status_by_task_id
 
-        for task in job.tasks:
+    def _update_status(self, job_id, tasks):
+        status_by_task_id = self._get_slurm_status(job_id)
+        for task in tasks:
             try:
-                task.slurm_status = status_by_task_id[task.task_id]
+                slurm_status = status_by_task_id[task.task_id]
             except IndexError:
                 raise PollingError(
-                    f"Did not find status of slurm job {job.job_id}_{task.task_id}.")
+                    f"Did not find status of slurm job {job_id}_{task.task_id}.")
+
+            if slurm_status in self.DONE_STATES:
+                result_file = task.run_dir/"exit_code"
+                self._wait_for_filesystem(result_file)
+                try:
+                    exit_code = _parse_exit_code(result_file)
+                except IOError:
+                    task.status = EvaluationTask.CRITICAL
+                    task.error = f"Missing exit code file '{str(result_file)}'"
+                    continue
+                if exit_code == EXIT_CODE_IMPROVING:
+                    task.status = EvaluationTask.DONE_AND_IMPROVING
+                elif exit_code == EXIT_CODE_NOT_IMPROVING:
+                    task.status = EvaluationTask.DONE_AND_NOT_IMPROVING
+                elif exit_code == EXIT_CODE_TIMEOUT:
+                    task.status = EvaluationTask.OUT_OF_RESOURCES
+                elif exit_code == EXIT_CODE_MEMOUT:
+                    task.status = EvaluationTask.OUT_OF_RESOURCES
+                else:
+                    task.status = EvaluationTask.CRITICAL
+                    task.error = f"Unexpected exit code {exit_code}"
+            elif slurm_status in self.BUSY_STATES:
+                task.status = EvaluationTask.PENDING
+            else:
+                task.status = EvaluationTask.CRITICAL
+                task.error = f"Unexpected Slurm status '{slurm_status}'"
+
             logging.debug(
-                f"Task status of {job.job_id}_{task.task_id} is {task.slurm_status}")
+                f"Task status of {job_id}_{task.task_id} is {task.status} (slurm: {slurm_status})")
 
     @staticmethod
     # This function is copied from lab.environment.SlurmEnvironment
