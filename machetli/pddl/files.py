@@ -42,34 +42,34 @@ def temporary_files(state: dict) -> tuple:
 
     :return: a tuple containing domain and problem filename.
     """
-    domain_f = tempfile.NamedTemporaryFile(
+    domain_file = tempfile.NamedTemporaryFile(
         mode="w+t", suffix=".pddl", delete=False)
-    domain_f.close()
-    problem_f = tempfile.NamedTemporaryFile(
+    domain_file.close()
+    problem_file = tempfile.NamedTemporaryFile(
         mode="w+t", suffix=".pddl", delete=False)
-    problem_f.close()
-    write_files(state, domain_filename=domain_f.name,
-                problem_filename=problem_f.name)
-    yield domain_f.name, problem_f.name
-    os.remove(domain_f.name)
-    os.remove(problem_f.name)
+    problem_file.close()
+    write_files(state, domain_filename=domain_file.name,
+                problem_filename=problem_file.name)
+    yield domain_file.name, problem_file.name
+    os.remove(domain_file.name)
+    os.remove(problem_file.name)
 
 
-def _write_domain_header(task, df):
-    df.write("define (domain {})\n".format(task.domain_name))
+def _write_domain_header(task, file):
+    file.write("define (domain {})\n".format(task.domain_name))
 
 
-def _write_domain_requirements(task, df):
+def _write_domain_requirements(task, file):
     if len(task.requirements.requirements) != 0:
-        df.write(SIN + "(:requirements")
+        file.write(SIN + "(:requirements")
         for req in task.requirements.requirements:
-            df.write(" " + req)
-        df.write(")\n")
+            file.write(" " + req)
+        file.write(")\n")
 
 
-def _write_domain_types(task, df):
+def _write_domain_types(task, file):
     if task.types:
-        df.write(SIN + "(:types\n")
+        file.write(SIN + "(:types\n")
         types_dict = {}
         for tp in task.types:  # build dictionary of base types and types
             if tp.basetype_name is not None:
@@ -78,16 +78,16 @@ def _write_domain_types(task, df):
                 else:
                     types_dict[tp.basetype_name].append(tp.name)
         for basetype in types_dict:
-            df.write(SIN + DIN)
+            file.write(SIN + DIN)
             for name in types_dict[basetype]:
-                df.write(name + " ")
-            df.write("- " + basetype + "\n")
-        df.write(SIN + ")\n")
+                file.write(name + " ")
+            file.write("- " + basetype + "\n")
+        file.write(SIN + ")\n")
 
 
-def _write_domain_objects(task, df):
+def _write_domain_objects(task, file):
     if task.objects:  # all objects from planning task are going to be written into constants
-        df.write(SIN + "(:constants\n")
+        file.write(SIN + "(:constants\n")
         objects_dict = {}
         for obj in task.objects:  # build dictionary of object type names and object names
             if obj.type_name not in objects_dict:
@@ -95,16 +95,16 @@ def _write_domain_objects(task, df):
             else:
                 objects_dict[obj.type_name].append(obj.name)
         for type_name in objects_dict:
-            df.write(SIN + DIN)
+            file.write(SIN + DIN)
             for name in objects_dict[type_name]:
-                df.write(name + " ")
-            df.write("- " + type_name + "\n")
-        df.write(SIN + ")\n")
+                file.write(name + " ")
+            file.write("- " + type_name + "\n")
+        file.write(SIN + ")\n")
 
 
-def _write_domain_predicates(task, df):
+def _write_domain_predicates(task, file):
     if len(task.predicates) != 0:
-        df.write(SIN + "(:predicates\n")
+        file.write(SIN + "(:predicates\n")
         for pred in task.predicates:
             if pred.name == "=":
                 continue
@@ -114,110 +114,110 @@ def _write_domain_predicates(task, df):
                     types_dict[arg.type_name] = [arg.name]
                 else:
                     types_dict[arg.type_name].append(arg.name)
-            df.write(SIN + SIN + "(" + pred.name)
+            file.write(SIN + SIN + "(" + pred.name)
             for obj in types_dict:
                 for name in types_dict[obj]:
-                    df.write(" " + name)
-                df.write(" - " + obj)
-            df.write(")\n")
-        df.write(SIN + ")\n")
+                    file.write(" " + name)
+                file.write(" - " + obj)
+            file.write(")\n")
+        file.write(SIN + ")\n")
 
 
-def _write_domain_functions(task, df):
+def _write_domain_functions(task, file):
     if task.functions:
-        df.write(SIN + "(:functions\n")
+        file.write(SIN + "(:functions\n")
         for function in task.functions:
-            function.dump_pddl(df, DIN)
-        df.write(SIN + ")\n")
+            function.dump_pddl(file, DIN)
+        file.write(SIN + ")\n")
 
 
-def _write_domain_actions(task, df):
+def _write_domain_actions(task, file):
     for action in task.actions:
-        df.write(SIN + "(:action {}\n".format(action.name))
+        file.write(SIN + "(:action {}\n".format(action.name))
 
-        df.write(DIN + ":parameters (")
+        file.write(DIN + ":parameters (")
         if action.parameters:
             for par in action.parameters:
-                df.write("%s - %s " % (par.name, par.type_name))
-        df.write(")\n")
+                file.write("%s - %s " % (par.name, par.type_name))
+        file.write(")\n")
 
-        df.write(SIN + SIN + ":precondition\n")
+        file.write(SIN + SIN + ":precondition\n")
         if not isinstance(action.precondition, Truth):
-            action.precondition.dump_pddl(df, DIN)
-        df.write(DIN + ":effect\n")
-        df.write(DIN + "(and\n")
+            action.precondition.dump_pddl(file, DIN)
+        file.write(DIN + ":effect\n")
+        file.write(DIN + "(and\n")
         for eff in action.effects:
-            eff.dump_pddl(df, DIN)
+            eff.dump_pddl(file, DIN)
         if action.cost:
-            action.cost.dump_pddl(df, DIN + DIN)
-        df.write(DIN + ")\n")
+            action.cost.dump_pddl(file, DIN + DIN)
+        file.write(DIN + ")\n")
 
-        df.write(SIN + ")\n")
+        file.write(SIN + ")\n")
 
 
-def _write_domain_axioms(task, df):
+def _write_domain_axioms(task, file):
     for axiom in task.axioms:
-        df.write(SIN + "(:derived ({} ".format(axiom.name))
+        file.write(SIN + "(:derived ({} ".format(axiom.name))
         for par in axiom.parameters:
-            df.write("%s - %s " % (par.name, par.type_name))
-        df.write(")\n")
-        axiom.condition.dump_pddl(df, DIN)
-        df.write(SIN + ")\n")
+            file.write("%s - %s " % (par.name, par.type_name))
+        file.write(")\n")
+        axiom.condition.dump_pddl(file, DIN)
+        file.write(SIN + ")\n")
 
 
-def _write_domain(task, domain_filename):
-    with open(domain_filename, "w") as df:
-        df.write("\n(")
-        _write_domain_header(task, df)
-        _write_domain_requirements(task, df)
-        _write_domain_types(task, df)
-        _write_domain_objects(task, df)
-        _write_domain_predicates(task, df)
-        _write_domain_functions(task, df)
-        _write_domain_axioms(task, df)
-        _write_domain_actions(task, df)
-        df.write(")\n")
+def _write_domain(task, filename):
+    with open(filename, "w") as file:
+        file.write("\n(")
+        _write_domain_header(task, file)
+        _write_domain_requirements(task, file)
+        _write_domain_types(task, file)
+        _write_domain_objects(task, file)
+        _write_domain_predicates(task, file)
+        _write_domain_functions(task, file)
+        _write_domain_axioms(task, file)
+        _write_domain_actions(task, file)
+        file.write(")\n")
 
 
-def _write_problem_header(task, pf):
-    pf.write("define (problem {})\n".format(task.task_name))
+def _write_problem_header(task, file):
+    file.write("define (problem {})\n".format(task.task_name))
 
 
-def _write_problem_domain(task, pf):
-    pf.write(SIN + "(:domain {})\n".format(task.domain_name))
+def _write_problem_domain(task, file):
+    file.write(SIN + "(:domain {})\n".format(task.domain_name))
 
 
-def _write_problem_init(task, pf):
-    pf.write(SIN + "(:init\n")
+def _write_problem_init(task, file):
+    file.write(SIN + "(:init\n")
 
     for elem in task.init:
         if isinstance(elem, Atom) and elem.predicate == "=":
             continue
-        elem.dump_pddl(pf, SIN + DIN)
-    pf.write(SIN + ")\n")
+        elem.dump_pddl(file, SIN + DIN)
+    file.write(SIN + ")\n")
 
 
-def _write_problem_goal(task, pf):
-    pf.write(SIN + "(:goal\n")
+def _write_problem_goal(task, file):
+    file.write(SIN + "(:goal\n")
     if not isinstance(task.goal, ConstantCondition):
-        task.goal.dump_pddl(pf, SIN + DIN)
-    pf.write("%s)\n" % SIN)
+        task.goal.dump_pddl(file, SIN + DIN)
+    file.write("%s)\n" % SIN)
 
 
-def _write_problem_metric(task, pf):
+def _write_problem_metric(task, file):
     if task.use_min_cost_metric:
-        pf.write("%s(:metric minimize (total-cost))\n" % SIN)
+        file.write("%s(:metric minimize (total-cost))\n" % SIN)
 
 
-def _write_problem(task, problem_filename):
-    with open(problem_filename, "w") as pf:
-        pf.write("\n(")
-        _write_problem_header(task, pf)
-        _write_problem_domain(task, pf)
-        _write_problem_init(task, pf)
-        _write_problem_goal(task, pf)
-        _write_problem_metric(task, pf)
-        pf.write(")\n")
+def _write_problem(task, filename):
+    with open(filename, "w") as file:
+        file.write("\n(")
+        _write_problem_header(task, file)
+        _write_problem_domain(task, file)
+        _write_problem_init(task, file)
+        _write_problem_goal(task, file)
+        _write_problem_metric(task, file)
+        file.write(")\n")
 
 
 def write_files(state: dict, domain_filename: str, problem_filename: str):
