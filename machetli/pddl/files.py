@@ -11,18 +11,18 @@ SIN = " "  # single indentation
 DIN = "  "  # double indentation
 
 
-def generate_initial_state(filename: str, filename: str) -> dict:
+def generate_initial_state(domain_filename: str, problem_filename: str) -> dict:
     """
-    Parse the PDDL task defined in PDDL files `filename` (PDDL
-    domain) and `filename` (PDDL problem) and return an initial
+    Parse the PDDL task defined in PDDL files `domain_filename` (PDDL
+    domain) and `problem_filename` (PDDL problem) and return an initial
     state containing the parsed PDDL task.
 
     :return: a dictionary pointing to the PDDL task specified in the
-             files `filename` and `filename`.
+             files `domain_filename` and `problem_filename`.
     """
     return {
-        KEY_IN_STATE: pddl_parser.open(filename=filename,
-                                       task_filename=filename)
+        KEY_IN_STATE: pddl_parser.open(domain_filename=domain_filename,
+                                       task_filename=problem_filename)
     }
 
 
