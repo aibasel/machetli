@@ -87,14 +87,24 @@ class Environment:
         on the environment). Every time an evaluation of a successor is
         completed, the callback `on_task_completed` is called.
 
-        :param batch: list of :class:`Successors
-            <machetli.successors.Successor>` to be evaluated.
-
         :param evaluator_path: path to a script that is used to evaluate
             successors. The user documentation contains more information on
             :ref:`how to write an evaluator<usage-evaluator>`.
         
-        :param on_task_completed: TODO explain semantics of on_task_completed(job_id, task_id, status)
+        :param batch: list of :class:`Successors
+            <machetli.successors.Successor>` to be evaluated.
+
+        :param on_task_completed: callback function that will be called once
+            for each successor in the batch after its evaluation is completed.
+            The callback takes three parameters (`job_id`, `task_id`, and
+            `status`). The first (`job_id`) identifies the batch and can be
+            used in :meth:`cancel` to cancel the evaluation of other successors
+            in this batch. As evaluations could be performed in parallel, the
+            order in which the evaluations complete is not necessarily
+            deterministic. The parameter `task_id` is the index of the successor
+            within the batch that completed. Finally, `status` will be one of
+            the constants defined in :class:`EvaluationTask` and indicate the
+            result of the evaluation.
         """
         raise NotImplementedError
 
