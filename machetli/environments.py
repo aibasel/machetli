@@ -24,12 +24,40 @@ from machetli.tools import write_state
 
 
 class EvaluationTask():
+    """
+    An EvaluationTask represents the evaluation of one successor and carries
+    information about how the current status of that evaluation.
+    """
+
     PENDING = "pending"
+    """
+    Status of tasks from the time they are started until they stop for any reason.
+    """
     DONE_AND_IMPROVING = "improving"
+    """
+    Status of tasks that successfully evaluated their successor and showed that
+    this successor is improving.
+    """
     DONE_AND_NOT_IMPROVING = "not improving"
+    """
+    Status of tasks that successfully evaluated their successor but showed that
+    this successor is not improving.
+    """
     OUT_OF_RESOURCES = "ran out of resources"
+    """
+    Status of tasks that failed to evaluate their successor because the
+    evaluation ran out of time or memory.
+    """
     CRITICAL = "critical"
+    """
+    Status of tasks that failed to evaluate their successor because the evaluation
+    stopped for an unknown reason, such as crashing the evaluation script.
+    """
     CANCELED = "canceled"
+    """
+    Status of tasks that were canceled by Machetli. This happens if the search
+    determines that the evaluation of their successor is not needed.
+    """
 
     def __init__(self, successor, successor_id, run_dir):
         self.successor = successor
@@ -98,25 +126,31 @@ class LocalEnvironment(Environment):
     """
     def __init__(self, **kwargs):
         Environment.__init__(self, **kwargs)
-        self.successor = None
 
-    def submit(self, batch, evaluator_path):
-        assert self.successor is None
 
-        for succ in batch:
-            # TODO: react to self.allow_nondeterministic_successor_choice by ignoring evaluator crashes?
-            if is_evaluator_successful(evaluator_path, succ.state):
-                self.successor = succ
-                break
-
-    def wait_until_finished(self):
-        pass
-
-    def get_improving_successor(self):
-        result = self.successor
-        self.successor = None
-        return result
-
+    def run(self, evaluator_path: Path, successors, on_task_finished):
+        # TODO: set up run_dirs in general and use them on a local runs as well.
+        run_dir = "no run_dir for local tasks"
+        tasks = [EvaluationTask(successor, i, run_dir) for i, successor in enumerate(successors)]
+        for task in tasks:
+            if task.status == EvaluationTask.CANCELED:
+                continue
+            try:
+                if is_evaluator_successful(evaluator_path, task.successor.state):
+                    task.status = EvaluationTask.DONE_AND_IMPROVING
+                else:
+                    task.status = EvaluationTask.DONE_AND_NOT_IMPROVING
+            except MemoryError:
+                task.status = EvaluationTask.OUT_OF_RESOURCES
+            # TODO handle timeouts
+            except Exception as e:
+                task.status = EvaluationTask.CRITICAL
+                task.error_msg = str(e)
+            ids_to_cancel = on_task_finished(task)
+            for i in ids_to_cancel:
+                if tasks[i].status == EvaluationTask.PENDING:
+                    tasks[i].status = EvaluationTask.CANCELED
+        return tasks
 
 class SlurmEnvironment(Environment):
     """
