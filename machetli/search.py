@@ -7,7 +7,7 @@ from machetli.successors import make_single_successor_generator
 from machetli.tools import batched, configure_logging
 
 
-def search(initial_state, successor_generator, evaluator_path, environment=None):
+def search(initial_state, successor_generator, evaluator_path, environment=None, deterministic=False):
     """Start a Machetli search and return the resulting state.
 
     The search is started from the *initial state* and *successor generators*
@@ -45,6 +45,20 @@ def search(initial_state, successor_generator, evaluator_path, environment=None)
         <machetli.environments.SlurmEnvironment>` can be used to parallelize the
         search on a cluster running the Slurm engine.
 
+    :param deterministic:
+        When evaluating successors in parallel, situations can occur that are
+        impossible in a sequential environment, as results arrive not
+        necessarily in the order in which the jobs are started: for example, if
+        a state has successors [s1, s2, s3], a successful result for s3 could be
+        available before results for s1 are available. Additionally, if the
+        evaluation of s2 throws an exception, a sequential evaluation would
+        never have evaluated s3. By allowing a non-deterministic successor
+        choice (default) the search commits to the first successfully evaluated
+        successor even if it would not have come first in a sequential order. If
+        the order of the successor generators is important in your case, you can
+        force a deterministic order. The search then simulates sequential
+        execution.
+
     :return: the last state where the evaluator was successful, i.e., all
         successors of the resulting state no longer have the evaluated property.
 
@@ -71,9 +85,11 @@ def search(initial_state, successor_generator, evaluator_path, environment=None)
         :emphasize-lines: 4
 
         initial_state = sas.generate_initial_state("bugged.sas")
-        evaluator_filename = os.path.join(os.path.dirname(tools.get_script_path()), "evaluator.py")
+        evaluator_filename =
+        os.path.join(os.path.dirname(tools.get_script_path()), "evaluator.py")
 
-        result = search(initial_state, [sas.RemoveVariables(), sas.RemoveOperators()], evaluator_filename)
+        result = search(initial_state, [sas.RemoveVariables(),
+        sas.RemoveOperators()], evaluator_filename)
 
         sas.write_file(result, "result.sas")
 
@@ -90,7 +106,7 @@ def search(initial_state, successor_generator, evaluator_path, environment=None)
         successors = successor_generator.get_successors(current_state)
         try:
             improving_state, message = _get_improving_successor(
-                evaluator_path, successors, environment)
+                evaluator_path, successors, environment, deterministic)
         except SubmissionError as e:
             logging.critical(f"Terminating search because job submission for successor evaluation failed:\n{e}")
         except PollingError as e:
@@ -104,40 +120,50 @@ def search(initial_state, successor_generator, evaluator_path, environment=None)
             return current_state
 
 
-def _get_improving_successor(evaluator_path, successors, environment):
+def _get_improving_successor(evaluator_path, successors, environment, deterministic):
     report_if_no_improvement = set()
-    def on_task_completed(job_id, task):
-        if environment.allow_nondeterministic_successor_choice:
-            # If an evaluation reports a non-improving successor,
-            # deterministic mode considers the next successor. In all
-            # other cases (improving successor, evaluation did not
-            # finish correctly), there is no need to evaluate later
-            # successors.
-            if task.status != EvaluationTask.DONE_AND_NOT_IMPROVING:
-                environment.cancel(job_id, after=task)
-        else: # non-deterministic mode
-            if task.status == EvaluationTask.DONE_AND_IMPROVING:
+    for batch in batched(successors, environment.batch_size):
+        task_ids = list(range(len(batch)))
+        def on_task_completed(task):
+            if deterministic and task.status != EvaluationTask.DONE_AND_NOT_IMPROVING:
+                # Either we have an improving successor, or there was an error.
+                # In both cases deterministic mode cannot continue.
+                task_ids_to_cancel = [i for i in task_ids if i > task.successor_id]
+            elif not deterministic and task.status == EvaluationTask.DONE_AND_IMPROVING:
                 # We found an improving successor, so all other
                 # evaluations can be canceled.
-                environment.cancel(job_id)
-            elif task.status == EvaluationTask.OUT_OF_RESOURCES:
-                report_if_no_improvement.add(task)
-            elif (task.status == EvaluationTask.CRITICAL):
-                logging.warn(f"Critical error in task {job_id}_{task.task_id}: {task.error}")
+                task_ids_to_cancel = task_ids
+            else:
+                task_ids_to_cancel = None
+            return task_ids_to_cancel
 
-    for batch in batched(successors, environment.batch_size):
         tasks = environment.run(evaluator_path, batch, on_task_completed)
         for task in tasks:
             if task.status == EvaluationTask.DONE_AND_NOT_IMPROVING:
                 continue
             elif task.status == EvaluationTask.DONE_AND_IMPROVING:
                 return task.successor.state, task.successor.change_msg
-            elif not environment.allow_nondeterministic_successor_choice:
-                return None, (
-                    "Errors occurred in successor evaluations before finding "
-                    "an improving successor. With the option "
-                    "`allow_nondeterministic_successor_choice` an improving "
-                    "successor found later would not count.")
+            elif task.status == EvaluationTask.OUT_OF_RESOURCES:
+                if deterministic:
+                    return None, (task.error_msg +
+                        "\nAn evaluator ran out of resources. With the option "
+                        "'deterministic' an improving successor found later "
+                        "would not count.")
+                else:
+                    report_if_no_improvement.add(task)
+            elif task.status == EvaluationTask.CRITICAL:
+                if deterministic:
+                    return None, (task.error_msg +
+                        "\nA critical error occurred in an evaluator. With the "
+                        "option 'deterministic' an improving successor found "
+                        "later would not count.")
+                else:
+                    logging.warn(f"{task.error_msg}\nCritical error in '{task.run_dir}'")
+            elif task.status == EvaluationTask.CANCELED:
+                # We only cancel jobs in deterministic mode if there is an earlier reason to return.
+                assert not deterministic
+            else:
+                assert False, f"Unexpected task status: '{task.status}'."
 
     message = "No improving successor was found."
     if report_if_no_improvement:

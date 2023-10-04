@@ -10,21 +10,6 @@ class PollingError(Exception):
     """
     pass
 
-class EvaluatorOutOfResourcesError(Exception):
-    """
-    Exception raised when an evaluator script exhausted its resource limits.
-    """
-    pass
-
-class EvaluatorError(Exception):
-    """
-    Exception raised when an evaluator script did not exit with a valid return code.
-    """
-    def __init__(self, deterministic: bool, successor=None):
-        self.deterministic = deterministic
-        self.successor = successor
-
-
 def format_called_process_error(cpe):
     return f"""Submission command: {cpe.cmd}
 Returncode: {cpe.returncode}

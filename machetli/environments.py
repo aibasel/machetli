@@ -18,7 +18,7 @@ import time
 
 from machetli import tools, templates
 from machetli.errors import SubmissionError, PollingError, \
-    EvaluatorOutOfResourcesError, EvaluatorError, format_called_process_error
+    format_called_process_error
 from machetli.evaluator import is_evaluator_successful
 from machetli.tools import write_state
 
@@ -29,33 +29,20 @@ class EvaluationTask():
     DONE_AND_NOT_IMPROVING = "not improving"
     OUT_OF_RESOURCES = "ran out of resources"
     CRITICAL = "critical"
+    CANCELED = "canceled"
 
-    def __init__(self, successor, task_id, run_dir):
+    def __init__(self, successor, successor_id, run_dir):
         self.successor = successor
-        self.task_id = task_id
+        self.successor_id = successor_id
         self.run_dir = run_dir
         self.status = self.PENDING
-        self.error = ""
+        self.error_msg = ""
 
 
 class Environment:
     """
     Abstract base class of all environments. Concrete environments should
     inherit from this class and override its methods.
-
-    :param allow_nondeterministic_successor_choice:
-        When evaluating successors in parallel, situations can occur that are
-        impossible in a sequential environment, as results arrive not
-        necessarily in the order in which the jobs are started: for example, if
-        a state has successors [s1, s2, s3], a successful result for s3 could be
-        available before results for s1 are available. Additionally, if the
-        evaluation of s2 throws an exception, a sequential evaluation would
-        never have evaluated s3. By allowing a non-deterministic successor
-        choice (default) the search commits to the first successfully evaluated
-        successor even if it would not have come first in a sequential order. If
-        the order of the successor generators is important in your case, you can
-        switch this off. The search then behaves deterministically, simulating
-        sequential execution.
 
     :param batch_size:
         Number of successors evaluated in parallel. No effect on sequential
@@ -73,45 +60,34 @@ class Environment:
         * `CRITICAL`: silent unless the program crashes
 
     """
-    def __init__(self, allow_nondeterministic_successor_choice=True,
-                 batch_size=1, loglevel=logging.INFO):
+    def __init__(self, batch_size=1, loglevel=logging.INFO):
         self.batch_size = batch_size
         self.loglevel = loglevel
-        self.allow_nondeterministic_successor_choice = \
-            allow_nondeterministic_successor_choice
 
-    def run(self, evaluator_path, batch, on_task_completed):
+    def run(self, evaluator_path, successors, on_task_completed):
         """
-        evaluate the given batch of successors with the given evaluator.
-        The evaluator is run on all successors (possibly in parallel, depending
-        on the environment). Every time an evaluation of a successor is
-        completed, the callback `on_task_completed` is called.
+        evaluate the given successors with the given evaluator. The evaluator is
+        run on all successors (possibly in parallel, depending on the
+        environment). Every time an evaluation of a successor is completed, the
+        callback `on_task_completed` is called.
 
-        :param evaluator_path: path to a script that is used to evaluate
-            successors. The user documentation contains more information on
+        :param evaluator_path: path to a script that is used to evaluate a
+            successor. The user documentation contains more information on
             :ref:`how to write an evaluator<usage-evaluator>`.
         
-        :param batch: list of :class:`Successors
+        :param successors: list of :class:`Successors
             <machetli.successors.Successor>` to be evaluated.
 
-        :param on_task_completed: callback function that will be called once
-            for each successor in the batch after its evaluation is completed.
-            The callback takes three parameters (`job_id`, `task_id`, and
-            `status`). The first (`job_id`) identifies the batch and can be
-            used in :meth:`cancel` to cancel the evaluation of other successors
-            in this batch. As evaluations could be performed in parallel, the
-            order in which the evaluations complete is not necessarily
-            deterministic. The parameter `task_id` is the index of the successor
-            within the batch that completed. Finally, `status` will be one of
-            the constants defined in :class:`EvaluationTask` and indicate the
-            result of the evaluation.
+        :param on_task_completed: callback function that will be called once for
+            each successor after its evaluation is completed. The callback
+            receives an :class:`EvaluationTask` as its only parameter that
+            describes the result of the evaluation. As evaluations could be
+            performed in parallel, the order in which the evaluations complete
+            is not necessarily deterministic. The callback may return a list of
+            indices into `successors` to indicate that those successors need not
+            be evaluated any more.
         """
         raise NotImplementedError
-
-    def cancel(self, job_id, after=0):
-        # not canceling should always be fine, it will just take longer to wait
-        # for the remaining tasks.
-        pass
 
 
 class LocalEnvironment(Environment):
@@ -284,18 +260,25 @@ class SlurmEnvironment(Environment):
         while pending_task_ids:
             time.sleep(self.POLLING_TIME_INTERVAL)
             self._update_status(job_id, tasks)
-            for task_id in pending_task_ids:
-                if tasks[task_id].status != EvaluationTask.PENDING:
-                    pending_task_ids.remove(task_id)
-                    on_task_finished(job_id, task_id, tasks[task_id].status)
+            pending_tasks_changed = True
+            while pending_tasks_changed:
+                pending_tasks_changed = False
+                for task_id in set(pending_task_ids):
+                    task = tasks[task_id]
+                    if task.status != EvaluationTask.PENDING:
+                        pending_task_ids.remove(task_id)
+                        ids_to_cancel = on_task_finished(task)
+                        if ids_to_cancel:
+                            self._cancel(job_id, tasks, ids_to_cancel)
+                        pending_tasks_changed = True
             if pending_task_ids:
                 logging.info(
                     f"{len(pending_task_ids)} task"
                     f"{'s are' if len(pending_task_ids) > 1 else ' is'} still busy.")
         return tasks
 
-    def cancel(self, job_id, after=0):
-        # TODO: cancel grid jobs with task IDs > `after`
+    def _cancel(self, job_id, tasks, ids_to_cancel):
+        # TODO only cancel tasks with status == PENDING and update their status to CANCELED
         pass
 
     def _get_job_params(self):
