@@ -92,7 +92,7 @@ class Environment:
         self.batch_size = batch_size
         self.loglevel = loglevel
 
-    def run(self, evaluator_path, successors, on_task_completed):
+    def run(self, evaluator_path, successors, on_task_completed) -> list[EvaluationTask]:
         """
         evaluate the given successors with the given evaluator. The evaluator is
         run on all successors (possibly in parallel, depending on the
@@ -385,7 +385,7 @@ class SlurmEnvironment(Environment):
             write_state(successor.state, run_dir/self.STATE_FILENAME)
             tasks.append(EvaluationTask(successor.state, task_id, run_dir))
 
-        run_dirs = [t.run_dir for t in tasks]
+        run_dirs = [task.run_dir for task in tasks]
         # Give the NFS time to write the paths
         if not self._wait_for_filesystem(*run_dirs):
             logging.critical(
@@ -395,14 +395,14 @@ class SlurmEnvironment(Environment):
         return tasks
 
     def _write_sbatch_file(self, tasks, **kwargs):
-        dictionary = self._get_job_params()
-        dictionary.update(kwargs)
-        dictionary["run_dirs"] = " ".join([str(t.run_dir) for t in tasks])
+        job_parameters = self._get_job_params()
+        job_parameters.update(kwargs)
+        run_dirs = [str(task.run_dir) for task in tasks]
+        job_parameters["run_dirs"] = " ".join(run_dirs)
         logging.debug(
-            f"Dictionary before filling:\n{pprint.pformat(dictionary)}")
+            f"Parameters for sbatch template:\n{pprint.pformat(job_parameters)}")
         with open(self.sbatch_filename, "w") as f:
-            f.write(self.sbatch_template.format(**dictionary))
-        # TODO: Implement check whether file was updated
+            f.write(self.sbatch_template.format(**job_parameters))
 
     def _get_slurm_status(self, job_id):
         try:
@@ -455,7 +455,7 @@ class SlurmEnvironment(Environment):
                     task.status = EvaluationTask.OUT_OF_RESOURCES
                 else:
                     task.status = EvaluationTask.CRITICAL
-                    task.error = f"Unexpected exit code {exit_code}"
+                    task.error = f"Unexpected evaluator exit code {exit_code}"
             elif slurm_status in self.BUSY_STATES:
                 task.status = EvaluationTask.PENDING
             else:

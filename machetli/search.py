@@ -1,5 +1,4 @@
 import logging
-import time
 
 from machetli.environments import LocalEnvironment, EvaluationTask
 from machetli.errors import SubmissionError, PollingError
@@ -121,7 +120,7 @@ def search(initial_state, successor_generator, evaluator_path, environment=None,
 
 
 def _get_improving_successor(evaluator_path, successors, environment, deterministic):
-    report_if_no_improvement = set()
+    tasks_out_of_resources = set()
     for batch in batched(successors, environment.batch_size):
         task_ids = list(range(len(batch)))
         def on_task_completed(task):
@@ -150,7 +149,7 @@ def _get_improving_successor(evaluator_path, successors, environment, determinis
                         "'deterministic' an improving successor found later "
                         "would not count.")
                 else:
-                    report_if_no_improvement.add(task)
+                    tasks_out_of_resources.add(task)
             elif task.status == EvaluationTask.CRITICAL:
                 if deterministic:
                     return None, (task.error_msg +
@@ -166,8 +165,8 @@ def _get_improving_successor(evaluator_path, successors, environment, determinis
                 assert False, f"Unexpected task status: '{task.status}'."
 
     message = "No improving successor was found."
-    if report_if_no_improvement:
-        run_dirs = [task.run_dir for task in report_if_no_improvement]
+    if tasks_out_of_resources:
+        run_dirs = [task.run_dir for task in tasks_out_of_resources]
         run_dirs_str = "\n".join(sorted(run_dirs))
         message += (
             f" Note that the following tasks ran out of resources and thus "
