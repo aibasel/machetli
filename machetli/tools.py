@@ -13,6 +13,7 @@ import resource
 import subprocess
 import sys
 import time
+import traceback
 
 
 DEFAULT_ENCODING = "utf-8"
@@ -152,11 +153,16 @@ def read_state(file_path, wait_time, repetitions):
     """
     for _ in range(repetitions):
         time.sleep(wait_time * random.random())
-        if os.path.exists(file_path):
+        try:
             with open(file_path, "rb") as state_file:
                 return pickle.load(state_file)
-    else:
-        logging.critical(f"Could not find file '{file_path}' after {repetitions} attempts.")
+        except (IOError, EOFError):
+            # NFS might not be ready, try again after some wait time.
+            continue
+        except (pickle.UnpicklingError, AttributeError, ImportError, IndexError) as e:
+            logging.critical("Could not unpickle file '{file_path}': {traceback.format_exc(e)}")
+
+    logging.critical(f"Could not find file '{file_path}' after {repetitions} attempts.")
 
 
 class SubmissionError(Exception):
