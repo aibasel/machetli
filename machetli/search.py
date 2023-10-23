@@ -1,4 +1,5 @@
 import logging
+from pathlib import Path
 
 from machetli.environments import LocalEnvironment, EvaluationTask
 from machetli.errors import SubmissionError, PollingError
@@ -105,7 +106,7 @@ def search(initial_state, successor_generator, evaluator_path, environment=None,
         successors = successor_generator.get_successors(current_state)
         try:
             improving_state, message = _get_improving_successor(
-                evaluator_path, successors, environment, deterministic)
+                Path(evaluator_path), successors, environment, deterministic)
         except SubmissionError as e:
             logging.critical(f"Terminating search because job submission for successor evaluation failed:\n{e}")
         except PollingError as e:

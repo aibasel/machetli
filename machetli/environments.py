@@ -280,7 +280,7 @@ class SlurmEnvironment(Environment):
 
         script_dir = self.script_path.parent
         self.eval_dir = Path(script_dir/"eval_dir")
-        if re.search(r"\s+", self.eval_dir):
+        if re.search(r"\s+", str(self.eval_dir)):
             logging.critical("The script path must not contain any whitespace characters.")
         # TODO: continue from existing directory, or handle possible error.
         self.eval_dir.mkdir(parents=True, exist_ok=False)
@@ -290,7 +290,7 @@ class SlurmEnvironment(Environment):
         self.batch_id = 0
 
     def run(self, evaluator_path: Path, batch, on_task_finished):
-        job_id, tasks = self._submit(evaluator_path, batch)
+        job_id, tasks = self._submit(batch, evaluator_path)
         pending_task_ids = set(range(len(batch)))
         while pending_task_ids:
             time.sleep(self.POLLING_TIME_INTERVAL)
@@ -337,7 +337,6 @@ class SlurmEnvironment(Environment):
         return job_params
 
     def _submit(self, batch, evaluator_path: Path):
-        assert not self.current_job
         """
         Writes pickled version of each state in *batch* to its own file.
         Then, submits a slurm array job which will evaluate each state
@@ -382,9 +381,9 @@ class SlurmEnvironment(Environment):
         for task_id, successor in enumerate(batch):
             run_dir = batch_dir/f"{task_id:03}"
             # TODO: raise SubmissionError when directory exists
-            run_dir.mkdir(parents=True, exists_ok=False)
+            run_dir.mkdir(parents=True, exist_ok=False)
             write_state(successor.state, run_dir/self.STATE_FILENAME)
-            tasks.append(EvaluationTask(successor.state, task_id, run_dir))
+            tasks.append(EvaluationTask(successor, task_id, run_dir))
 
         run_dirs = [task.run_dir for task in tasks]
         # Give the NFS time to write the paths
@@ -419,7 +418,7 @@ class SlurmEnvironment(Environment):
             m = re.match(pattern, line)
             if m:
                 assert m.group("job_id") == job_id
-                task_id = m.group("task_id")
+                task_id = int(m.group("task_id"))
                 status = m.group("status")
                 status_by_task_id[task_id] = status
             else:
@@ -432,10 +431,10 @@ class SlurmEnvironment(Environment):
         status_by_task_id = self._get_slurm_status(job_id)
         for task in tasks:
             try:
-                slurm_status = status_by_task_id[task.task_id]
-            except IndexError:
+                slurm_status = status_by_task_id[task.successor_id]
+            except KeyError:
                 raise PollingError(
-                    f"Did not find status of slurm job {job_id}_{task.task_id}.")
+                    f"Did not find status of slurm job {job_id}_{task.successor_id}.")
 
             if slurm_status in self.DONE_STATES:
                 result_file = task.run_dir/"exit_code"
@@ -462,7 +461,7 @@ class SlurmEnvironment(Environment):
                 task.error = f"Unexpected Slurm status '{slurm_status}'"
 
             logging.debug(
-                f"Task status of {job_id}_{task.task_id} is {task.status} (slurm: {slurm_status})")
+                f"Task status of {job_id}_{task.successor_id} is {task.status} (slurm: {slurm_status})")
 
     @staticmethod
     # This function is copied from lab.environment.SlurmEnvironment
