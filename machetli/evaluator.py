@@ -17,7 +17,7 @@ exit code of 0 if the evaluator is successful and with an exit code of 1
 otherwise.
 """
 
-import importlib
+import importlib.util
 import logging
 import platform
 import sys

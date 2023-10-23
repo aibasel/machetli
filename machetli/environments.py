@@ -147,7 +147,7 @@ class LocalEnvironment(Environment):
             except Exception as e:
                 task.status = EvaluationTask.CRITICAL
                 task.error_msg = str(e)
-            ids_to_cancel = on_task_finished(task)
+            ids_to_cancel = on_task_finished(task) or []
             for i in ids_to_cancel:
                 if tasks[i].status == EvaluationTask.PENDING:
                     tasks[i].status = EvaluationTask.CANCELED
