@@ -24,6 +24,10 @@ import sys
 
 from machetli.tools import read_state
 
+EXIT_CODE_IMPROVING = 0
+EXIT_CODE_NOT_IMPROVING = 1
+EXIT_CODE_RESOURCE_LIMIT = 2
+
 # https://stackoverflow.com/questions/67631/how-to-import-a-module-given-the-full-path/50395128#50395128
 def _import_evaluator(module_name, evaluator_path):
     spec = importlib.util.spec_from_file_location(module_name, evaluator_path)
@@ -53,6 +57,6 @@ if __name__ == "__main__":
 
     state = read_state(state_filename, 5, 2)
     if is_evaluator_successful(evaluator_path, state):
-        sys.exit(0)
+        sys.exit(EXIT_CODE_IMPROVING)
     else:
-        sys.exit(1)
+        sys.exit(EXIT_CODE_NOT_IMPROVING)

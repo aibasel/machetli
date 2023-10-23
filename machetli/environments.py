@@ -19,7 +19,8 @@ import time
 from machetli import tools, templates
 from machetli.errors import SubmissionError, PollingError, \
     format_called_process_error
-from machetli.evaluator import is_evaluator_successful
+from machetli.evaluator import is_evaluator_successful, EXIT_CODE_IMPROVING, \
+    EXIT_CODE_NOT_IMPROVING, EXIT_CODE_RESOURCE_LIMIT
 from machetli.tools import write_state
 
 
@@ -449,9 +450,7 @@ class SlurmEnvironment(Environment):
                     task.status = EvaluationTask.DONE_AND_IMPROVING
                 elif exit_code == EXIT_CODE_NOT_IMPROVING:
                     task.status = EvaluationTask.DONE_AND_NOT_IMPROVING
-                elif exit_code == EXIT_CODE_TIMEOUT:
-                    task.status = EvaluationTask.OUT_OF_RESOURCES
-                elif exit_code == EXIT_CODE_MEMOUT:
+                elif exit_code == EXIT_CODE_RESOURCE_LIMIT:
                     task.status = EvaluationTask.OUT_OF_RESOURCES
                 else:
                     task.status = EvaluationTask.CRITICAL
