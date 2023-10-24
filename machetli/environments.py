@@ -131,7 +131,7 @@ class LocalEnvironment(Environment):
 
     def run(self, evaluator_path: Path, successors, on_task_finished):
         # TODO: set up run_dirs in general and use them on a local runs as well.
-        run_dir = "no run_dir for local tasks"
+        run_dir = "local task (does not have run_dir)"
         tasks = [EvaluationTask(successor, i, run_dir) for i, successor in enumerate(successors)]
         for task in tasks:
             if task.status == EvaluationTask.CANCELED:

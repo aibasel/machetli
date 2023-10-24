@@ -35,14 +35,14 @@ planning benchmarks repository (https://github.com/aibasel/downward-benchmarks).
 class MyGenerator(SuccessorGenerator):
     def get_successors(self, state):
         logging.info(f"Expanding:\n{pprint.pformat(state)}")
-        for i in range(1, 5):
+        for i in range(1, 7):
             succ = copy.deepcopy(state)
             succ["level"] = state["level"] + 1
             succ["id"] = i
             yield Successor(succ, "incresed level.")
 
 
-environment = environments.LocalEnvironment()
+environment = environments.LocalEnvironment(batch_size=10)
 if platform.node().endswith((".scicore.unibas.ch", ".cluster.bc2.ch")):
     environment = environments.BaselSlurmEnvironment(
         export=["DOWNWARD_REPO", "DOWNWARD_BENCHMARKS"],
