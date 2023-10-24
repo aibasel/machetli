@@ -43,6 +43,9 @@ def evaluate(state):
     elif state["id"] == 6:
         # simulate a quick failure that starts after a successful run
         assert False
+    else:
+        time.sleep(50)
+        runs = [RUN_SUCCEED, RUN_EXCEED_TIME_LIMIT, RUN_EXCEED_MEMORY_LIMIT]
 
 
     for run in runs:

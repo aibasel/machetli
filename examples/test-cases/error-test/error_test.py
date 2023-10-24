@@ -35,7 +35,7 @@ planning benchmarks repository (https://github.com/aibasel/downward-benchmarks).
 class MyGenerator(SuccessorGenerator):
     def get_successors(self, state):
         logging.info(f"Expanding:\n{pprint.pformat(state)}")
-        for i in range(1, 7):
+        for i in range(1, 9):
             succ = copy.deepcopy(state)
             succ["level"] = state["level"] + 1
             succ["id"] = i
