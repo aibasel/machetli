@@ -56,6 +56,6 @@ search_result = search(
     MyGenerator(),
     evaluator_filename,
     environment,
-    deterministic=True)
+    deterministic=False)
 
 print(f"Search result:\n{pprint.pformat(search_result)}")
