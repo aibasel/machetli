@@ -313,8 +313,20 @@ class SlurmEnvironment(Environment):
         return tasks
 
     def _cancel(self, job_id, tasks, ids_to_cancel):
-        # TODO only cancel tasks with status == PENDING and update their status to CANCELED
-        pass
+        slurm_ids = []
+        for task_id in ids_to_cancel:
+            task = tasks[task_id]
+            if task.status != EvaluationTask.PENDING:
+                continue
+            slurm_ids.append(f"{job_id}_{task_id}")
+            task.status = EvaluationTask.CANCELED
+
+        if slurm_ids:
+            try:
+                subprocess.check_call(["scancel"] + slurm_ids)
+            except subprocess.CalledProcessError as cpe:
+                # Not being able to cancel jobs is not critical, we can wait until the tasks exit normally.
+                logging.warning("Failed to cancel tasks: " + format_called_process_error(cpe))
 
     def _get_job_params(self):
         job_params = dict()
