@@ -1,10 +1,13 @@
 version: 2
 
-# Set the version of Python
+# Set up the build environment
 build:
   os: ubuntu-22.04
   tools:
-    python: "3.10"
+    python: "3.12"
+    nodejs: "18"
+    rust: "1.64"
+    golang: "1.19"
 
 # Build from the docs/ directory with Sphinx
 sphinx:
@@ -12,6 +15,6 @@ sphinx:
 
 # Explicitly set the version of Python and its requirements
 python:
-  version: 3.8
+  version: 3.12
   install:
     - requirements: docs/requirements.txt
