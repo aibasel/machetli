@@ -1,8 +1,8 @@
 """
 Machetli evaluators are Python files that define a function
 :meth:`evaluate(state)<>`. This function takes the current state of the search
-and should check if the behavior you are looking for still is present. The
-user documentation contains more information on :ref:`how to write an
+and should check if the behavior you are looking for still is present. The user
+documentation contains more information on :ref:`how to write an
 evaluator<usage-evaluator>`.
 
 This module provides a function to import and and run the evaluator given the
@@ -13,8 +13,9 @@ filename. It can also be called from the command line for a pickled state:
     python -m machetli.evaluator /path/to/evaluator.py /path/to/state.pickle
 
 This is used when executing Machetli on the grid. The call will exit with an
-exit code of 0 if the evaluator is successful and with an exit code of 1
-otherwise.
+exit code of 42 if the evaluator reports the state as improving, and an exit
+code of 33 if the state is non-improving. All other exit codes are treated as
+errors in the search.
 """
 
 import importlib.util

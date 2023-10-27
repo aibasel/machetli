@@ -95,7 +95,7 @@ class Environment:
 
     def run(self, evaluator_path, successors, on_task_completed) -> list[EvaluationTask]:
         """
-        evaluate the given successors with the given evaluator. The evaluator is
+        Evaluate the given successors with the given evaluator. The evaluator is
         run on all successors (possibly in parallel, depending on the
         environment). Every time an evaluation of a successor is completed, the
         callback `on_task_completed` is called.
