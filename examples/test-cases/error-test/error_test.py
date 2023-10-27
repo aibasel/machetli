@@ -35,19 +35,18 @@ planning benchmarks repository (https://github.com/aibasel/downward-benchmarks).
 class MyGenerator(SuccessorGenerator):
     def get_successors(self, state):
         logging.info(f"Expanding:\n{pprint.pformat(state)}")
-        for i in range(1, 5):
+        for i in range(1, 9):
             succ = copy.deepcopy(state)
             succ["level"] = state["level"] + 1
             succ["id"] = i
             yield Successor(succ, "incresed level.")
 
 
-environment = environments.LocalEnvironment()
+environment = environments.LocalEnvironment(batch_size=10)
 if platform.node().endswith((".scicore.unibas.ch", ".cluster.bc2.ch")):
     environment = environments.BaselSlurmEnvironment(
         export=["DOWNWARD_REPO", "DOWNWARD_BENCHMARKS"],
-        extra_options="#SBATCH --cpus-per-task=2",
-        allow_nondeterministic_successor_choice=False)
+        extra_options="#SBATCH --cpus-per-task=2")
 
 evaluator_filename = os.path.join(os.path.dirname(get_script_path()),
                                   "evaluator.py")
@@ -56,6 +55,7 @@ search_result = search(
     {"level": 1, "id": 1},
     MyGenerator(),
     evaluator_filename,
-    environment)
+    environment,
+    deterministic=False)
 
 print(f"Search result:\n{pprint.pformat(search_result)}")

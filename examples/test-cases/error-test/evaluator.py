@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 import os
+import time
 
 from machetli import tools
 
@@ -33,12 +34,23 @@ def evaluate(state):
         runs = [RUN_EXCEED_TIME_LIMIT]
     elif state["id"] == 3:
         runs = [RUN_EXCEED_MEMORY_LIMIT]
-    else:
+    elif state["id"] == 4:
+        # simulate a slow failure that starts before a successful run
+        time.sleep(70)
+        assert False
+    elif state["id"] == 5:
         runs = [RUN_SUCCEED, RUN_EXCEED_TIME_LIMIT, RUN_EXCEED_MEMORY_LIMIT]
+    elif state["id"] == 6:
+        # simulate a quick failure that starts after a successful run
+        assert False
+    else:
+        time.sleep(50)
+        runs = [RUN_SUCCEED, RUN_EXCEED_TIME_LIMIT, RUN_EXCEED_MEMORY_LIMIT]
+
 
     for run in runs:
         run.start()
 
-    return state["level"] <= 3 and state["id"] == 4
+    return state["level"] <= 3 and state["id"] == 5
 
 

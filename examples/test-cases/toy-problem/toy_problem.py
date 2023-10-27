@@ -32,8 +32,7 @@ evaluator_filename = os.path.join(os.path.dirname(tools.get_script_path()),
                                   "evaluator.py")
 environment = environments.LocalEnvironment()
 if platform.node().endswith((".scicore.unibas.ch", ".cluster.bc2.ch")):
-    environment = environments.BaselSlurmEnvironment(
-        batch_size=2, allow_nondeterministic_successor_choice=True)
+    environment = environments.BaselSlurmEnvironment(batch_size=2)
 
 search_result = search(initial_state, successor_generator, evaluator_filename, environment)
 
