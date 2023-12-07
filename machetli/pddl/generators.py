@@ -83,3 +83,40 @@ class RemoveObjects(SuccessorGenerator):
                 visitors.TaskElementEraseObjectVisitor(name))
             yield Successor(child_state,
                             f"Removed object '{name}'. Remaining objects: {len(task.objects) - 1}")
+
+class RemoveInit(SuccessorGenerator):
+    """
+    For each fact in the initial state of the PDDL problem, generate a successor
+    where this fact is removed from init. The order of the successors is randomized.
+    """
+    def get_successors(self, state):
+        task = state[KEY_IN_STATE]
+        init_facts = task.init
+        random.Random().shuffle(init_facts)
+        for fact in init_facts:
+            child_state = copy.deepcopy(state)
+            pre_child_task = child_state[KEY_IN_STATE]
+            child_state[KEY_IN_STATE] = pre_child_task.accept(
+                TaskElementEraseInitFactVisitor(fact))
+            yield Successor(child_state,
+                            f"Removed fact '{fact}' from init. Remaining facts: {len(task.init) - 1}")
+
+class RemoveGoal(SuccessorGenerator):
+    """
+    For each literal in the goal of the PDDL problem, generate a successor
+    where this literal is replaced by true in the goal.
+    The order of the successors is randomized.
+    """
+    def get_successors(self, state):
+        task = state[KEY_IN_STATE]
+        goal_literals = GetLiteralsVisitor().visit_condition(task.goal)
+        random.Random().shuffle(goal_literals)
+        for fact in goal_literals:
+            print(fact)
+            child_state = copy.deepcopy(state)
+            pre_child_task = child_state[KEY_IN_STATE]
+            child_state[KEY_IN_STATE] = pre_child_task.accept(TaskElementEraseGoalLiteralVisitor(fact))
+            yield Successor(child_state,f"Removed fact '{fact}' from goal. Remaining facts: {len(goal_literals) - 1}")
+
+
+
