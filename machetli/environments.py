@@ -9,6 +9,7 @@ and waiting for jobs.
 
 from importlib import resources
 import logging
+from math import ceil, log
 import os
 from pathlib import Path
 import pprint
@@ -27,7 +28,7 @@ from machetli.tools import write_state
 class EvaluationTask():
     """
     An EvaluationTask represents the evaluation of one successor and carries
-    information about how the current status of that evaluation.
+    information about the current status of that evaluation.
     """
 
     PENDING = "pending"
@@ -68,14 +69,30 @@ class EvaluationTask():
         self.error_msg = ""
 
 
+class EvaluationJob():
+    """
+    An EvaluationJob consists of several :class:`EvaluationTasks
+    <machetli.environments.EvaluationTask>`. It represents the evaluation of a
+    batch of successors and carries information about the current status of that
+    evaluation.
+    """
+
+    def __init__(self, evaluator_path, name, tasks):
+        self.evaluator_path = evaluator_path
+        self.name = name
+        self.tasks = tasks
+
+
 class Environment:
     """
     Abstract base class of all environments. Concrete environments should
     inherit from this class and override its methods.
 
     :param batch_size:
-        Number of successors evaluated in parallel. No effect on sequential
-        environments.
+        Number of successors evaluated in one batch. Environments always
+        complete the evaluation of one batch of successors before considering
+        successors from the next batch. Each batch is written to disk in one
+        directory, with one subdirectory for each successor.
 
     :param loglevel:
         Amount of logging output to generate. Use constants from the module
@@ -89,11 +106,51 @@ class Environment:
         * `CRITICAL`: silent unless the program crashes
 
     """
+
+    STATE_FILENAME = "state.pickle"
+    """
+    Filename for stored states. States are written to disk and loaded for
+    evaluation. In grid environments, this assumes a shared file system for
+    login and compute nodes.
+    """
+
     def __init__(self, batch_size=1, loglevel=logging.INFO):
+        self.eval_dir = Path(tools.get_script_path()).parent/"eval_dir"
+        if re.search(r"\s+", str(self.eval_dir)):
+            logging.critical("The script path must not contain any whitespace characters.")
+        # TODO: continue from existing directory, or handle possible error.
+        self.eval_dir.mkdir(parents=True, exist_ok=False)
+
         self.batch_size = batch_size
+        self.batch_format = "05"
+        self.batch_task_format = f"0{ceil(log(batch_size+1, 10))}"
+        self.batch_id = 0
         self.loglevel = loglevel
 
-    def run(self, evaluator_path, successors, on_task_completed) -> list[EvaluationTask]:
+    def _prepare_job(self, evaluator_path, batch):
+        """
+        Creates a run directory for each successor in *batch* and writes a
+        pickled version of the state to disk. Returns an EvaluationJob that
+        represents the current status of this batch's evaluation.
+        """
+        self.batch_id += 1
+        batch_name = f"batch_{self.batch_id:{self.batch_format}}"
+
+        # TODO issue53: do we want to represent the iteration in the path? For example iteration00012/batch00003/run003?
+        batch_dir = self.eval_dir/batch_name
+        tasks = []
+        for task_id, successor in enumerate(batch):
+            run_dir = batch_dir/f"{task_id:{self.batch_task_format}}"
+            # TODO: raise SubmissionError when directory exists
+            run_dir.mkdir(parents=True, exist_ok=False)
+            write_state(successor.state, run_dir/self.STATE_FILENAME)
+            tasks.append(EvaluationTask(successor, task_id, run_dir))
+        return EvaluationJob(evaluator_path, batch_name, tasks)
+
+    def _run_job(self, job, on_task_completed) -> list[EvaluationTask]:
+        raise NotImplementedError
+
+    def run(self, evaluator_path, batch, on_task_completed) -> list[EvaluationTask]:
         """
         Evaluate the given successors with the given evaluator. The evaluator is
         run on all successors (possibly in parallel, depending on the
@@ -116,7 +173,9 @@ class Environment:
             indices into `successors` to indicate that those successors need not
             be evaluated any more.
         """
-        raise NotImplementedError
+        job = self._prepare_job(evaluator_path, batch)
+        self._run_job(job, on_task_completed)
+        return job.tasks
 
 
 class LocalEnvironment(Environment):
@@ -125,19 +184,12 @@ class LocalEnvironment(Environment):
 
     See :class:`Environment` for inherited options.
     """
-    def __init__(self, **kwargs):
-        Environment.__init__(self, **kwargs)
-
-
-    def run(self, evaluator_path: Path, successors, on_task_finished):
-        # TODO: set up run_dirs in general and use them on a local runs as well.
-        run_dir = "local task (does not have run_dir)"
-        tasks = [EvaluationTask(successor, i, run_dir) for i, successor in enumerate(successors)]
-        for task in tasks:
+    def _run_job(self, job, on_task_completed):
+        for task in job.tasks:
             if task.status == EvaluationTask.CANCELED:
                 continue
             try:
-                if is_evaluator_successful(evaluator_path, task.successor.state):
+                if is_evaluator_successful(job.evaluator_path, task.successor.state):
                     task.status = EvaluationTask.DONE_AND_IMPROVING
                 else:
                     task.status = EvaluationTask.DONE_AND_NOT_IMPROVING
@@ -147,11 +199,10 @@ class LocalEnvironment(Environment):
             except Exception as e:
                 task.status = EvaluationTask.CRITICAL
                 task.error_msg = str(e)
-            ids_to_cancel = on_task_finished(task) or []
+            ids_to_cancel = on_task_completed(task) or []
             for i in ids_to_cancel:
-                if tasks[i].status == EvaluationTask.PENDING:
-                    tasks[i].status = EvaluationTask.CANCELED
-        return tasks
+                if job.tasks[i].status == EvaluationTask.PENDING:
+                    job.tasks[i].status = EvaluationTask.CANCELED
 
 class SlurmEnvironment(Environment):
     """
@@ -214,13 +265,6 @@ class SlurmEnvironment(Environment):
     May be overridden in derived classes or with a constructor argument.
     """
 
-    STATE_FILENAME = "state.pickle"
-    """
-    Filename for stored states. States are written to disk and loaded on the
-    compute nodes (assuming a shared file system of the compute and login
-    nodes). 
-    """
-
     # Sets of slurm job state codes
     DONE_STATES = {"COMPLETED"}
     """
@@ -276,46 +320,52 @@ class SlurmEnvironment(Environment):
         self.nice = nice or self.DEFAULT_NICE
         self.export = export or self.DEFAULT_EXPORT
         self.setup = setup or self.DEFAULT_SETUP
-        self.script_path = Path(tools.get_script_path())
 
-        script_dir = self.script_path.parent
-        self.eval_dir = Path(script_dir/"eval_dir")
-        if re.search(r"\s+", str(self.eval_dir)):
-            logging.critical("The script path must not contain any whitespace characters.")
-        # TODO: continue from existing directory, or handle possible error.
-        self.eval_dir.mkdir(parents=True, exist_ok=False)
         self._wait_for_filesystem(self.eval_dir)
         self.sbatch_template = resources.read_text(templates, "slurm-array-job.template")
-        self.sbatch_filename = os.path.join(script_dir, "slurm-array-job.sbatch")
-        self.batch_id = 0
+        # TODO issue53: this will overwrite existing batch files. Should we store it inside the batch directory?
+        self.sbatch_filename = self.eval_dir/"slurm-array-job.sbatch"
 
-    def run(self, evaluator_path: Path, batch, on_task_finished):
-        job_id, tasks = self._submit(batch, evaluator_path)
-        pending_task_ids = set(range(len(batch)))
+    def _prepare_job(self, evaluator_path, batch):
+        job = super()._prepare_job(evaluator_path, batch)
+
+        run_dirs = [task.run_dir for task in job.tasks]
+        # Give the NFS time to write the paths
+        if not self._wait_for_filesystem(*run_dirs):
+            logging.critical(
+                f"One of the following paths is missing:\n"
+                f"{pprint.pformat(run_dirs)}"
+            )
+
+        self._write_sbatch_file(job)
+        return job
+
+    def _run_job(self, job, on_task_completed):
+        job_id = self._submit() # TODO issue53: should we put the name of the sbatch file and the slurm ID into the job?
+        pending_task_ids = set(range(len(job.tasks)))
         while pending_task_ids:
             time.sleep(self.POLLING_TIME_INTERVAL)
-            self._update_status(job_id, tasks)
+            self._update_status(job_id, job)
             pending_tasks_changed = True
             while pending_tasks_changed:
                 pending_tasks_changed = False
                 for task_id in set(pending_task_ids):
-                    task = tasks[task_id]
+                    task = job.tasks[task_id]
                     if task.status != EvaluationTask.PENDING:
                         pending_task_ids.remove(task_id)
-                        ids_to_cancel = on_task_finished(task)
+                        ids_to_cancel = on_task_completed(task)
                         if ids_to_cancel:
-                            self._cancel(job_id, tasks, ids_to_cancel)
+                            self._cancel(job_id, job, ids_to_cancel)
                         pending_tasks_changed = True
             if pending_task_ids:
                 logging.info(
                     f"{len(pending_task_ids)} task"
                     f"{'s are' if len(pending_task_ids) > 1 else ' is'} still busy.")
-        return tasks
 
-    def _cancel(self, job_id, tasks, ids_to_cancel):
+    def _cancel(self, job_id, job, ids_to_cancel):
         slurm_ids = []
         for task_id in ids_to_cancel:
-            task = tasks[task_id]
+            task = job.tasks[task_id]
             if task.status != EvaluationTask.PENDING:
                 continue
             slurm_ids.append(f"{job_id}_{task_id}")
@@ -328,8 +378,9 @@ class SlurmEnvironment(Environment):
                 # Not being able to cancel jobs is not critical, we can wait until the tasks exit normally.
                 logging.warning("Failed to cancel tasks: " + format_called_process_error(cpe))
 
-    def _get_job_params(self):
+    def _get_job_params(self, job):
         job_params = dict()
+        job_params["name"] = f"{job.evaluator_path.stem}_{job.name}"
         job_params["logfile"] = "slurm.log"
         job_params["errfile"] = "slurm.err"
         job_params["partition"] = self.partition
@@ -344,24 +395,16 @@ class SlurmEnvironment(Environment):
             0.98 * self.cpus_per_task * self._get_memory_in_kb(
                 self.memory_per_cpu))
         job_params["python"] = tools.get_python_executable()
-        job_params["script_path"] = self.script_path
         job_params["state_filename"] = self.STATE_FILENAME
+        run_dirs = [str(task.run_dir) for task in job.tasks]
+        job_params["run_dirs"] = " ".join(run_dirs)
         return job_params
 
-    def _submit(self, batch, evaluator_path: Path):
+    def _submit(self):
         """
-        Writes pickled version of each state in *batch* to its own file.
-        Then, submits a slurm array job which will evaluate each state
-        in parallel. Returns the array job ID of the submitted array job.
+        Submits the current slurm array job and returns its ID. If the
+        submission fails, a SubmissionError is raised.
         """
-        self.batch_id += 1
-        batch_name = f"batch_{self.batch_id:03}"
-        job_name = f"{evaluator_path.stem}_{batch_name}"
-        tasks = self._build_batch_directories(batch, batch_name)
-        self._write_sbatch_file(tasks=tasks,
-                                name=job_name,
-                                num_tasks=len(batch)-1,
-                                evaluator_path=evaluator_path)
         submission_command = ["sbatch", "--export",
                               ",".join(self.export), self.sbatch_filename]
         try:
@@ -376,7 +419,7 @@ class SlurmEnvironment(Environment):
 
         job_id = match.group(1)
         logging.info(f"Submitted batch job {job_id}")
-        return job_id, tasks
+        return job_id
 
     def _wait_for_filesystem(self, *paths):
         attempts = int(self.FILESYSTEM_TIME_LIMIT / self.FILESYSTEM_TIME_INTERVAL)
@@ -387,30 +430,8 @@ class SlurmEnvironment(Environment):
             time.sleep(self.FILESYSTEM_TIME_INTERVAL)
         return False  # At least one path from paths does not exist
 
-    def _build_batch_directories(self, batch, batch_name):
-        batch_dir = self.eval_dir/batch_name
-        tasks = []
-        for task_id, successor in enumerate(batch):
-            run_dir = batch_dir/f"{task_id:03}"
-            # TODO: raise SubmissionError when directory exists
-            run_dir.mkdir(parents=True, exist_ok=False)
-            write_state(successor.state, run_dir/self.STATE_FILENAME)
-            tasks.append(EvaluationTask(successor, task_id, run_dir))
-
-        run_dirs = [task.run_dir for task in tasks]
-        # Give the NFS time to write the paths
-        if not self._wait_for_filesystem(*run_dirs):
-            logging.critical(
-                f"One of the following paths is missing:\n"
-                f"{pprint.pformat(run_dirs)}"
-            )
-        return tasks
-
-    def _write_sbatch_file(self, tasks, **kwargs):
-        job_parameters = self._get_job_params()
-        job_parameters.update(kwargs)
-        run_dirs = [str(task.run_dir) for task in tasks]
-        job_parameters["run_dirs"] = " ".join(run_dirs)
+    def _write_sbatch_file(self, job):
+        job_parameters = self._get_job_params(job)
         logging.debug(
             f"Parameters for sbatch template:\n{pprint.pformat(job_parameters)}")
         with open(self.sbatch_filename, "w") as f:
@@ -439,9 +460,9 @@ class SlurmEnvironment(Environment):
                     output)
         return status_by_task_id
 
-    def _update_status(self, job_id, tasks):
+    def _update_status(self, job_id, job):
         status_by_task_id = self._get_slurm_status(job_id)
-        for task in tasks:
+        for task in job.tasks:
             try:
                 slurm_status = status_by_task_id[task.successor_id]
             except KeyError:
@@ -461,6 +482,10 @@ class SlurmEnvironment(Environment):
                     task.status = EvaluationTask.DONE_AND_IMPROVING
                 elif exit_code == EXIT_CODE_NOT_IMPROVING:
                     task.status = EvaluationTask.DONE_AND_NOT_IMPROVING
+                # TODO issue82: Detect running out of resources correctly:
+                # the process cannot report this with a custom exit code because
+                # it is killed when it runs out of resources. Maybe handle it in
+                # the slurm wrapper or check for exit codes produced by signals here?
                 elif exit_code == EXIT_CODE_RESOURCE_LIMIT:
                     task.status = EvaluationTask.OUT_OF_RESOURCES
                 else:
