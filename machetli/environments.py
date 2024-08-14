@@ -120,8 +120,6 @@ class Environment:
         self.eval_dir = script_path.parent/f"{self.exp_name}-eval"
         if re.search(r"\s+", str(self.eval_dir)):
             logging.critical("The script path must not contain any whitespace characters.")
-        # TODO: continue from existing directory, or handle possible error.
-        self.eval_dir.mkdir(parents=True, exist_ok=False)
 
         self.iteration_id = 0
         self.batch_id = 0
@@ -408,6 +406,8 @@ class SlurmEnvironment(Environment):
         job_params["state_filename"] = self.STATE_FILENAME
         run_dirs = [str(task.run_dir) for task in job.tasks]
         job_params["run_dirs"] = " ".join(run_dirs)
+        job_params["max_job_id"] = len(job.tasks) - 1
+        job_params["evaluator_path"] = job.evaluator_path
         return job_params
 
     def _submit(self, job):
