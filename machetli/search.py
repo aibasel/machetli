@@ -103,6 +103,7 @@ def search(initial_state, successor_generator, evaluator_path, environment=None,
     logging.info("Starting search ...")
     current_state = initial_state
     while True:
+        environment.start_new_iteration()
         successors = successor_generator.get_successors(current_state)
         try:
             improving_state, message = _get_improving_successor(

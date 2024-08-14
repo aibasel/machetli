@@ -13,7 +13,7 @@
 ### Set memory limit.
 #SBATCH --mem-per-cpu={memory_per_cpu}
 ### Number of tasks.
-#SBATCH --array=0-{num_tasks}
+#SBATCH --array=0-{max_job_id}
 ### Adjustment to priority ([-2147483645, 2147483645]).
 #SBATCH --nice={nice}
 ### Send mail? Mail type can be e.g. NONE, END, FAIL, ARRAY_TASKS.
