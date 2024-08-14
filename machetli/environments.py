@@ -9,7 +9,6 @@ and waiting for jobs.
 
 from importlib import resources
 import logging
-from math import ceil, log
 import os
 from pathlib import Path
 import pprint
@@ -77,9 +76,10 @@ class EvaluationJob():
     evaluation.
     """
 
-    def __init__(self, evaluator_path, name, tasks):
-        self.evaluator_path = evaluator_path
+    def __init__(self, name, evaluator_path, batch_dir, tasks):
         self.name = name
+        self.evaluator_path = evaluator_path
+        self.batch_dir = batch_dir
         self.tasks = tasks
 
 
@@ -115,17 +115,26 @@ class Environment:
     """
 
     def __init__(self, batch_size=1, loglevel=logging.INFO):
-        self.eval_dir = Path(tools.get_script_path()).parent/"eval_dir"
+        script_path = Path(tools.get_script_path())
+        self.exp_name = script_path.stem
+        self.eval_dir = script_path.parent/f"{self.exp_name}-eval"
         if re.search(r"\s+", str(self.eval_dir)):
             logging.critical("The script path must not contain any whitespace characters.")
         # TODO: continue from existing directory, or handle possible error.
         self.eval_dir.mkdir(parents=True, exist_ok=False)
 
-        self.batch_size = batch_size
-        self.batch_format = "05"
-        self.batch_task_format = f"0{ceil(log(batch_size+1, 10))}"
+        self.iteration_id = 0
         self.batch_id = 0
+        self.batch_size = batch_size
         self.loglevel = loglevel
+
+    def start_new_iteration(self):
+        """
+        Notifies the environment that a new iteration is starting. This is
+        relevant for grouping the tasks of one iteration together on the disk.
+        """
+        self.iteration_id += 1
+        self.batch_id = 0
 
     def _prepare_job(self, evaluator_path, batch):
         """
@@ -134,18 +143,21 @@ class Environment:
         represents the current status of this batch's evaluation.
         """
         self.batch_id += 1
-        batch_name = f"batch_{self.batch_id:{self.batch_format}}"
+        iteration_name = f"iteration_{self.iteration_id:05}"
+        batch_name = f"batch_{self.batch_id:05}"
+        job_name = f"{self.exp_name}-{iteration_name}-{batch_name}"
 
-        # TODO issue53: do we want to represent the iteration in the path? For example iteration00012/batch00003/run003?
-        batch_dir = self.eval_dir/batch_name
+        batch_dir = self.eval_dir/iteration_name/batch_name
         tasks = []
         for task_id, successor in enumerate(batch):
-            run_dir = batch_dir/f"{task_id:{self.batch_task_format}}"
-            # TODO: raise SubmissionError when directory exists
-            run_dir.mkdir(parents=True, exist_ok=False)
+            run_dir = batch_dir/f"{task_id:05}"
+            try:
+                run_dir.mkdir(parents=True, exist_ok=False)
+            except FileExistsError:
+                raise SubmissionError(f"Could not create run_dir at '{run_dir}'.")
             write_state(successor.state, run_dir/self.STATE_FILENAME)
             tasks.append(EvaluationTask(successor, task_id, run_dir))
-        return EvaluationJob(evaluator_path, batch_name, tasks)
+        return EvaluationJob(job_name, evaluator_path, batch_dir, tasks)
 
     def _run_job(self, job, on_task_completed) -> list[EvaluationTask]:
         raise NotImplementedError
@@ -323,8 +335,6 @@ class SlurmEnvironment(Environment):
 
         self._wait_for_filesystem(self.eval_dir)
         self.sbatch_template = resources.read_text(templates, "slurm-array-job.template")
-        # TODO issue53: this will overwrite existing batch files. Should we store it inside the batch directory?
-        self.sbatch_filename = self.eval_dir/"slurm-array-job.sbatch"
 
     def _prepare_job(self, evaluator_path, batch):
         job = super()._prepare_job(evaluator_path, batch)
@@ -341,11 +351,11 @@ class SlurmEnvironment(Environment):
         return job
 
     def _run_job(self, job, on_task_completed):
-        job_id = self._submit() # TODO issue53: should we put the name of the sbatch file and the slurm ID into the job?
+        self._submit(job)
         pending_task_ids = set(range(len(job.tasks)))
         while pending_task_ids:
             time.sleep(self.POLLING_TIME_INTERVAL)
-            self._update_status(job_id, job)
+            self._update_status(job)
             pending_tasks_changed = True
             while pending_tasks_changed:
                 pending_tasks_changed = False
@@ -355,20 +365,20 @@ class SlurmEnvironment(Environment):
                         pending_task_ids.remove(task_id)
                         ids_to_cancel = on_task_completed(task)
                         if ids_to_cancel:
-                            self._cancel(job_id, job, ids_to_cancel)
+                            self._cancel(job, ids_to_cancel)
                         pending_tasks_changed = True
             if pending_task_ids:
                 logging.info(
                     f"{len(pending_task_ids)} task"
                     f"{'s are' if len(pending_task_ids) > 1 else ' is'} still busy.")
 
-    def _cancel(self, job_id, job, ids_to_cancel):
+    def _cancel(self, job, ids_to_cancel):
         slurm_ids = []
         for task_id in ids_to_cancel:
             task = job.tasks[task_id]
             if task.status != EvaluationTask.PENDING:
                 continue
-            slurm_ids.append(f"{job_id}_{task_id}")
+            slurm_ids.append(f"{job.slurm_id}_{task_id}")
             task.status = EvaluationTask.CANCELED
 
         if slurm_ids:
@@ -380,7 +390,7 @@ class SlurmEnvironment(Environment):
 
     def _get_job_params(self, job):
         job_params = dict()
-        job_params["name"] = f"{job.evaluator_path.stem}_{job.name}"
+        job_params["name"] = job.name
         job_params["logfile"] = "slurm.log"
         job_params["errfile"] = "slurm.err"
         job_params["partition"] = self.partition
@@ -400,13 +410,13 @@ class SlurmEnvironment(Environment):
         job_params["run_dirs"] = " ".join(run_dirs)
         return job_params
 
-    def _submit(self):
+    def _submit(self, job):
         """
-        Submits the current slurm array job and returns its ID. If the
-        submission fails, a SubmissionError is raised.
+        Submits the current slurm array job and stores its ID in job.slurm_id.
+        If the submission fails, a SubmissionError is raised.
         """
         submission_command = ["sbatch", "--export",
-                              ",".join(self.export), self.sbatch_filename]
+                              ",".join(self.export), job.sbatch_filename]
         try:
             output = subprocess.check_output(submission_command).decode()
         except subprocess.CalledProcessError as cpe:
@@ -417,9 +427,8 @@ class SlurmEnvironment(Environment):
             raise SubmissionError(
                 "Something went wrong, no job ID printed after job submission.")
 
-        job_id = match.group(1)
-        logging.info(f"Submitted batch job {job_id}")
-        return job_id
+        job.slurm_id = match.group(1)
+        logging.info(f"Submitted batch job {job.slurm_id}")
 
     def _wait_for_filesystem(self, *paths):
         attempts = int(self.FILESYSTEM_TIME_LIMIT / self.FILESYSTEM_TIME_INTERVAL)
@@ -431,16 +440,23 @@ class SlurmEnvironment(Environment):
         return False  # At least one path from paths does not exist
 
     def _write_sbatch_file(self, job):
+        """
+        Fills the template for job submission scripts with parameters from *job*
+        and writes it in the batch directory. The location to the generated file
+        is stored in job.sbatch_filename.
+        """
         job_parameters = self._get_job_params(job)
         logging.debug(
             f"Parameters for sbatch template:\n{pprint.pformat(job_parameters)}")
-        with open(self.sbatch_filename, "w") as f:
+        
+        job.sbatch_filename = job.batch_dir/f"{job.name}.sbatch"
+        with open(job.sbatch_filename, "w") as f:
             f.write(self.sbatch_template.format(**job_parameters))
 
-    def _get_slurm_status(self, job_id):
+    def _get_slurm_status(self, job):
         try:
             output = subprocess.check_output(
-                ["sacct", "-j", str(job_id), "--format=jobid,state",
+                ["sacct", "-j", str(job.slurm_id), "--format=jobid,state",
                  "--noheader", "--allocations"]).decode()
         except subprocess.CalledProcessError as cpe:
             raise PollingError(format_called_process_error(cpe))
@@ -450,7 +466,7 @@ class SlurmEnvironment(Environment):
         for line in output.splitlines():
             m = re.match(pattern, line)
             if m:
-                assert m.group("job_id") == job_id
+                assert m.group("job_id") == job.slurm_id
                 task_id = int(m.group("task_id"))
                 status = m.group("status")
                 status_by_task_id[task_id] = status
@@ -460,14 +476,14 @@ class SlurmEnvironment(Environment):
                     output)
         return status_by_task_id
 
-    def _update_status(self, job_id, job):
-        status_by_task_id = self._get_slurm_status(job_id)
+    def _update_status(self, job):
+        status_by_task_id = self._get_slurm_status(job)
         for task in job.tasks:
             try:
                 slurm_status = status_by_task_id[task.successor_id]
             except KeyError:
                 raise PollingError(
-                    f"Did not find status of slurm job {job_id}_{task.successor_id}.")
+                    f"Did not find status of slurm job {job.slurm_id}_{task.successor_id}.")
 
             if slurm_status in self.DONE_STATES:
                 result_file = task.run_dir/"exit_code"
@@ -498,7 +514,7 @@ class SlurmEnvironment(Environment):
                 task.error = f"Unexpected Slurm status '{slurm_status}'"
 
             logging.debug(
-                f"Task status of {job_id}_{task.successor_id} is {task.status} (slurm: {slurm_status})")
+                f"Task status of {job.slurm_id}_{task.successor_id} is {task.status} (slurm: {slurm_status})")
 
     @staticmethod
     # This function is copied from lab.environment.SlurmEnvironment
