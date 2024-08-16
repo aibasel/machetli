@@ -22,8 +22,8 @@ where ``result`` is the value returned by the
 
 The successor generators described below denote possible transformations.
 """
-from machetli.sas.files import generate_initial_state, temporary_file, \
-    temporary_files, write_file
+from machetli.sas.files import generate_initial_state, temporary_files, \
+    write_file
 
 # We specify the imported functions and classes in __all__ so they will be
 # documented when the documentation of this package is generated.

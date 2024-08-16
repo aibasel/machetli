@@ -6,7 +6,7 @@ To use Machetli, you have to write two Python scripts:
 * an evaluator script that checks if the behavior you are
   trying to isolate is still present in a state, and
 * a search script that tells Machetli how to explore the
-  space of intance modifications.
+  space of instance modifications.
 
 .. _usage-evaluator:
 
@@ -14,42 +14,36 @@ Writing an evaluator script
 ---------------------------
 
 The evaluator script is run for each state to check if the desired behavior (for
-example, the bug we are trying to find) is still present after some modifications
-of the instance. For technical reasons, it has to be implemented in its own
-Python file. To write an evaluator, simply create a new Python file and
-implement a function called :meth:`evaluate` in it that takes a single argument (the
-state to evaluate) and returns ``True`` if the behavior is present. Here is a
-simple example:
+example, the bug we are trying to find) is still present after some
+modifications of the instance. For technical reasons, it has to be implemented
+in its own Python file. To write an evaluator, simply create a new Python file
+and implement a function in it that takes a list of files as input arguments
+and returns ``True`` if the behavior is present. Here is a simple example:
 
 .. code-block:: python
     :caption: evaluator.py
     :linenos:
 
-    from machetli import pddl, tools
+    from machetli import pddl, tools, evaluator
 
-    def evaluate(state):
-        with pddl.temporary_files(state) as (domain_filename, problem_filename):
+    def evaluate(domain, problem):
+        command = ["./bugged-planner/plan", domain, problem]
+        run = tools.Run(command, time_limit=20, memory_limit=3000)
+        stdout, stderr, returncode = run.start()
 
-            command = ["./bugged-planner/plan", f"{domain_filename}", f"{problem_filename}"]
-            run = tools.Run(command, time_limit=20, memory_limit=3000)
-            stdout, stderr, returncode = run.start()
+        return "Wrong task encoding" in stdout
 
-            return "Wrong task encoding" in stdout
-
-
+    if __name__ == "__main__":
+        evaluator.main(evaluate, pddl)
 
 Within the ``evaluate`` function you can run whatever code you want to test for
-the desired behavior. This usually involves temporarily writing the instance
-contained in the state to disk, executing a program on that instance and
-analyzing the behavior of that program, as in the example above. For example,
-you could check the return code, the presence of a certain error or log messages
-in the output, or compare the result against a reference program.
+the desired behavior. This usually involves executing a program on the given
+input and analyzing the behavior of that program, as in the example above. For
+example, you could check the return code, the presence of a certain error or log
+messages in the output, or compare the result against a reference program.
 
-The packages :mod:`machetli.pddl` and :mod:`machetli.sas` provide `context
-managers
-<https://realpython.com/python-with-statement/#the-with-statement-approach>`_ to
-temporarily write the instance to disk and the module :mod:`machetli.tools`
-contains useful methods to make running and analyzing a program easier.
+The module :mod:`machetli.tools` contains useful methods to make running and
+analyzing a program easier.
 
 .. admonition:: Caveats
 
@@ -57,12 +51,13 @@ contains useful methods to make running and analyzing a program easier.
 
     * Unlike in `Lab <https://lab.readthedocs.io>`_, (currently) **Machetli does
       not compile your project** at a specified revision when it is executed. It
-      expects you to do this in advance and specify the compiled executable to be
-      used.
+      expects you to do this in advance and specify the compiled executable to
+      be used.
     * When running programs within an evaluator, we strongly recommend to **use
-      resource bounds** on time and memory to prevent the process getting stuck for
-      some of the modified instances. Machetli doesn't enforce any additional
-      resource limits, so it is up to you to ensure that the processes terminate.
+      resource bounds** on time and memory to prevent the process getting stuck
+      for some of the modified instances. Machetli doesn't enforce any
+      additional resource limits, so it is up to you to ensure that the
+      processes terminate.
     * Make sure your evaluator **specifically tests for the behavior you are
       interested in**. If the test is too broad unrelated bugs could be mixed up
       with the one you are trying to find. For example, if you are looking for a

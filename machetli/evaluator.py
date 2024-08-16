@@ -1,23 +1,9 @@
 """
-TODO issue82: rewrite this (and find a new place for it?)
-
-Machetli evaluators are Python files that define a function
-:meth:`evaluate(state)<>`. This function takes the current state of the search
-and should check if the behavior you are looking for still is present. The user
+Machetli evaluators are Python functions that take a list of files as
+input and check if a certain behavior occurs for that input. The user
 documentation contains more information on :ref:`how to write an
-evaluator<usage-evaluator>`.
-
-This module provides a function to import and and run the evaluator given the
-filename. It can also be called from the command line for a pickled state:
-
-.. code-block:: bash
-
-    python -m machetli.evaluator /path/to/evaluator.py /path/to/state.pickle
-
-This is used when executing Machetli on the grid. The call will exit with an
-exit code of 42 if the evaluator reports the state as improving, and an exit
-code of 33 if the state is non-improving. All other exit codes are treated as
-errors in the search.
+evaluator<usage-evaluator>`. This file consolidates how the evaluator
+functions are executed.
 """
 
 import logging
@@ -55,7 +41,13 @@ def _get_state_from_filenames(module, filenames):
 
 
 def main(evaluate, module=None):
-    #TODO issue82: doc string
+    """
+    Runs the evaluator function given a specific input. It exits
+    with an exit code of 42 if the evaluator reports that the specified
+    behavior occurs for the given input, and an exit code of 33 if it does
+    not occur for this input. All other exit codes are treated as errors in
+    the search.
+    """
     state = _get_state_from_filenames(module, sys.argv[1:])
 
     if module:
