@@ -85,11 +85,10 @@ def search(initial_state, successor_generator, evaluator_path, environment=None,
         :emphasize-lines: 4
 
         initial_state = sas.generate_initial_state("bugged.sas")
-        evaluator_filename =
-        os.path.join(os.path.dirname(tools.get_script_path()), "evaluator.py")
+        evaluator_path = "./evaluator.py"
 
         result = search(initial_state, [sas.RemoveVariables(),
-        sas.RemoveOperators()], evaluator_filename)
+        sas.RemoveOperators()], evaluator_path)
 
         sas.write_file(result, "result.sas")
 

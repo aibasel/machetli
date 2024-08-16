@@ -5,6 +5,7 @@ Functions and classes that are not needed for this project were removed.
 import itertools
 import logging
 import os
+from pathlib import Path
 import pickle
 import pprint
 import random
@@ -49,9 +50,22 @@ def get_string(s):
 
 def get_script_path():
     """
-    Get absolute path to main script.
+    Get absolute path to main script, or the current working directory, if the
+    Python session is interactive.
     """
-    return os.path.abspath(sys.argv[0])
+    return Path(sys.argv[0]).absolute()
+
+
+def get_script_dir():
+    """
+    Get absolute path to the directory containing the main script, or the
+    current working directory, if the Python session is interactive.
+    """
+    script_path = get_script_path()
+    if script_path.is_file():
+        return get_script_path().parent.absolute()
+    else:
+        return Path().absolute()
 
 
 def get_python_executable():
