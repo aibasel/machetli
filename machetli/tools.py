@@ -143,20 +143,12 @@ def write_state(state, file_path):
         pickle.dump(state, state_file)
 
 
-def read_state(file_path, wait_time=0, repetitions=1):
+def read_state(file_path):
     """
-    Use pickle to read a state from disk. We expect this operation to occur on a
-    network file system that might take some time to synchronize, so we retry
-    the read operation multiple times if it fails, waiting a random amount
-    of time before each attempt (between 0 and *wait_time* seconds).
+    Use pickle to read a state from disk.
     """
-    for _ in range(repetitions):
-        time.sleep(wait_time * random.random())
-        if os.path.exists(file_path):
-            with open(file_path, "rb") as state_file:
-                return pickle.load(state_file)
-    else:
-        logging.critical(f"Could not find file '{file_path}' after {repetitions} attempts.")
+    with open(file_path, "rb") as state_file:
+        return pickle.load(state_file)
 
 
 # This function is copied from lab.calls.call (<https://lab.readthedocs.org>).
@@ -210,9 +202,8 @@ def parse(content, pattern, type=int):
 
 
 class Run:
-    # TODO issue82: we might want to get rid of this class and replace it by a
-    # function with a cleaner interface. Doesn't have to be in this issue, but
-    # then we should make a plan for it.
+    # TODO issue74: we might want to get rid of this class and replace it by a
+    # function with a cleaner interface.
     """
     Define an executable command with time and memory limits.
 

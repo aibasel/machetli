@@ -43,12 +43,6 @@ def _get_state_from_filenames(module, filenames):
 
     if len(filenames) == 1:
         try:
-            # TODO issue82: this now uses the new default value of 0 for wait time
-            # and 1 for repetitions. The old code used a wait time of 5 and 2
-            # repetitions but this meant, we also have to wait on the local file
-            # system. We should implement waiting for the file in a different way
-            # (maybe in the sbatch file). Then we might also want to get rid off
-            # tools.read_state() completely and just use pickle directly.
             return read_state(filenames[0])
         except (FileNotFoundError, PickleError):
             pass
