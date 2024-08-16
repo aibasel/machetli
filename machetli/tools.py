@@ -143,7 +143,7 @@ def write_state(state, file_path):
         pickle.dump(state, state_file)
 
 
-def read_state(file_path, wait_time, repetitions):
+def read_state(file_path, wait_time=0, repetitions=1):
     """
     Use pickle to read a state from disk. We expect this operation to occur on a
     network file system that might take some time to synchronize, so we retry
@@ -210,6 +210,9 @@ def parse(content, pattern, type=int):
 
 
 class Run:
+    # TODO issue82: we might want to get rid of this class and replace it by a
+    # function with a cleaner interface. Doesn't have to be in this issue, but
+    # then we should make a plan for it.
     """
     Define an executable command with time and memory limits.
 

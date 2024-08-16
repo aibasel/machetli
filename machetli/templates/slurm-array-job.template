@@ -32,13 +32,16 @@ RUN_DIR=${{RUN_DIRS[$SLURM_ARRAY_TASK_ID]}}
 cd $RUN_DIR
 
 (
-{python} -m machetli.evaluator "{evaluator_path}" "{state_filename}"
+"{evaluator_path}" "{state_filename}" > run.log 2> run.err
 RETCODE=$?
 
 echo "$RETCODE" > exit_code
 ) > driver.log 2> driver.err
 
-# Delete empty driver files.
+# Delete empty driver files and stderr.
+if [[ ! -s run.err ]]; then
+    rm run.err
+fi
 if [[ ! -s driver.log ]]; then
     rm driver.log
 fi

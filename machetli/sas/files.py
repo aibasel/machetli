@@ -23,6 +23,12 @@ def generate_initial_state(sas_file: str) -> dict:
 
 
 @contextlib.contextmanager
+def temporary_files(state: dict) -> tuple:
+    with temporary_file(state) as f:
+        yield (f,)
+
+
+@contextlib.contextmanager
 def temporary_file(state: dict) -> str:
     """
     Context manager that generates a temporary SAS\ :sup:`+` file

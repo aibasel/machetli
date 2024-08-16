@@ -1,5 +1,7 @@
+#!/usr/bin/env python3
+
 import logging
-from machetli import tools
+from machetli import tools, evaluator
 
 
 def evaluate(state):
@@ -30,3 +32,7 @@ def evaluate(state):
     run.start()
 
     return level + state_id == 3
+
+
+if __name__ == "__main__":
+    evaluator.main(evaluate)

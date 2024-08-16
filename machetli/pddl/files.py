@@ -1,6 +1,7 @@
 import tempfile
 import contextlib
 import os
+import sys
 
 from machetli.pddl.constants import KEY_IN_STATE
 from machetli.pddl.downward import pddl_parser
@@ -20,6 +21,9 @@ def generate_initial_state(domain_filename: str, problem_filename: str) -> dict:
     :return: a dictionary pointing to the PDDL task specified in the
              files `domain_filename` and `problem_filename`.
     """
+    # TODO issue 82: give problem_filename a default value of None and detect it with automatic naming rules. 
+    # This requires and interface change because we have to swap the order. It is beneficial for testing the
+    # evaluator with just the problem file, though.
     return {
         KEY_IN_STATE: pddl_parser.open(domain_filename=domain_filename,
                                        task_filename=problem_filename)

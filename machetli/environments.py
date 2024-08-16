@@ -19,9 +19,9 @@ import time
 from machetli import tools, templates
 from machetli.errors import SubmissionError, PollingError, \
     format_called_process_error
-from machetli.evaluator import is_evaluator_successful, EXIT_CODE_IMPROVING, \
+from machetli.evaluator import EXIT_CODE_IMPROVING, \
     EXIT_CODE_NOT_IMPROVING, EXIT_CODE_RESOURCE_LIMIT
-from machetli.tools import write_state
+from machetli.tools import write_state, Run
 
 
 class EvaluationTask():
@@ -81,6 +81,24 @@ class EvaluationJob():
         self.evaluator_path = evaluator_path
         self.batch_dir = batch_dir
         self.tasks = tasks
+
+
+def _update_completed_task_status(task, exit_code):
+    if exit_code == EXIT_CODE_IMPROVING:
+        task.status = EvaluationTask.DONE_AND_IMPROVING
+    elif exit_code == EXIT_CODE_NOT_IMPROVING:
+        task.status = EvaluationTask.DONE_AND_NOT_IMPROVING
+    elif exit_code == 24: # TODO issue82 (timeouts)
+        # TODO issue82: Detect running out of resources correctly:
+        # the process cannot report this with a custom exit code because
+        # it is killed when it runs out of resources. Maybe handle it in
+        # the slurm wrapper or check for exit codes produced by signals here?
+        task.status = EvaluationTask.OUT_OF_RESOURCES
+    elif False: # TODO issue82 (memouts)
+        task.status = EvaluationTask.OUT_OF_RESOURCES
+    else:
+        task.status = EvaluationTask.CRITICAL
+        task.error_msg = f"Evaluator ended with unexpected exit code {exit_code}."
 
 
 class Environment:
@@ -198,21 +216,24 @@ class LocalEnvironment(Environment):
         for task in job.tasks:
             if task.status == EvaluationTask.CANCELED:
                 continue
-            try:
-                if is_evaluator_successful(job.evaluator_path, task.successor.state):
-                    task.status = EvaluationTask.DONE_AND_IMPROVING
-                else:
-                    task.status = EvaluationTask.DONE_AND_NOT_IMPROVING
-            except MemoryError:
-                task.status = EvaluationTask.OUT_OF_RESOURCES
-            # TODO handle timeouts
-            except Exception as e:
-                task.status = EvaluationTask.CRITICAL
-                task.error_msg = str(e)
+            self._run_task(job.evaluator_path, task)
             ids_to_cancel = on_task_completed(task) or []
             for i in ids_to_cancel:
                 if job.tasks[i].status == EvaluationTask.PENDING:
                     job.tasks[i].status = EvaluationTask.CANCELED
+
+    def _run_task(self, evaluator_path: Path, task):
+        cmd = [str(evaluator_path.absolute()), self.STATE_FILENAME]
+        try:
+            cwd = task.run_dir
+            with (cwd/"run.log").open("w") as run_log, (cwd/"run.err").open("w") as run_err:
+                process = subprocess.run(cmd, cwd=cwd, stdout=run_log, stderr=run_err)
+                exit_code = process.returncode
+        except subprocess.CalledProcessError as cpe:
+            logging.warning(f"Failed to run evaluator in {task.run_dir}: " + format_called_process_error(cpe))
+
+        _update_completed_task_status(task, exit_code)
+
 
 class SlurmEnvironment(Environment):
     """
@@ -407,7 +428,7 @@ class SlurmEnvironment(Environment):
         run_dirs = [str(task.run_dir) for task in job.tasks]
         job_params["run_dirs"] = " ".join(run_dirs)
         job_params["max_job_id"] = len(job.tasks) - 1
-        job_params["evaluator_path"] = job.evaluator_path
+        job_params["evaluator_path"] = str(job.evaluator_path.absolute())
         return job_params
 
     def _submit(self, job):
@@ -492,26 +513,14 @@ class SlurmEnvironment(Environment):
                     exit_code = _parse_exit_code(result_file)
                 except IOError:
                     task.status = EvaluationTask.CRITICAL
-                    task.error = f"Missing exit code file '{str(result_file)}'"
+                    task.error_msg = f"Missing exit code file '{str(result_file)}'"
                     continue
-                if exit_code == EXIT_CODE_IMPROVING:
-                    task.status = EvaluationTask.DONE_AND_IMPROVING
-                elif exit_code == EXIT_CODE_NOT_IMPROVING:
-                    task.status = EvaluationTask.DONE_AND_NOT_IMPROVING
-                # TODO issue82: Detect running out of resources correctly:
-                # the process cannot report this with a custom exit code because
-                # it is killed when it runs out of resources. Maybe handle it in
-                # the slurm wrapper or check for exit codes produced by signals here?
-                elif exit_code == EXIT_CODE_RESOURCE_LIMIT:
-                    task.status = EvaluationTask.OUT_OF_RESOURCES
-                else:
-                    task.status = EvaluationTask.CRITICAL
-                    task.error = f"Unexpected evaluator exit code {exit_code}"
+                _update_completed_task_status(task, exit_code)
             elif slurm_status in self.BUSY_STATES:
                 task.status = EvaluationTask.PENDING
             else:
                 task.status = EvaluationTask.CRITICAL
-                task.error = f"Unexpected Slurm status '{slurm_status}'"
+                task.error_msg = f"Unexpected Slurm status '{slurm_status}'"
 
             logging.debug(
                 f"Task status of {job.slurm_id}_{task.successor_id} is {task.status} (slurm: {slurm_status})")

@@ -1,4 +1,6 @@
 """
+TODO issue82: rewrite this (and find a new place for it?)
+
 Machetli evaluators are Python files that define a function
 :meth:`evaluate(state)<>`. This function takes the current state of the search
 and should check if the behavior you are looking for still is present. The user
@@ -18,46 +20,57 @@ code of 33 if the state is non-improving. All other exit codes are treated as
 errors in the search.
 """
 
-import importlib.util
 import logging
-import platform
+from pickle import PickleError
 import sys
 
 from machetli.tools import read_state
 
+
 EXIT_CODE_IMPROVING = 42
 EXIT_CODE_NOT_IMPROVING = 33
 EXIT_CODE_RESOURCE_LIMIT = 34
-
-# https://stackoverflow.com/questions/67631/how-to-import-a-module-given-the-full-path/50395128#50395128
-def _import_evaluator(module_name, evaluator_path):
-    spec = importlib.util.spec_from_file_location(module_name, evaluator_path)
-    module = importlib.util.module_from_spec(spec)
-    sys.modules[spec.name] = module 
-    spec.loader.exec_module(module)
-    return module
+EXIT_CODE_CRITICAL = 35
 
 
-def is_evaluator_successful(evaluator_path, state):
+def _get_state_from_filenames(module, filenames):
     """
-    Import the Python module specified in *evaluator_path* and run its
-    :meth:`evaluate` function on *state*. Return the return value of
-    :meth:`evaluate`. See the user documentation on :ref:`how to write an
-    evaluator<usage-evaluator>`.
+    Attempts to read a state from the file(s) in *filenames*. A single filename
+    is first interpreted as a pickled state. If unpickling the state doesn't
+    work or a different number of filenames are given, control is handed off to
+    a method *generate_initial_state* in *module* if it exists.
     """
-    module = _import_evaluator("custom_evaluator", evaluator_path)
-    return module.evaluate(state)
+
+    if len(filenames) == 1:
+        try:
+            # TODO issue82: this now uses the new default value of 0 for wait time
+            # and 1 for repetitions. The old code used a wait time of 5 and 2
+            # repetitions but this meant, we also have to wait on the local file
+            # system. We should implement waiting for the file in a different way
+            # (maybe in the sbatch file). Then we might also want to get rid off
+            # tools.read_state() completely and just use pickle directly.
+            return read_state(filenames[0])
+        except (FileNotFoundError, PickleError):
+            pass
+
+    try:
+        return module.generate_initial_state(*filenames)
+    except (AttributeError, TypeError, FileNotFoundError):
+        logging.critical(f"Could not load or create a state from files {filenames}")
+        sys.exit(EXIT_CODE_CRITICAL)
 
 
-if __name__ == "__main__":
-    if len(sys.argv) != 3:
-        logging.critical(f"Expected two arguments to machetli.evaluator but got {len(sys.argv)}.")
-    evaluator_path = sys.argv[1]
-    state_filename = sys.argv[2]
-    logging.info(f"Running evaluator '{evaluator_path}' for state '{state_filename}' on node: {platform.node()}.")
+def main(evaluate, module=None):
+    #TODO issue82: doc string
+    state = _get_state_from_filenames(module, sys.argv[1:])
 
-    state = read_state(state_filename, 5, 2)
-    if is_evaluator_successful(evaluator_path, state):
+    if module:
+        with module.temporary_files(state) as tmp_filenames:
+            improving = evaluate(*tmp_filenames)
+    else:
+        improving = evaluate(state)
+
+    if improving:
         sys.exit(EXIT_CODE_IMPROVING)
     else:
         sys.exit(EXIT_CODE_NOT_IMPROVING)
