@@ -1,7 +1,7 @@
-import tempfile
 import contextlib
+import logging
 import os
-import sys
+import tempfile
 
 from machetli.pddl.constants import KEY_IN_STATE
 from machetli.pddl.downward import pddl_parser
@@ -12,21 +12,53 @@ SIN = " "  # single indentation
 DIN = "  "  # double indentation
 
 
-def generate_initial_state(domain_filename: str, problem_filename: str) -> dict:
+def _find_domain_filename(task_filename):
     """
-    Parse the PDDL task defined in PDDL files `domain_filename` (PDDL
-    domain) and `problem_filename` (PDDL problem) and return an initial
-    state containing the parsed PDDL task.
+    Find domain filename for the given task using automatic naming rules.
+    """
+    dirname, basename = os.path.split(task_filename)
+    basename_root, ext = os.path.splitext(basename)
 
-    :return: a dictionary pointing to the PDDL task specified in the
-             files `domain_filename` and `problem_filename`.
+    domain_basenames = [
+        "domain.pddl",
+        basename_root + "-domain" + ext,
+        basename[:3] + "-domain.pddl", # for airport
+        "domain_" + basename,
+        "domain-" + basename,
+    ]
+
+    for domain_basename in domain_basenames:
+        domain_filename = os.path.join(dirname, domain_basename)
+        if os.path.exists(domain_filename):
+            return domain_filename
+
+    logging.critical(
+        "Error: Could not find domain file using automatic naming rules.")
+
+
+def generate_initial_state(*filenames) -> dict:
     """
-    # TODO issue 82: give problem_filename a default value of None and detect it with automatic naming rules. 
-    # This requires and interface change because we have to swap the order. It is beneficial for testing the
-    # evaluator with just the problem file, though.
+    Parse the PDDL task defined in the given PDDL files. 
+    Can be called either as `generate_initial_state(task_filename)` or as
+    `generate_initial_state(domain_filename, task_filename)`.
+    In the first case, it tries to detect the location of the domain file
+    based on the task.
+
+    :return: a dictionary pointing to the task specified in the files.
+    """
+    if len(filenames) == 1:
+        task_filename = filenames[0]
+        domain_filename = _find_domain_filename(task_filename)
+    elif len(filenames) == 2:
+        domain_filename, task_filename = filenames
+    else:
+        logging.critical(
+            "Error: generate_initial_state has to be called with either "
+            "a task filename, or a domain filename followed by a task filename.")
+
     return {
         KEY_IN_STATE: pddl_parser.open(domain_filename=domain_filename,
-                                       task_filename=problem_filename)
+                                       task_filename=task_filename)
     }
 
 

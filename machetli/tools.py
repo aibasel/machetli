@@ -163,7 +163,7 @@ def _set_limit(kind, soft_limit, hard_limit):
 
 
 def parse(content, pattern, type=int):
-    """
+    r"""
     Look for matches of *pattern* in *content*. If any matches are found, the
     first group present in the regular expression is cast as *type* and
     returned.
