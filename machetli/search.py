@@ -16,7 +16,7 @@ def search(initial_state, successor_generator, evaluator_path, environment=None,
     are interested in is still present in the transformed instance. The search
     always commits to the transformation of the first instance where the
     evaluator succeeds (first-choice hill climbing).
-    
+
     :param initial_state: is a dictionary describing the instance you want to
         simplify. The internal format of this dictionary has to match what the
         successor generators expect. Modules that include successor generators

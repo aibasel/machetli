@@ -1,9 +1,10 @@
 """
-Machetli evaluators are Python functions that take a list of files as
-input and check if a certain behavior occurs for that input. The user
-documentation contains more information on :ref:`how to write an
-evaluator<usage-evaluator>`. This file consolidates how the evaluator
-functions are executed.
+Machetli evaluators are Python scripts that are started with the path to file
+that represents a state in Machetli's search. They check if a certain behavior
+occurs for that input and communicate this back to the search with their exit
+code. The user documentation contains more information on :ref:`how to write an
+evaluator<usage-evaluator>`. This file consolidates how the evaluator functions
+are executed.
 """
 
 import logging
@@ -14,9 +15,27 @@ from machetli.tools import read_state
 
 
 EXIT_CODE_IMPROVING = 42
+"""
+Exit code returned by an evaluator if the given state exhibits the behavior
+that the evaluator is checking for.
+"""
 EXIT_CODE_NOT_IMPROVING = 33
+"""
+Exit code returned by an evaluator if the given state does not exhibit the
+behavior that the evaluator is checking for.
+"""
 EXIT_CODE_RESOURCE_LIMIT = 34
+"""
+Exit code returned by an evaluator if it ran out of time or memory while
+checking the state.
+"""
 EXIT_CODE_CRITICAL = 35
+"""
+Exit code returned by an evaluator if a critical error occurred. Any recognized
+exit code is also interpreted as a critical error. In particular, 0 is treated
+as an error, because it means that the evaluator completed without communicating
+a result.
+"""
 
 
 def _get_state_from_filenames(module, filenames):
@@ -42,11 +61,35 @@ def _get_state_from_filenames(module, filenames):
 
 def main(evaluate, module=None):
     """
-    Runs the evaluator function given a specific input. It exits
-    with an exit code of 42 if the evaluator reports that the specified
-    behavior occurs for the given input, and an exit code of 33 if it does
-    not occur for this input. All other exit codes are treated as errors in
-    the search.
+    Loads the state passed to the script via its command line arguments, then
+    runs the given function `evaluate` and exits the program with the
+    appropriate exit code. If the function returns True, `EXIT_CODE_IMPROVING`
+    is used, otherwise `EXIT_CODE_NOT_IMPROVING` is used.
+
+    This function is meant to be used as the `main` function, executed in an
+    evaluator script. It handles loading the state and can call general
+    evaluation functions as well as module-specific ones.
+
+    For testing purposes, scripts with this main function can also be called
+    direclty on module-specific inputs (e.g., a domain and problem file for
+    the PDDL module).
+
+    :param evaluate: is a function that should return True if the specified
+    behavior occurs for the given input, and False if it doesn't. Other ways of
+    exiting the function (exceptions, `sys.exit` with exit codes other than
+    EXIT_CODE_IMPROVING` or `EXIT_CODE_NOT_IMPROVING`) are treated as failed
+    evaluations by the search.
+    
+    The signature of the function depends on the value of `module`. If no module
+    is passed, `evaluate` will be called with the state. If a module was passed,
+    that module's `temporary_files` function will be called and the `evaluate`
+    function will be called with the names of the resulting files. For example,
+    when passing the `pddl` module, the evaluate function is called with the
+    names of domain and problem file. See the documentation of the particular
+    module for details.
+
+    :param module: is a Python module that will be used to write temporary files
+    to disk before calling the evaluation function.
     """
     state = _get_state_from_filenames(module, sys.argv[1:])
 
