@@ -53,22 +53,26 @@ def temporary_file(state: dict) -> str:
 
 def run_evaluator(evaluate):
     r"""
-    Loads the state passed to the script via its command line arguments, then
-    runs the given function `evaluate` on the SAS\ :sup:`+` file encoded in the
-    state, and exits the program with the appropriate exit code. If the function
-    returns True, `EXIT_CODE_IMPROVING` is used, otherwise
-    `EXIT_CODE_NOT_IMPROVING` is used.
+    Load the state passed to the script via its command line arguments, then run
+    the given function *evaluate* on the SAS\ :sup:`+` file encoded in the
+    state, and exit the program with the appropriate exit code. If the function
+    returns ``True``, use
+    :attr:`EXIT_CODE_IMPROVING<machetli.evaluator.EXIT_CODE_IMPROVING>`
+    otherwise, use
+    :attr:`EXIT_CODE_NOT_IMPROVING<machetli.evaluator.EXIT_CODE_NOT_IMPROVING>`.
 
-    This function is meant to be used as the `main` function of an evaluator
+    This function is meant to be used as the main function of an evaluator
     script. Instead of a path to the state, the command line arguments can also
-    be a path to an SAS\ :sup:`+` file. This is meant for testing and debugging
+    be paths to a SAS\ :sup:`+` file. This is meant for testing and debugging
     the evaluator directly on SAS\ :sup:`+` input.
 
-    :param evaluate: is a function taking filename of a SAS\ :sup:`+` file as
-    input and returning True if the specified behavior occurs for the given
-    instance, and False if it doesn't. Other ways of exiting the function
-    (exceptions, `sys.exit` with exit codes other than EXIT_CODE_IMPROVING` or
-    `EXIT_CODE_NOT_IMPROVING`) are treated as failed evaluations by the search.
+    :param evaluate: is a function taking the filename of a SAS\ :sup:`+` file as
+        input and returning ``True`` if the specified behavior occurs for the
+        given instance, and ``False`` if it doesn't. Other ways of exiting the
+        function (exceptions, ``sys.exit`` with exit codes other than
+        :attr:`EXIT_CODE_IMPROVING<machetli.evaluator.EXIT_CODE_IMPROVING>` or
+        :attr:`EXIT_CODE_NOT_IMPROVING<machetli.evaluator.EXIT_CODE_NOT_IMPROVING>`)
+        are treated as failed evaluations by the search.
     """
     if len(sys.argv) == 2:
         filename = sys.argv[1]

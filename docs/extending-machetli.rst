@@ -86,11 +86,9 @@ Supporting a new file type
 
 Machetli is not limited to PDDL and SAS\ :sup:`+` files. The main work in
 supporting a new file type is writing the successor generators as discussed
-above. In addition, you should provide three functions to parse your instances
-and write them back to disk.
-
-As an example, consider the methods provided in the module
-:mod:`machetli.pddl`:
+above. In addition, you should provide functions to parse your instances and
+write them back to disk. As an example, consider the methods provided in the
+package :mod:`machetli.pddl`:
 
 * :meth:`generate_initial_state<machetli.pddl.generate_initial_state>` parses a
   PDDL file form the disk and returns a state containing the parsed data.
@@ -98,12 +96,21 @@ As an example, consider the methods provided in the module
   you want as long as the successor generators know about and use the same key.
   In the existing packages, we use a constant ``KEY_IN_STATE`` for this
   purpose.
+* :meth:`write_files<machetli.pddl.write_files>` writes the parsed data to disk.
+  This is used at the end of the search to store the result.
+
+While these two are technically sufficient, we recommend to also provide functions
+to simplify writing evaluators. In package :mod:`machetli.pddl`, these are:
+
 * :meth:`temporary_files<machetli.pddl.temporary_files>` temporarily writes the
   parsed data contained in the state to disk. We use the Python libraries
   ``contextlib`` and ``tempfile`` to make this easy to use and recommend to
   follow the same pattern.
-* :meth:`write_files<machetli.pddl.write_files>` writes the parsed data to disk
-  permanently. This is used at the end of the search to store the result.
+* :meth:`run_evaluator<machetli.pddl.run_evaluator>` loads the state given to
+  given to the evaluator script, temporarily writes the PDDL files to disk, and
+  then calls a PDDL specific evaluation function. We also recommend to have this
+  function fall back to generating a state directly from your file type (a PDDL
+  instance in this case) to make testing the evaluator easier.
 
 
 Example: finding bugs in LaTeX documents
@@ -140,19 +147,48 @@ We then create a context manager to temporarily write a modified document to dis
     import tempfile
 
     @contextlib.contextmanager
-    def temporary_files(state):
+    def temporary_file(state):
         f = tempfile.NamedTemporaryFile(mode="w+t", suffix=".tex", delete=False)
         f.write(state["latex"])
         f.close()
         yield f.name
         os.remove(f.name)
 
+For added convenience, we implement a ``run_successor`` function:
+
+.. code-block:: python
+    :linenos:
+    :lineno-start: 21
+
+    import logging
+    from pickle import PickleError
+    import sys
+    from machetli import tools, evaluator
+
+    def run_evaluator(evaluate):
+        if len(sys.argv) == 2:
+            filename = sys.argv[1]
+            try:
+                state = tools.read_state(filename)
+            except PickleError:
+                state = generate_initial_state(filename)
+        else:
+            logging.critical("Call evaluator with state or tex file.")
+            sys.exit(evaluator.EXIT_CODE_CRITICAL)
+
+        with temporary_file(state) as tex_filename:
+            if evaluate(tex_filename):
+                sys.exit(evaluator.EXIT_CODE_IMPROVING)
+            else:
+                sys.exit(evaluator.EXIT_CODE_NOT_IMPROVING)
+
+
 Finally, we add a simple successor generator that removes a single line from the
 document:
 
 .. code-block:: python
     :linenos:
-    :lineno-start: 21
+    :lineno-start: 42
 
     from machetli.successors import Successor, SuccessorGenerator
 

@@ -5,7 +5,7 @@ occurs for that input and communicate this back to the search with their exit
 code. The user documentation contains more information on :ref:`how to write an
 evaluator<usage-evaluator>`. This file defines the exit codes and offers a
 general convenience function for implementing evaluators. Additional convenience
-functions come with specific modules.
+functions come with specific packages.
 """
 
 import logging
@@ -40,20 +40,25 @@ a result.
 
 def run_evaluator(evaluate):
     """
-    Loads the state passed to the script via its only command line argument,
-    then runs the given function `evaluate` and exits the program with the
-    appropriate exit code. If the function returns True, `EXIT_CODE_IMPROVING`
-    is used, otherwise `EXIT_CODE_NOT_IMPROVING` is used.
+    Load the state passed to the script via its only command line arguments,
+    then run the given function *evaluate* on it, and exit the program with the
+    appropriate exit code. If the function returns ``True``, use
+    :attr:`EXIT_CODE_IMPROVING<machetli.evaluator.EXIT_CODE_IMPROVING>`
+    otherwise, use
+    :attr:`EXIT_CODE_NOT_IMPROVING<machetli.evaluator.EXIT_CODE_NOT_IMPROVING>`.
 
-    This function is meant to be used as the `main` function of an evaluator
-    script. Module-specific overloads are available in the modules for more
-    convenient evaluation functions and for testing the evaluator.
+    This function is meant to be used as the main function of an evaluator
+    script. Package-specific overloads are available for more convenient
+    evaluation functions and for testing the evaluator.
 
-    :param evaluate: is a function taking a state and returning True if the
-    specified behavior occurs for the given input, and False if it doesn't.
-    Other ways of exiting the function (exceptions, `sys.exit` with exit codes
-    other than EXIT_CODE_IMPROVING` or `EXIT_CODE_NOT_IMPROVING`) are treated as
-    failed evaluations by the search.
+    :param evaluate: is a function taking the filename of a state as
+        input and returning ``True`` if the specified behavior occurs for the
+        given instance, and ``False`` if it doesn't. Other ways of exiting the
+        function (exceptions, ``sys.exit`` with exit codes other than
+        :attr:`EXIT_CODE_IMPROVING<machetli.evaluator.EXIT_CODE_IMPROVING>` or
+        :attr:`EXIT_CODE_NOT_IMPROVING<machetli.evaluator.EXIT_CODE_NOT_IMPROVING>`)
+        are treated as failed evaluations by the search.
+
     """
     if len(sys.argv) != 2:
         logging.critical("Expected path to the state to evaluate as the single command line parameter.")

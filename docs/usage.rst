@@ -16,15 +16,27 @@ Writing an evaluator script
 The evaluator script is run for each state to check if the desired behavior (for
 example, the bug we are trying to find) is still present after some
 modifications of the instance. For technical reasons, it has to be implemented
-in its own Python file. To write an evaluator, simply create a new Python file
-and implement a function in it that takes a list of files as input arguments
-and returns ``True`` if the behavior is present. Here is a simple example:
+in its own Python file. An evaluator is any script that takes the path to a
+pickled state as its command line argument, and exits with
+:attr:`EXIT_CODE_IMPROVING <machetli.evaluator.EXIT_CODE_IMPROVING>` if the
+behavior is still present and
+:attr:`EXIT_CODE_NOT_IMPROVING <machetli.evaluator.EXIT_CODE_NOT_IMPROVING>`
+if it is not.
+
+The module :mod:`machetli.evaluator` offers a covenience function
+:meth:`machetli.evaluator.run_evaluator` that handles the input/output boiler
+plate code. Using it, only a function that returns ``True`` or ``False`` is
+required. Packages like :mod:`machetli.pddl` and :mod:`machetli.sas` offer
+additional convenience (e.g., :meth:`machetli.pddl.run_evaluator`) where the
+evaluation function is called with package-specific inputs. To write an
+evaluator, we recommend using one of these convenience functions. Here is a
+simple example:
 
 .. code-block:: python
     :caption: evaluator.py
     :linenos:
 
-    from machetli import pddl, tools, evaluator
+    from machetli import pddl, tools
 
     def evaluate(domain, problem):
         command = ["./bugged-planner/plan", domain, problem]
@@ -34,7 +46,7 @@ and returns ``True`` if the behavior is present. Here is a simple example:
         return "Wrong task encoding" in stdout
 
     if __name__ == "__main__":
-        evaluator.main(evaluate, pddl)
+        pddl.run_evaluator(evaluate)
 
 Within the ``evaluate`` function you can run whatever code you want to test for
 the desired behavior. This usually involves executing a program on the given
@@ -57,7 +69,9 @@ analyzing a program easier.
       resource bounds** on time and memory to prevent the process getting stuck
       for some of the modified instances. Machetli doesn't enforce any
       additional resource limits, so it is up to you to ensure that the
-      processes terminate.
+      processes terminate. If you cannot determine if the behavior is still
+      present or not because of resource limits, exit the evaluator with exit code
+      :attr:`EXIT_CODE_RESOURCE_LIMIT <machetli.evaluator.EXIT_CODE_RESOURCE_LIMIT>`.
     * Make sure your evaluator **specifically tests for the behavior you are
       interested in**. If the test is too broad unrelated bugs could be mixed up
       with the one you are trying to find. For example, if you are looking for a
