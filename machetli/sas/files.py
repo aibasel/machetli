@@ -82,7 +82,7 @@ def run_evaluator(evaluate):
             state = generate_initial_state(filename)
     else:
         logging.critical(
-            "Error: evaluator has to be called with either a path to a pickled state,"
+            "Error: evaluator has to be called with either a path to a pickled state, "
             "or a path to a SAS^+ file.")
         sys.exit(EXIT_CODE_CRITICAL)
 

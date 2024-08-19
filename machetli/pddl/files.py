@@ -119,7 +119,7 @@ def run_evaluator(evaluate):
         state = generate_initial_state(domain_filename, task_filename)
     else:
         logging.critical(
-            "Error: evaluator has to be called with either a path to a pickled state,"
+            "Error: evaluator has to be called with either a path to a pickled state, "
             "a task filename, or a domain filename followed by a task filename.")
         sys.exit(EXIT_CODE_CRITICAL)
 
