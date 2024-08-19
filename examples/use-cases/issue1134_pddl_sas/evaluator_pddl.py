@@ -3,7 +3,7 @@
 import os
 import re
 
-from machetli import pddl, tools, evaluator
+from machetli import pddl, tools
 
 REPO = os.environ["DOWNWARD_REPO"]
 PLANNER = os.path.join(REPO, "fast-downward.py")
@@ -24,4 +24,4 @@ def get_h(config, domain_filename, problem_filename):
            return int(m.group(1))
 
 if __name__ == "__main__":
-    evaluator.main(evaluate, pddl)
+    pddl.run_evaluator(evaluate)

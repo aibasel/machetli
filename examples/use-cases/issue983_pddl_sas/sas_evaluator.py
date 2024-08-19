@@ -2,7 +2,7 @@
 
 import os
 
-from machetli import sas, tools, evaluator
+from machetli import sas, tools
 
 PLANNER_REPO = os.environ["DOWNWARD_REPO"]
 PLANNER = os.path.join(PLANNER_REPO, "fast-downward.py")
@@ -33,4 +33,4 @@ def evaluate(sas_filename):
     return cost != initial_h
 
 if __name__ == "__main__":
-    evaluator.main(evaluate, sas)
+    sas.run_evaluator(evaluate)

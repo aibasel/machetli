@@ -3,7 +3,7 @@
 import os
 import re
 
-from machetli import sas, tools, evaluator
+from machetli import sas, tools
 
 REPO = os.environ["DOWNWARD_REPO"]
 PLANNER = os.path.join(REPO, "builds/debug/bin/downward")
@@ -25,4 +25,4 @@ def get_h(config, sas_filename):
            return int(m.group(1))
 
 if __name__ == "__main__":
-    evaluator.main(evaluate, sas)
+    sas.run_evaluator(evaluate)

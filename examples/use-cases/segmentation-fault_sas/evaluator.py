@@ -2,7 +2,7 @@
 
 import os
 
-from machetli import sas, tools, evaluator
+from machetli import sas, tools
 
 REPO = os.environ["DOWNWARD_REPO"]
 PLANNER = os.path.join(REPO, "builds/release/bin/downward")
@@ -21,4 +21,4 @@ def evaluate(sas_filename):
     return "caught signal 11" in stdout or "caught signal 6" in stdout
 
 if __name__ == "__main__":
-    evaluator.main(evaluate, sas)
+    sas.run_evaluator(evaluate)

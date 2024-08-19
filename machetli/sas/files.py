@@ -1,15 +1,21 @@
 import tempfile
 import contextlib
+import logging
 import os
 from pathlib import Path
+from pickle import PickleError
+import sys
 
 from machetli.sas.constants import KEY_IN_STATE
 from machetli.sas.sas_tasks import SASTask, SASVariables, SASMutexGroup, \
     SASInit, SASGoal, SASOperator, SASAxiom
 
+from machetli import tools
+from machetli.evaluator import EXIT_CODE_CRITICAL, EXIT_CODE_IMPROVING, EXIT_CODE_NOT_IMPROVING
+
 
 def generate_initial_state(sas_file: str) -> dict:
-    """
+    r"""
     Parse the SAS\ :sup:`+` task defined in the SAS\ :sup:`+` file
     `sas_file` and return an initial state containing the parsed
     SAS\ :sup:`+` task.
@@ -23,8 +29,8 @@ def generate_initial_state(sas_file: str) -> dict:
 
 
 @contextlib.contextmanager
-def temporary_files(state: dict) -> tuple:
-    """
+def temporary_file(state: dict) -> str:
+    r"""
     Context manager that generates a temporary SAS\ :sup:`+` file
     containing the task stored in the `state` dictionary. After the
     context is left, the generated file is deleted.
@@ -43,6 +49,46 @@ def temporary_files(state: dict) -> tuple:
     f.close()
     yield f.name
     os.remove(f.name)
+
+
+def run_evaluator(evaluate):
+    r"""
+    Loads the state passed to the script via its command line arguments, then
+    runs the given function `evaluate` on the SAS\ :sup:`+` file encoded in the
+    state, and exits the program with the appropriate exit code. If the function
+    returns True, `EXIT_CODE_IMPROVING` is used, otherwise
+    `EXIT_CODE_NOT_IMPROVING` is used.
+
+    This function is meant to be used as the `main` function of an evaluator
+    script. Instead of a path to the state, the command line arguments can also
+    be a path to an SAS\ :sup:`+` file. This is meant for testing and debugging
+    the evaluator directly on SAS\ :sup:`+` input.
+
+    :param evaluate: is a function taking filename of a SAS\ :sup:`+` file as
+    input and returning True if the specified behavior occurs for the given
+    instance, and False if it doesn't. Other ways of exiting the function
+    (exceptions, `sys.exit` with exit codes other than EXIT_CODE_IMPROVING` or
+    `EXIT_CODE_NOT_IMPROVING`) are treated as failed evaluations by the search.
+    """
+    if len(sys.argv) == 2:
+        filename = sys.argv[1]
+        try:
+            state = tools.read_state(filename)
+        except (FileNotFoundError, PickleError):
+            state = generate_initial_state(filename)
+    else:
+        logging.critical(
+            "Error: evaluator has to be called with either a path to a pickled state,"
+            "or a path to a SAS^+ file.")
+        sys.exit(EXIT_CODE_CRITICAL)
+
+    with temporary_file(state) as sas_filename:
+        improving = evaluate(sas_filename)
+
+    if improving:
+        sys.exit(EXIT_CODE_IMPROVING)
+    else:
+        sys.exit(EXIT_CODE_NOT_IMPROVING)
 
 
 def _read_task(sas_file : Path) -> SASTask:

@@ -1,12 +1,17 @@
 import contextlib
 import logging
 import os
+from pickle import PickleError
+import sys
 import tempfile
 
 from machetli.pddl.constants import KEY_IN_STATE
 from machetli.pddl.downward import pddl_parser
 from machetli.pddl.downward.pddl import Truth
 from machetli.pddl.downward.pddl.conditions import ConstantCondition, Atom
+
+from machetli import tools
+from machetli.evaluator import EXIT_CODE_CRITICAL, EXIT_CODE_IMPROVING, EXIT_CODE_NOT_IMPROVING
 
 SIN = " "  # single indentation
 DIN = "  "  # double indentation
@@ -36,26 +41,12 @@ def _find_domain_filename(task_filename):
         "Error: Could not find domain file using automatic naming rules.")
 
 
-def generate_initial_state(*filenames) -> dict:
+def generate_initial_state(domain_filename, task_filename) -> dict:
     """
     Parse the PDDL task defined in the given PDDL files. 
-    Can be called either as `generate_initial_state(task_filename)` or as
-    `generate_initial_state(domain_filename, task_filename)`.
-    In the first case, it tries to detect the location of the domain file
-    based on the task.
 
     :return: a dictionary pointing to the task specified in the files.
     """
-    if len(filenames) == 1:
-        task_filename = filenames[0]
-        domain_filename = _find_domain_filename(task_filename)
-    elif len(filenames) == 2:
-        domain_filename, task_filename = filenames
-    else:
-        logging.critical(
-            "Error: generate_initial_state has to be called with either "
-            "a task filename, or a domain filename followed by a task filename.")
-
     return {
         KEY_IN_STATE: pddl_parser.open(domain_filename=domain_filename,
                                        task_filename=task_filename)
@@ -89,6 +80,52 @@ def temporary_files(state: dict) -> tuple:
     yield domain_file.name, problem_file.name
     os.remove(domain_file.name)
     os.remove(problem_file.name)
+
+
+def run_evaluator(evaluate):
+    """
+    Loads the state passed to the script via its command line arguments, then
+    runs the given function `evaluate` on the domain and problem encoded in the
+    state, and exits the program with the appropriate exit code. If the function
+    returns True, `EXIT_CODE_IMPROVING` is used, otherwise
+    `EXIT_CODE_NOT_IMPROVING` is used.
+
+    This function is meant to be used as the `main` function of an evaluator
+    script. Instead of a path to the state, the command line arguments can also
+    be paths to a PDDL domain and problem (where the domain can be omitted if it
+    can be found with automated naming rules). This is meant for testing and
+    debugging the evaluator directly on PDDL input.
+
+    :param evaluate: is a function taking filenames of a PDDL domain and problem
+    file as input and returning True if the specified behavior occurs for the
+    given instance, and False if it doesn't. Other ways of exiting the function
+    (exceptions, `sys.exit` with exit codes other than EXIT_CODE_IMPROVING` or
+    `EXIT_CODE_NOT_IMPROVING`) are treated as failed evaluations by the search.
+    """
+    filenames = sys.argv[1:]
+    if len(filenames) == 1:
+        try:
+            state = tools.read_state(filenames[0])
+        except (FileNotFoundError, PickleError):
+            task_filename = filenames[0]
+            domain_filename = _find_domain_filename(task_filename)
+            state = generate_initial_state(domain_filename, task_filename)
+    elif len(filenames) == 2:
+        domain_filename, task_filename = filenames
+        state = generate_initial_state(domain_filename, task_filename)
+    else:
+        logging.critical(
+            "Error: evaluator has to be called with either a path to a pickled state,"
+            "a task filename, or a domain filename followed by a task filename.")
+        sys.exit(EXIT_CODE_CRITICAL)
+
+    with temporary_files(state) as (domain_filename, task_filename):
+        improving = evaluate(domain_filename, task_filename)
+
+    if improving:
+        sys.exit(EXIT_CODE_IMPROVING)
+    else:
+        sys.exit(EXIT_CODE_NOT_IMPROVING)
 
 
 def _write_domain_header(task, file):

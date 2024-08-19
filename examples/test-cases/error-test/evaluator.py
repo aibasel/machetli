@@ -54,4 +54,4 @@ def evaluate(state):
     return state["level"] <= 3 and state["id"] == 5
 
 if __name__ == "__main__":
-    evaluator.main(evaluate)
+    evaluator.run_evaluator(evaluate)

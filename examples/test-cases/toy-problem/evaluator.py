@@ -35,4 +35,4 @@ def evaluate(state):
 
 
 if __name__ == "__main__":
-    evaluator.main(evaluate)
+    evaluator.run_evaluator(evaluate)

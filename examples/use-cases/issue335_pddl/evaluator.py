@@ -2,7 +2,7 @@
 
 import os
 
-from machetli import pddl, tools, evaluator
+from machetli import pddl, tools
 
 PYTHON37 = os.environ["PYTHON_3_7"]
 PLANNER_REPO = os.environ["DOWNWARD_REPO"]
@@ -22,4 +22,4 @@ def evaluate(domain_filename, problem_filename):
     return "AssertionError: Negated axiom impossible" in stderr
 
 if __name__ == "__main__":
-    evaluator.main(evaluate, pddl)
+    pddl.run_evaluator(evaluate)

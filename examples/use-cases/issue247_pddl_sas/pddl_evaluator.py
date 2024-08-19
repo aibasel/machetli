@@ -2,7 +2,7 @@
 
 import os
 
-from machetli import pddl, tools, evaluator
+from machetli import pddl, tools
 
 PLANNER_REPO = os.environ["DOWNWARD_REPO"]
 PLANNER = os.path.join(PLANNER_REPO, "fast-downward.py")
@@ -30,4 +30,4 @@ def evaluate(domain, problem):
             "Search stopped without finding a solution." in unsolvable_out
 
 if __name__ == "__main__":
-    evaluator.main(evaluate, pddl)
+    pddl.run_evaluator(evaluate)
