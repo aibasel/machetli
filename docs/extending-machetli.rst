@@ -107,7 +107,7 @@ to simplify writing evaluators. In package :mod:`machetli.pddl`, these are:
   ``contextlib`` and ``tempfile`` to make this easy to use and recommend to
   follow the same pattern.
 * :meth:`run_evaluator<machetli.pddl.run_evaluator>` loads the state given to
-  given to the evaluator script, temporarily writes the PDDL files to disk, and
+  the evaluator script, temporarily writes the PDDL files to disk, and
   then calls a PDDL specific evaluation function. We also recommend to have this
   function fall back to generating a state directly from your file type (a PDDL
   instance in this case) to make testing the evaluator easier.
