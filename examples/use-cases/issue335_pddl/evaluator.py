@@ -15,7 +15,7 @@ def evaluate(domain_filename, problem_filename):
     command = [PYTHON37, TRANSLATOR, f"{domain_filename}", f"{problem_filename}"]
     run = tools.Run(command, time_limit=20, memory_limit=3338)
 
-    ## TODO: add functionality to store logs {always, only on error} to the Run class. See run.py run_all.
+    ## TODO issue57: add functionality to store logs {always, only on error} to the Run class. See run.py run_all.
     stdout, stderr, returncode = run.start()
 
     ## TODO: add parsing methods?

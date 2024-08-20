@@ -88,13 +88,13 @@ def _update_completed_task_status(task, exit_code):
         task.status = EvaluationTask.DONE_AND_IMPROVING
     elif exit_code == EXIT_CODE_NOT_IMPROVING:
         task.status = EvaluationTask.DONE_AND_NOT_IMPROVING
-    elif exit_code == 24: # TODO issue82 (timeouts)
-        # TODO issue82: Detect running out of resources correctly:
-        # the process cannot report this with a custom exit code because
+    elif exit_code == EXIT_CODE_RESOURCE_LIMIT:
+        # TODO issue66: Detect running out of resources correctly:
+        # the process cannot always report this with a custom exit code because
         # it is killed when it runs out of resources. Maybe handle it in
         # the slurm wrapper or check for exit codes produced by signals here?
         task.status = EvaluationTask.OUT_OF_RESOURCES
-    elif False: # TODO issue82 (memouts)
+    elif False: # TODO issue66 (detect memouts)
         task.status = EvaluationTask.OUT_OF_RESOURCES
     else:
         task.status = EvaluationTask.CRITICAL

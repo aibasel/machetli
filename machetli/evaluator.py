@@ -1,5 +1,5 @@
 """
-Machetli evaluators are Python scripts that are started with the path to file
+Machetli evaluators are Python scripts that are started with the path to a file
 that represents a state in Machetli's search. They check if a certain behavior
 occurs for that input and communicate this back to the search with their exit
 code. The user documentation contains more information on :ref:`how to write an
