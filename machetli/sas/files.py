@@ -78,16 +78,16 @@ def run_evaluator(evaluate):
         filename = sys.argv[1]
         try:
             state = tools.read_state(filename)
+            sas_filename = temporary_file(state)
         except (FileNotFoundError, PickleError):
-            state = generate_initial_state(filename)
+            sas_filename = filename
     else:
         logging.critical(
-            "Error: evaluator has to be called with either a path to a pickled state, "
-            "or a path to a SAS^+ file.")
+            "Error: evaluator has to be called with either a path to a pickled "
+            "state, or a path to a SAS^+ file.")
         sys.exit(EXIT_CODE_CRITICAL)
 
-    with temporary_file(state) as sas_filename:
-        improving = evaluate(sas_filename)
+    improving = evaluate(sas_filename)
 
     if improving:
         sys.exit(EXIT_CODE_IMPROVING)
