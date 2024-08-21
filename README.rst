@@ -53,4 +53,6 @@ Support
 License
 -------
 
-Machetli is licensed under GPL3.
+Machetli is licensed under GPL3. We use code from `Fast Downward
+<https://github.com/aibasel/downward>`_ and `Lab <https://github
+.com/aibasel/lab>`_ under GPL3.
