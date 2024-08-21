@@ -173,7 +173,9 @@ class Environment:
             try:
                 run_dir.mkdir(parents=True, exist_ok=False)
             except FileExistsError:
-                raise SubmissionError(f"Could not create run_dir at '{run_dir}'.")
+                raise SubmissionError(
+                    f"Could not create run_dir at '{run_dir}'. Do you have old "
+                    f"experiment data at '{self.eval_dir}'?")
             write_state(successor.state, run_dir/self.STATE_FILENAME)
             tasks.append(EvaluationTask(successor, task_id, run_dir))
         return EvaluationJob(job_name, evaluator_path, batch_dir, tasks)
@@ -355,7 +357,6 @@ class SlurmEnvironment(Environment):
         self.export = export or self.DEFAULT_EXPORT
         self.setup = setup or self.DEFAULT_SETUP
 
-        self._wait_for_filesystem(self.eval_dir)
         self.sbatch_template = resources.read_text(templates, "slurm-array-job.template")
 
     def _prepare_job(self, evaluator_path, batch):
