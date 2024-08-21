@@ -51,6 +51,13 @@ def temporary_file(state: dict) -> str:
     os.remove(f.name)
 
 
+def _run_evaluator_on_sas_file(evaluate, sas_filename):
+    if evaluate(sas_filename):
+        sys.exit(EXIT_CODE_IMPROVING)
+    else:
+        sys.exit(EXIT_CODE_NOT_IMPROVING)
+
+
 def run_evaluator(evaluate):
     r"""
     Load the state passed to the script via its command line arguments, then run
@@ -78,21 +85,15 @@ def run_evaluator(evaluate):
         filename = sys.argv[1]
         try:
             state = tools.read_state(filename)
-            sas_filename = temporary_file(state)
+            with temporary_file(state) as sas_filename:
+                _run_evaluator_on_sas_file(evaluate, sas_filename)
         except (FileNotFoundError, PickleError):
-            sas_filename = filename
+            _run_evaluator_on_sas_file(evaluate, filename)
     else:
         logging.critical(
             "Error: evaluator has to be called with either a path to a pickled "
             "state, or a path to a SAS^+ file.")
         sys.exit(EXIT_CODE_CRITICAL)
-
-    improving = evaluate(sas_filename)
-
-    if improving:
-        sys.exit(EXIT_CODE_IMPROVING)
-    else:
-        sys.exit(EXIT_CODE_NOT_IMPROVING)
 
 
 def _read_task(sas_file : Path) -> SASTask:

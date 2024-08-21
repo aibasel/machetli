@@ -82,6 +82,13 @@ def temporary_files(state: dict) -> tuple:
     os.remove(problem_file.name)
 
 
+def _run_evaluator_on_pddl_files(evaluate, domain_filename, task_filename):
+    if evaluate(domain_filename, task_filename):
+        sys.exit(EXIT_CODE_IMPROVING)
+    else:
+        sys.exit(EXIT_CODE_NOT_IMPROVING)
+
+
 def run_evaluator(evaluate):
     """
     Load the state passed to the script via its command line arguments, then run
@@ -110,25 +117,23 @@ def run_evaluator(evaluate):
     if len(filenames) == 1:
         try:
             state = tools.read_state(filenames[0])
-            domain_filename, task_filename = temporary_files(state)
+            with temporary_files(state) as (domain_filename, task_filename):
+                _run_evaluator_on_pddl_files(evaluate, domain_filename,
+                                             task_filename)
         except (FileNotFoundError, PickleError):
             task_filename = filenames[0]
             domain_filename = _find_domain_filename(task_filename)
+            _run_evaluator_on_pddl_files(evaluate, domain_filename,
+                                         task_filename)
     elif len(filenames) == 2:
         domain_filename, task_filename = filenames
+        _run_evaluator_on_pddl_files(evaluate, domain_filename, task_filename)
     else:
         logging.critical(
             "Error: evaluator has to be called with either a path to a pickled "
             "state, a task filename, or a domain filename followed by a task "
             "filename.")
         sys.exit(EXIT_CODE_CRITICAL)
-
-    improving = evaluate(domain_filename, task_filename)
-
-    if improving:
-        sys.exit(EXIT_CODE_IMPROVING)
-    else:
-        sys.exit(EXIT_CODE_NOT_IMPROVING)
 
 
 def _write_domain_header(task, file):
