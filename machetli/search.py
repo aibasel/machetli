@@ -16,7 +16,7 @@ def search(initial_state, successor_generator, evaluator_path, environment=None,
     are interested in is still present in the transformed instance. The search
     always commits to the transformation of the first instance where the
     evaluator succeeds (first-choice hill climbing).
-    
+
     :param initial_state: is a dictionary describing the instance you want to
         simplify. The internal format of this dictionary has to match what the
         successor generators expect. Modules that include successor generators
@@ -28,19 +28,15 @@ def search(initial_state, successor_generator, evaluator_path, environment=None,
         SuccessorGenerators. If a list [s1, ..., sn] is given, the search first
         tries all successors from s1, then from s2, and so on.
 
-    :param evaluator_path: is the path to a Python file that contains a function
-        *evaluate(state)* that is used to check if the behaviour that the search
-        is analyzing is still present in the state. The function has to take a
-        single parameter that is the state of the search as a dictionary like
-        the one given to *search* as the *initial_state* parameter. It has to
-        return True if the behaviour is present and False otherwise. The
-        documentation has addition information on :ref:`how to write an
+    :param evaluator_path: is the path to a Python file that is used to check if
+        the behaviour that the search is analyzing is still present in the
+        state. Please refer to the user documentation on :ref:`how to write an
         evaluator <usage-evaluator>`.
         
     :param environment: determines how the search should be executed. If no
         environment is specified, a :class:`LocalEnvironment
         <machetli.environments.LocalEnvironment>` is used that executes
-        everything on sequence on the local machine. Alternatively, an
+        everything in sequence on the local machine. Alternatively, an
         implementation of :class:`SlurmEnvironment
         <machetli.environments.SlurmEnvironment>` can be used to parallelize the
         search on a cluster running the Slurm engine.
@@ -84,12 +80,11 @@ def search(initial_state, successor_generator, evaluator_path, environment=None,
         :linenos:
         :emphasize-lines: 4
 
-        initial_state = sas.generate_initial_state("bugged.sas")
-        evaluator_filename =
-        os.path.join(os.path.dirname(tools.get_script_path()), "evaluator.py")
+        initial_state = sas.generate_initial_state("bugged.sas") evaluator_path
+        = "./evaluator.py"
 
         result = search(initial_state, [sas.RemoveVariables(),
-        sas.RemoveOperators()], evaluator_filename)
+        sas.RemoveOperators()], evaluator_path)
 
         sas.write_file(result, "result.sas")
 

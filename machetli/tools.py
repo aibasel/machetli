@@ -5,6 +5,7 @@ Functions and classes that are not needed for this project were removed.
 import itertools
 import logging
 import os
+from pathlib import Path
 import pickle
 import pprint
 import random
@@ -49,9 +50,22 @@ def get_string(s):
 
 def get_script_path():
     """
-    Get absolute path to main script.
+    Get absolute path to main script, or the current working directory, if the
+    Python session is interactive.
     """
-    return os.path.abspath(sys.argv[0])
+    return Path(sys.argv[0]).absolute()
+
+
+def get_script_dir():
+    """
+    Get absolute path to the directory containing the main script, or the
+    current working directory, if the Python session is interactive.
+    """
+    script_path = get_script_path()
+    if script_path.is_file():
+        return get_script_path().parent.absolute()
+    else:
+        return Path().absolute()
 
 
 def get_python_executable():
@@ -143,20 +157,12 @@ def write_state(state, file_path):
         pickle.dump(state, state_file)
 
 
-def read_state(file_path, wait_time, repetitions):
+def read_state(file_path):
     """
-    Use pickle to read a state from disk. We expect this operation to occur on a
-    network file system that might take some time to synchronize, so we retry
-    the read operation multiple times if it fails, waiting a random amount
-    of time before each attempt (between 0 and *wait_time* seconds).
+    Use pickle to read a state from disk.
     """
-    for _ in range(repetitions):
-        time.sleep(wait_time * random.random())
-        if os.path.exists(file_path):
-            with open(file_path, "rb") as state_file:
-                return pickle.load(state_file)
-    else:
-        logging.critical(f"Could not find file '{file_path}' after {repetitions} attempts.")
+    with open(file_path, "rb") as state_file:
+        return pickle.load(state_file)
 
 
 # This function is copied from lab.calls.call (<https://lab.readthedocs.org>).
@@ -171,7 +177,7 @@ def _set_limit(kind, soft_limit, hard_limit):
 
 
 def parse(content, pattern, type=int):
-    """
+    r"""
     Look for matches of *pattern* in *content*. If any matches are found, the
     first group present in the regular expression is cast as *type* and
     returned.
@@ -210,6 +216,8 @@ def parse(content, pattern, type=int):
 
 
 class Run:
+    # TODO issue74: we might want to get rid of this class and replace it by a
+    # function with a cleaner interface.
     """
     Define an executable command with time and memory limits.
 

@@ -24,10 +24,7 @@ def parse_pddl_file(type, filename):
                          (type, filename, e))
 
 
-def open(domain_filename=None, task_filename=None):
-    task_filename = task_filename #or options.task
-    domain_filename = domain_filename #or options.domain
-
+def open(domain_filename, task_filename):
     domain_pddl = parse_pddl_file("domain", domain_filename)
     task_pddl = parse_pddl_file("task", task_filename)
 

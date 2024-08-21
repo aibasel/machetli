@@ -78,7 +78,7 @@ Evaluators
 
 Every state that is generated during the search will be evaluated to check if it
 still has the behavior you are looking for. This is done by an *evaluator*
-script, a Python script containing a single function :meth:`evaluate` that returns
-``True`` if the behavior is still present. The main part in setting up Machetli
-for your use case is :ref:`writing an evaluator script <usage-evaluator>` to
-reproduce the behavior you are interested in.
+script, a Python script that exits with specific exit codes to indicate whether
+the behavior is still present. The main work in setting up Machetli for your use
+case is :ref:`writing an evaluator script <usage-evaluator>` to reproduce the
+behavior you are interested in.

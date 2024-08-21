@@ -3,7 +3,7 @@
 import os
 import time
 
-from machetli import tools
+from machetli import tools, evaluator
 
 DOWNWARD_REPO = os.environ["DOWNWARD_REPO"]
 DOWNWARD_BENCHMARKS = os.environ["DOWNWARD_BENCHMARKS"]
@@ -53,4 +53,5 @@ def evaluate(state):
 
     return state["level"] <= 3 and state["id"] == 5
 
-
+if __name__ == "__main__":
+    evaluator.run_evaluator(evaluate)
