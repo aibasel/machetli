@@ -21,7 +21,7 @@ from machetli.errors import SubmissionError, PollingError, \
     format_called_process_error
 from machetli.evaluator import EXIT_CODE_BEHAVIOR_PRESENT, \
     EXIT_CODE_BEHAVIOR_NOT_PRESENT, EXIT_CODE_RESOURCE_LIMIT
-from machetli.tools import write_state, Run
+from machetli.tools import write_state, run_with_limits
 
 
 class EvaluationTask():

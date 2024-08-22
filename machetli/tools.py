@@ -114,18 +114,6 @@ def read_state(file_path):
         return pickle.load(state_file)
 
 
-# This function is copied from lab.calls.call (<https://lab.readthedocs.org>).
-# TODO: Move into run method as nested function.
-def _set_limit(kind, soft_limit, hard_limit):
-    try:
-        resource.setrlimit(kind, (soft_limit, hard_limit))
-    except (OSError, ValueError) as err:
-        logging.critical(
-            f"Resource limit for {kind} could not be set to "
-            f"[{soft_limit}, {hard_limit}] ({err})"
-        )
-
-
 def parse(content, pattern, type=int):
     r"""
     Look for matches of *pattern* in *content*. If any matches are found, the
@@ -165,14 +153,14 @@ def parse(content, pattern, type=int):
         logging.debug(f"Failed to find pattern '{regex}'.")
 
 
-class Run:
-    # TODO issue74: we might want to get rid of this class and replace it by a
-    # function with a cleaner interface.
+# TODO: Properly provide interface in style of subprocess.run.
+def run_with_limits(command, time_limit=1800, memory_limit=None,
+                    log_output=None, input_file=None, stdout=None, stderr=None):
     """
-    Define an executable command with time and memory limits.
+    Run an executable command with time and memory limits.
 
-    :param command: is a list of strings defining the command to execute. For details, see
-        the Python module
+    :param command: is a list of strings defining the command to execute. For
+        details, see the Python module
         `subprocess <https://docs.python.org/3/library/subprocess.html>`_.
 
     :param time_limit: time in seconds after which the command is terminated.
@@ -182,6 +170,8 @@ class Run:
     :param memory_limit: memory limit in MiB to use for executing the command.
 
     :param log_output:
+        # TODO: there is no longer a method *start*, so this documentation needs
+        #  to be updated.
         the method :meth:`start` will return whatever the command writes to
         stdout and stderr as strings. However, this log output will not be
         written to the main log or to disk, unless you specify it otherwise in
@@ -197,72 +187,59 @@ class Run:
         of `None`, nothing is passed to stdin.
 
     """
+    log_on_fail = log_output == "on_fail"
+    log_always = log_output == "always"
 
-    def __init__(self, command, time_limit=1800, memory_limit=None,
-                 log_output=None, input_file=None):
-        self.command = command
-        self.time_limit = time_limit
-        self.memory_limit = memory_limit
-        self.log_on_fail = log_output == "on_fail"
-        self.log_always = log_output == "always"
-        self.input_file = input_file
+    # This function is copied from lab.calls.call
+    # (<https://github.com/aibasel/lab>).
+    def _set_limit(kind, soft_limit, hard_limit):
+        try:
+            resource.setrlimit(kind, (soft_limit, hard_limit))
+        except (OSError, ValueError) as err:
+            logging.critical(
+                f"Resource limit for {kind} could not be set to "
+                f"[{soft_limit}, {hard_limit}] ({err})"
+            )
 
-    def __repr__(self):
-        cmd = " ".join([os.path.basename(part) for part in self.command])
-        if self.input_file:
-            cmd += f" < {self.input_file}"
-        return f'Run(\"{cmd}\")'
+    def _prepare_call():
+        # When the soft time limit is reached, SIGXCPU is emitted. Once we
+        # reach the higher hard time limit, SIGILL is sent. Having some
+        # padding between the two limits allows programs to handle SIGXCPU.
+        if time_limit is not None:
+            _set_limit(resource.RLIMIT_CPU, time_limit, time_limit + 5)
+        if memory_limit is not None:
+            _, hard_mem_limit = resource.getrlimit(resource.RLIMIT_AS)
+            # Convert memory from MiB to Bytes.
+            _set_limit(resource.RLIMIT_AS, memory_limit *
+                       1024 * 1024, hard_mem_limit)
+        _set_limit(resource.RLIMIT_CORE, 0, 0)
 
-    def start(self):
-        """
-        Run the command with the given resource limits
-        
-        :returns: the 3-tuple (stdout, stderr, returncode) with the values
-            obtained from the executed command.
-        """
-        # These declarations are needed for the _prepare_call() function.
-        time_limit = self.time_limit
-        memory_limit = self.memory_limit
+    logging.debug(f"Command:\n{command}")
 
-        def _prepare_call():
-            # When the soft time limit is reached, SIGXCPU is emitted. Once we
-            # reach the higher hard time limit, SIGKILL is sent. Having some
-            # padding between the two limits allows programs to handle SIGXCPU.
-            if time_limit is not None:
-                _set_limit(resource.RLIMIT_CPU, time_limit, time_limit + 5)
-            if memory_limit is not None:
-                _, hard_mem_limit = resource.getrlimit(resource.RLIMIT_AS)
-                # Convert memory from MiB to Bytes.
-                _set_limit(resource.RLIMIT_AS, memory_limit *
-                           1024 * 1024, hard_mem_limit)
-            _set_limit(resource.RLIMIT_CORE, 0, 0)
+    stdin = subprocess.PIPE if input_file else None
+    process = subprocess.Popen(command,
+                               preexec_fn=_prepare_call,
+                               stdout=subprocess.PIPE,
+                               stderr=subprocess.PIPE,
+                               stdin=stdin,
+                               text=True)
+    input_text = None
+    if input_file:
+        with open(input_file, "r") as file:
+            input_text = file.read()
 
-        logging.debug(f"Command:\n{self.command}")
+    out_str, err_str = process.communicate(input=input_text)
 
-        stdin = subprocess.PIPE if self.input_file else None
-        process = subprocess.Popen(self.command,
-                                   preexec_fn=_prepare_call,
-                                   stdout=subprocess.PIPE,
-                                   stderr=subprocess.PIPE,
-                                   stdin=stdin,
-                                   text=True)
-        input_text = None
-        if self.input_file:
-            with open(self.input_file, "r") as file:
-                input_text = file.read()
+    # TODO: The following block stems from *run_all* and we might want to
+    #  reuse some of its logic.
+    # if log_always or log_on_fail and returncode != 0:
+    #     cwd = state["cwd"] if "cwd" in state else os.path.dirname(
+    #         get_script_path())
+    #     if stdout:
+    #         with open(os.path.join(cwd, f"{name}.log"), "w") as logfile:
+    #             logfile.write(stdout)
+    #     if stderr:
+    #         with open(os.path.join(cwd, f"{name}.err"), "w") as errfile:
+    #             errfile.write(stderr)
 
-        out_str, err_str = process.communicate(input=input_text)
-
-        # TODO: The following block stems from *run_all* and we might want to
-        #  reuse some of its logic.
-        # if run.log_always or run.log_on_fail and returncode != 0:
-        #     cwd = state["cwd"] if "cwd" in state else os.path.dirname(
-        #         get_script_path())
-        #     if stdout:
-        #         with open(os.path.join(cwd, f"{name}.log"), "w") as logfile:
-        #             logfile.write(stdout)
-        #     if stderr:
-        #         with open(os.path.join(cwd, f"{name}.err"), "w") as errfile:
-        #             errfile.write(stderr)
-
-        return out_str, err_str, process.returncode
+    return out_str, err_str, process.returncode
