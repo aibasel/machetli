@@ -7,13 +7,11 @@ import logging
 import os
 from pathlib import Path
 import pickle
-import pprint
-import random
 import re
 import resource
+import shutil
 import subprocess
 import sys
-import time
 
 
 DEFAULT_ENCODING = "utf-8"
@@ -32,20 +30,10 @@ def batched(iterable, n):
 
     """
     if n < 1:
-        raise ValueError('n must be at least one')
+        raise ValueError(f'batch size was {n=} but must be at least one')
     it = iter(iterable)
     while batch := tuple(itertools.islice(it, n)):
         yield batch
-
-
-def get_string(s):
-    """
-    Decode a byte string.
-    """
-    if isinstance(s, bytes):
-        return s.decode(DEFAULT_ENCODING)
-    else:
-        raise ValueError("tools.get_string() only accepts byte strings")
 
 
 def get_script_path():
@@ -56,23 +44,11 @@ def get_script_path():
     return Path(sys.argv[0]).absolute()
 
 
-def get_script_dir():
-    """
-    Get absolute path to the directory containing the main script, or the
-    current working directory, if the Python session is interactive.
-    """
-    script_path = get_script_path()
-    if script_path.is_file():
-        return get_script_path().parent.absolute()
-    else:
-        return Path().absolute()
-
-
 def get_python_executable():
     """
     Get path to the main Python executable.
     """
-    return sys.executable or "python"
+    return sys.executable or shutil.which("python")
 
 
 def configure_logging(level=logging.INFO):
@@ -121,33 +97,6 @@ def configure_logging(level=logging.INFO):
     root_logger.addHandler(stderr_handler)
     root_logger.setLevel(level)
 
-# TODO: only used by a deprecated parser function. will be removed.
-def make_list(value):
-    """
-    Turn tuples, sets, lists and single objects into lists of objects.
-
-    .. note:: Deprecated (might be removed soon)
-    """
-    if value is None:
-        return []
-    elif isinstance(value, list):
-        return value[:]
-    elif isinstance(value, (tuple, set)):
-        return list(value)
-    else:
-        return [value]
-
-
-def makedirs(path):
-    """
-    os.makedirs() variant that doesn't complain if the path already exists.
-    """
-    try:
-        os.makedirs(path)
-    except OSError:
-        # Directory probably already exists.
-        pass
-
 
 def write_state(state, file_path):
     """
@@ -166,6 +115,7 @@ def read_state(file_path):
 
 
 # This function is copied from lab.calls.call (<https://lab.readthedocs.org>).
+# TODO: Move into run method as nested function.
 def _set_limit(kind, soft_limit, hard_limit):
     try:
         resource.setrlimit(kind, (soft_limit, hard_limit))
