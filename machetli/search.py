@@ -121,13 +121,15 @@ def _get_improving_successor(evaluator_path, successors, environment, determinis
     for batch in batched(successors, environment.batch_size):
         task_ids = list(range(len(batch)))
         def on_task_completed(task):
-            if deterministic and task.status != EvaluationTask.DONE_AND_NOT_IMPROVING:
+            if (deterministic and task.status !=
+                    EvaluationTask.DONE_AND_BEHAVIOR_NOT_PRESENT):
                 # Either we have an improving successor, or there was an error.
                 # In both cases deterministic mode cannot continue.
                 task_ids_to_cancel = [i for i in task_ids if i > task.successor_id]
-            elif not deterministic and task.status == EvaluationTask.DONE_AND_IMPROVING:
-                # We found an improving successor, so all other
-                # evaluations can be canceled.
+            elif (not deterministic and task.status ==
+                  EvaluationTask.DONE_AND_BEHAVIOR_PRESENT):
+                # We found an improving successor, so all other evaluations can
+                # be canceled.
                 task_ids_to_cancel = task_ids
             else:
                 task_ids_to_cancel = None
@@ -135,9 +137,9 @@ def _get_improving_successor(evaluator_path, successors, environment, determinis
 
         tasks = environment.run(evaluator_path, batch, on_task_completed)
         for task in tasks:
-            if task.status == EvaluationTask.DONE_AND_NOT_IMPROVING:
+            if task.status == EvaluationTask.DONE_AND_BEHAVIOR_NOT_PRESENT:
                 continue
-            elif task.status == EvaluationTask.DONE_AND_IMPROVING:
+            elif task.status == EvaluationTask.DONE_AND_BEHAVIOR_PRESENT:
                 return task.successor.state, task.successor.change_msg
             elif task.status == EvaluationTask.OUT_OF_RESOURCES:
                 if deterministic:

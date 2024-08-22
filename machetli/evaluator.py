@@ -14,12 +14,12 @@ import sys
 from machetli.tools import read_state
 
 
-EXIT_CODE_IMPROVING = 42
+EXIT_CODE_BEHAVIOR_PRESENT = 42
 """
 Exit code returned by an evaluator if the given state exhibits the behavior
 that the evaluator is checking for.
 """
-EXIT_CODE_NOT_IMPROVING = 33
+EXIT_CODE_BEHAVIOR_NOT_PRESENT = 33
 """
 Exit code returned by an evaluator if the given state does not exhibit the
 behavior that the evaluator is checking for.
@@ -43,9 +43,9 @@ def run_evaluator(evaluate):
     Load the state passed to the script via its only command line arguments,
     then run the given function *evaluate* on it, and exit the program with the
     appropriate exit code. If the function returns ``True``, use
-    :attr:`EXIT_CODE_IMPROVING<machetli.evaluator.EXIT_CODE_IMPROVING>`
-    otherwise, use
-    :attr:`EXIT_CODE_NOT_IMPROVING<machetli.evaluator.EXIT_CODE_NOT_IMPROVING>`.
+    :attr:`EXIT_CODE_BEHAVIOR_PRESENT<machetli.evaluator.EXIT_CODE_BEHAVIOR_PRESENT>`,
+    otherwise use
+    :attr:`EXIT_CODE_BEHAVIOR_NOT_PRESENT<machetli.evaluator.EXIT_CODE_NOT_PRESENT>`.
 
     This function is meant to be used as the main function of an evaluator
     script. Package-specific overloads are available for more convenient
@@ -55,17 +55,18 @@ def run_evaluator(evaluate):
         input and returning ``True`` if the specified behavior occurs for the
         given instance, and ``False`` if it doesn't. Other ways of exiting the
         function (exceptions, ``sys.exit`` with exit codes other than
-        :attr:`EXIT_CODE_IMPROVING<machetli.evaluator.EXIT_CODE_IMPROVING>` or
-        :attr:`EXIT_CODE_NOT_IMPROVING<machetli.evaluator.EXIT_CODE_NOT_IMPROVING>`)
+        :attr:`EXIT_CODE_BEHAVIOR_PRESENT<machetli.evaluator.EXIT_CODE_BEHAVIOR_PRESENT>` or
+        :attr:`EXIT_CODE_BEHAVIOR_NOT_PRESENT<machetli.evaluator.EXIT_CODE_BEHAVIOR_NOT_PRESENT>`)
         are treated as failed evaluations by the search.
 
     """
     if len(sys.argv) != 2:
-        logging.critical("Expected path to the state to evaluate as the single command line parameter.")
+        logging.critical("Expected path to the state to evaluate as the single "
+                         "command line parameter.")
         sys.exit(EXIT_CODE_CRITICAL)
     state = read_state(sys.argv[1])
 
     if evaluate(state):
-        sys.exit(EXIT_CODE_IMPROVING)
+        sys.exit(EXIT_CODE_BEHAVIOR_PRESENT)
     else:
-        sys.exit(EXIT_CODE_NOT_IMPROVING)
+        sys.exit(EXIT_CODE_BEHAVIOR_NOT_PRESENT)

@@ -11,7 +11,8 @@ from machetli.pddl.downward.pddl import Truth
 from machetli.pddl.downward.pddl.conditions import ConstantCondition, Atom
 
 from machetli import tools
-from machetli.evaluator import EXIT_CODE_CRITICAL, EXIT_CODE_IMPROVING, EXIT_CODE_NOT_IMPROVING
+from machetli.evaluator import EXIT_CODE_CRITICAL, EXIT_CODE_BEHAVIOR_PRESENT, \
+    EXIT_CODE_BEHAVIOR_NOT_PRESENT
 
 SIN = " "  # single indentation
 DIN = "  "  # double indentation
@@ -83,10 +84,27 @@ def temporary_files(state: dict) -> tuple:
 
 
 def _run_evaluator_on_pddl_files(evaluate, domain_filename, task_filename):
+    """
+    Run the given function *evaluate* and exit with the appropriate exit code.
+    If the function returns ``True``, use
+    :attr:`EXIT_CODE_BEHAVIOR_PRESENT<machetli.evaluator.EXIT_CODE_BEHAVIOR_PRESENT>`,
+    otherwise use
+    :attr:`EXIT_CODE_BEHAVIOR_NOT_PRESENT<machetli.evaluator.EXIT_CODE_BEHAVIOR_NOT_PRESENT>`.
+
+    :param evaluate: is a function taking filenames of a PDDL domain and problem
+        file as input and returning ``True`` if the specified behavior occurs
+        for the given instance, and ``False`` if it doesn't. Other ways of
+        exiting the function (exceptions, ``sys.exit`` with exit codes other than
+        :attr:`EXIT_CODE_BEHAVIOR_PRESENT<machetli.evaluator.EXIT_CODE_BEHAVIOR_PRESENT>` or
+        :attr:`EXIT_CODE_BEHAVIOR_NOT_PRESENT<machetli.evaluator.EXIT_CODE_BEHAVIOR_NOT_PRESENT>`)
+        are treated as failed evaluations by the search.
+    :param domain_filename: is the filename of a PDDL domain file.
+    :param task_filename: is the filename of a PDDL problem file.
+    """
     if evaluate(domain_filename, task_filename):
-        sys.exit(EXIT_CODE_IMPROVING)
+        sys.exit(EXIT_CODE_BEHAVIOR_PRESENT)
     else:
-        sys.exit(EXIT_CODE_NOT_IMPROVING)
+        sys.exit(EXIT_CODE_BEHAVIOR_NOT_PRESENT)
 
 
 def run_evaluator(evaluate):
@@ -95,9 +113,9 @@ def run_evaluator(evaluate):
     the given function *evaluate* on the domain and problem encoded in the
     state, and exit the program with the appropriate exit code. If the function
     returns ``True``, use
-    :attr:`EXIT_CODE_IMPROVING<machetli.evaluator.EXIT_CODE_IMPROVING>`
-    otherwise, use
-    :attr:`EXIT_CODE_NOT_IMPROVING<machetli.evaluator.EXIT_CODE_NOT_IMPROVING>`.
+    :attr:`EXIT_CODE_BEHAVIOR_PRESENT<machetli.evaluator.EXIT_CODE_BEHAVIOR_PRESENT>`,
+    otherwise use
+    :attr:`EXIT_CODE_NOT_BEHAVIOR_PRESENT<machetli.evaluator.EXIT_CODE_NOT_BEHAVIOR_PRESENT>`.
 
     This function is meant to be used as the main function of an evaluator
     script. Instead of a path to the state, the command line arguments can also
@@ -106,11 +124,11 @@ def run_evaluator(evaluate):
     debugging the evaluator directly on PDDL input.
 
     :param evaluate: is a function taking filenames of a PDDL domain and problem
-        file as input and returning ``True`` if the specified behavior occurs for
-        the given instance, and ``False`` if it doesn't. Other ways of exiting the
-        function (exceptions, ``sys.exit`` with exit codes other than
-        :attr:`EXIT_CODE_IMPROVING<machetli.evaluator.EXIT_CODE_IMPROVING>` or
-        :attr:`EXIT_CODE_NOT_IMPROVING<machetli.evaluator.EXIT_CODE_NOT_IMPROVING>`)
+        file as input and returning ``True`` if the specified behavior occurs
+        for the given instance, and ``False`` if it doesn't. Other ways of
+        exiting the function (exceptions, ``sys.exit`` with exit codes other than
+        :attr:`EXIT_CODE_BEHAVIOR_PRESENT<machetli.evaluator.EXIT_CODE_BEHAVIOR_PRESENT>` or
+        :attr:`EXIT_CODE_BEHAVIOR_NOT_PRESENT<machetli.evaluator.EXIT_CODE_BEHAVIOR_NOT_PRESENT>`)
         are treated as failed evaluations by the search.
     """
     filenames = sys.argv[1:]

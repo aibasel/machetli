@@ -19,8 +19,8 @@ import time
 from machetli import tools, templates
 from machetli.errors import SubmissionError, PollingError, \
     format_called_process_error
-from machetli.evaluator import EXIT_CODE_IMPROVING, \
-    EXIT_CODE_NOT_IMPROVING, EXIT_CODE_RESOURCE_LIMIT
+from machetli.evaluator import EXIT_CODE_BEHAVIOR_PRESENT, \
+    EXIT_CODE_BEHAVIOR_NOT_PRESENT, EXIT_CODE_RESOURCE_LIMIT
 from machetli.tools import write_state, Run
 
 
@@ -34,15 +34,15 @@ class EvaluationTask():
     """
     Status of tasks from the time they are started until they stop for any reason.
     """
-    DONE_AND_IMPROVING = "improving"
+    DONE_AND_BEHAVIOR_PRESENT = "behavior present"
     """
     Status of tasks that successfully evaluated their successor and showed that
-    this successor is improving.
+    this successor exhibits the behavior that the evaluator is checking for.
     """
-    DONE_AND_NOT_IMPROVING = "not improving"
+    DONE_AND_BEHAVIOR_NOT_PRESENT= "behavior not present"
     """
     Status of tasks that successfully evaluated their successor but showed that
-    this successor is not improving.
+    this successor does not exhibit the behavior that the evaluator is checking for.
     """
     OUT_OF_RESOURCES = "ran out of resources"
     """
@@ -84,10 +84,10 @@ class EvaluationJob():
 
 
 def _update_completed_task_status(task, exit_code):
-    if exit_code == EXIT_CODE_IMPROVING:
-        task.status = EvaluationTask.DONE_AND_IMPROVING
-    elif exit_code == EXIT_CODE_NOT_IMPROVING:
-        task.status = EvaluationTask.DONE_AND_NOT_IMPROVING
+    if exit_code == EXIT_CODE_BEHAVIOR_PRESENT:
+        task.status = EvaluationTask.DONE_AND_BEHAVIOR_PRESENT
+    elif exit_code == EXIT_CODE_BEHAVIOR_NOT_PRESENT:
+        task.status = EvaluationTask.DONE_AND_BEHAVIOR_NOT_PRESENT
     elif exit_code == EXIT_CODE_RESOURCE_LIMIT:
         # TODO issue66: Detect running out of resources correctly:
         # the process cannot always report this with a custom exit code because

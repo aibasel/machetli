@@ -11,7 +11,8 @@ from machetli.sas.sas_tasks import SASTask, SASVariables, SASMutexGroup, \
     SASInit, SASGoal, SASOperator, SASAxiom
 
 from machetli import tools
-from machetli.evaluator import EXIT_CODE_CRITICAL, EXIT_CODE_IMPROVING, EXIT_CODE_NOT_IMPROVING
+from machetli.evaluator import EXIT_CODE_CRITICAL, EXIT_CODE_BEHAVIOR_PRESENT, \
+    EXIT_CODE_BEHAVIOR_NOT_PRESENT
 
 
 def generate_initial_state(sas_file: str) -> dict:
@@ -53,9 +54,9 @@ def temporary_file(state: dict) -> str:
 
 def _run_evaluator_on_sas_file(evaluate, sas_filename):
     if evaluate(sas_filename):
-        sys.exit(EXIT_CODE_IMPROVING)
+        sys.exit(EXIT_CODE_BEHAVIOR_PRESENT)
     else:
-        sys.exit(EXIT_CODE_NOT_IMPROVING)
+        sys.exit(EXIT_CODE_BEHAVIOR_NOT_PRESENT)
 
 
 def run_evaluator(evaluate):
@@ -64,9 +65,9 @@ def run_evaluator(evaluate):
     the given function *evaluate* on the SAS\ :sup:`+` file encoded in the
     state, and exit the program with the appropriate exit code. If the function
     returns ``True``, use
-    :attr:`EXIT_CODE_IMPROVING<machetli.evaluator.EXIT_CODE_IMPROVING>`
-    otherwise, use
-    :attr:`EXIT_CODE_NOT_IMPROVING<machetli.evaluator.EXIT_CODE_NOT_IMPROVING>`.
+    :attr:`EXIT_CODE_BEHAVIOR_PRESENT<machetli.evaluator.EXIT_CODE_BEHAVIOR_PRESENT>`,
+    otherwise use
+    :attr:`EXIT_CODE_BEHAVIOR_NOT_PRESENT<machetli.evaluator.EXIT_CODE_BEHAVIOR_NOT_PRESENT>`.
 
     This function is meant to be used as the main function of an evaluator
     script. Instead of a path to the state, the command line arguments can also
@@ -77,8 +78,8 @@ def run_evaluator(evaluate):
         input and returning ``True`` if the specified behavior occurs for the
         given instance, and ``False`` if it doesn't. Other ways of exiting the
         function (exceptions, ``sys.exit`` with exit codes other than
-        :attr:`EXIT_CODE_IMPROVING<machetli.evaluator.EXIT_CODE_IMPROVING>` or
-        :attr:`EXIT_CODE_NOT_IMPROVING<machetli.evaluator.EXIT_CODE_NOT_IMPROVING>`)
+        :attr:`EXIT_CODE_BEHAVIOR_PRESENT<machetli.evaluator.EXIT_CODE_BEHAVIOR_PRESENT>` or
+        :attr:`EXIT_CODE_BEHAVIOR_NOT_PRESENT<machetli.evaluator.EXIT_CODE_BEHAVIOR_NOT_PRESENT>`)
         are treated as failed evaluations by the search.
     """
     if len(sys.argv) == 2:
