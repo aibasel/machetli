@@ -13,19 +13,19 @@ PROBLEM1 = os.path.join(DOWNWARD_BENCHMARKS, "tpp/p05.pddl")
 PROBLEM2 = os.path.join(DOWNWARD_BENCHMARKS, "tpp/p07.pddl")
 
 def run_succeed():
-    return tools.run_with_limits(
+    return tools.run(
         [PYTHON, PLANNER, PROBLEM1, "--search", "astar(lmcut())"],
-        time_limit=60, memory_limit=4000, log_output="on_fail")
+        timeout=60, memory_limit=4000, log_output="on_fail")
 
 def run_exceed_time_limit():
-    return tools.run_with_limits(
+    return tools.run(
         [PYTHON, PLANNER, PROBLEM2, "--search", "astar(lmcut())"],
-        time_limit=10, memory_limit=4000, log_output="on_fail")
+        timeout=10, memory_limit=4000, log_output="on_fail")
 
 def run_exceed_memory_limit():
-    return tools.run_with_limits(
+    return tools.run(
         [PYTHON, PLANNER, "--search-memory-limit", "100M", PROBLEM2,
-         "--search", "astar(lmcut())"], time_limit=1800, log_output="on_fail")
+         "--search", "astar(lmcut())"], timeout=1800, log_output="on_fail")
 
 
 def evaluate(state):

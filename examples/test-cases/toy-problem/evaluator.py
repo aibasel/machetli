@@ -29,7 +29,7 @@ def evaluate(state):
     # TODO: This was previously displayed on stdout locally but is not anymore.
     logging.info(f"Evaluating: <id={state_id}, level={level}>")
 
-    tools.run_with_limits(["echo", "Hello", "world"])
+    tools.run(["echo", "Hello", "world"])
     return level + state_id == 3
 
 

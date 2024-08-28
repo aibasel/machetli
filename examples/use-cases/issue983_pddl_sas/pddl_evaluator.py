@@ -13,8 +13,8 @@ def evaluate(domain, problem):
         PLANNER, domain, problem, "--search", "astar(lmcut())",
         "--translate-options", "--relaxed",
     ]
-    result_reference = tools.run_with_limits(
-        reference_command, time_limit=20, memory_limit=3000)
+    result_reference = tools.run(reference_command, timeout=20,
+                                 memory_limit=3000)
     cost = tools.parse(result_reference.stdout, r"Plan cost: (\d+)")
 
     mip_command = [
@@ -23,8 +23,7 @@ def evaluate(domain, problem):
         "use_time_vars=true, use_integer_vars=true)], "
         "use_integer_operator_counts=True), bound=0)",
     ]
-    result_mip = tools.run_with_limits(
-        mip_command, time_limit=20, memory_limit=3000)
+    result_mip = tools.run(mip_command, timeout=20, memory_limit=3000)
     initial_h = tools.parse(result_mip.stdout,
                             r"Initial heuristic value .* ("r"\d+)")
 

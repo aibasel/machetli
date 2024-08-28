@@ -13,15 +13,14 @@ def evaluate(sas_filename):
         PLANNER, sas_filename, "--search",
         "astar(lmcount(lm_rhw(use_orders=false)))",
     ]
-    result_solvable = tools.run_with_limits(
-        solvable_command, time_limit=10, memory_limit=3000)
+    result_solvable = tools.run(solvable_command, timeout=10, memory_limit=3000)
 
     unsolvable_command = [
         PLANNER, sas_filename, "--search",
         "astar(lmcount(lm_rhw(use_orders=true)))",
     ]
-    result_unsolvable = tools.run_with_limits(
-        unsolvable_command, time_limit=10, memory_limit=3000)
+    result_unsolvable = tools.run(unsolvable_command, timeout=10,
+                                  memory_limit=3000)
 
     return ("Solution found." in result_solvable.stdout and
             "Search stopped without finding a solution." in result_unsolvable.stdout)

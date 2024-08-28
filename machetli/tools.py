@@ -154,16 +154,25 @@ def parse(content, pattern, type=int):
 
 
 # TODO: Properly provide interface in style of subprocess.run.
-def run_with_limits(command, *, time_limit=1800, memory_limit=None,
-                    core_dump_limit=0, input_filename=None,
-                    stdout_filename=None, stderr_filename=None, **kwargs):
+def run(command, *, cpu_time_limit=None, memory_limit=None,
+        core_dump_limit=0, input_filename=None,
+        stdout_filename=None, stderr_filename=None, **kwargs):
     # TODO: Update documentation.
     """
-    This function is a wrapper for the Python function `subprocess.run` (see
-    `subprocess <https://docs.python.org/3/library/subprocess.html>`_. It can be
-    called with any of the keyword arguments of `subprocess.run`. It adds
-    additional utility to set time and memory limits for the invoked process
-    and it is possible to automatically redirect `stdout` and `stderr` to files.
+    This function is a wrapper for the `run` function of the Python `subprocess`
+    module (see
+    `subprocess <https://docs.python.org/3/library/subprocess.html>`_). It is
+    meant as a convenience to ease common use cases of Machetli. A majority of
+    the keyword parameters of `subprocess.run` are supported with the following
+    changes:
+    - `capture_output` is disallowed since we always capture output.
+    - `input`, `stdout`, and `stderr` are replaced with `input_filename`,
+      `stdout_filename`, and `stderr_filename`, respectively. They expect a
+      `string` or `None` as input rather than a file or anything else. If they
+      are set to `None`, the output is sent to `subprocess.PIPE` instead of
+      written to files.
+    # TODO: more changes to subprocess.run?
+
 
     :param command: is a list of strings defining the command to execute. For
         details, see the Python module
@@ -193,6 +202,12 @@ def run_with_limits(command, *, time_limit=1800, memory_limit=None,
         of `None`, nothing is passed to stdin.
 
     """
+    for keyword in ["input", "capture_output", "stdout", "stderr"]:
+        if keyword in kwargs:
+            logging.critical(f"Unsupported keyword parameter `{keyword}` of "
+                             "function `tools.run`. See our documentation to "
+                             "find out which keywords you can use instead of "
+                             "these common `subprocess.run` keywords.")
 
     # This function is copied from lab.calls.call
     # (<https://github.com/aibasel/lab>).
@@ -206,11 +221,11 @@ def run_with_limits(command, *, time_limit=1800, memory_limit=None,
             )
 
     def _prepare_call():
-        # When the soft time limit is reached, SIGXCPU is emitted. Once we
+        # When the soft CPU time limit is reached, SIGXCPU is emitted. Once we
         # reach the higher hard time limit, SIGILL is sent. Having some
         # padding between the two limits allows programs to handle SIGXCPU.
-        if time_limit is not None:
-            _set_limit(resource.RLIMIT_CPU, time_limit, time_limit + 5)
+        if cpu_time_limit is not None:
+            _set_limit(resource.RLIMIT_CPU, cpu_time_limit, cpu_time_limit + 5)
         if memory_limit is not None:
             _, hard_mem_limit = resource.getrlimit(resource.RLIMIT_AS)
             # Convert memory from MiB to Bytes.
@@ -219,9 +234,9 @@ def run_with_limits(command, *, time_limit=1800, memory_limit=None,
         _set_limit(resource.RLIMIT_CORE, core_dump_limit, core_dump_limit)
 
     @contextmanager
-    def _conditional_open(filename, mode):
+    def _open_or_pipe(filename, mode):
         if filename is None:
-            yield None
+            yield subprocess.PIPE
         else:
             with open(filename, mode) as file:
                 yield file
@@ -236,11 +251,11 @@ def run_with_limits(command, *, time_limit=1800, memory_limit=None,
     if input_path is not None:
         input_content = input_path.read_bytes()
 
-    with _conditional_open(stdout_path, "wb") as stdout_file, \
-            _conditional_open(stderr_path, "wb") as stderr_file:
+    with _open_or_pipe(stdout_path, "wb") as stdout, \
+            _open_or_pipe(stderr_path, "wb") as stderr:
         proc = subprocess.run(
-            command, preexec_fn=_prepare_call, stdout=stdout_file,
-            stderr=stderr_file, input=input_content, text=True, **kwargs)
+            command, preexec_fn=_prepare_call, stdout=stdout,
+            stderr=stderr, input=input_content, text=True, **kwargs)
 
     if stdout_path:
         proc.stdout = stdout_path.read_text()
