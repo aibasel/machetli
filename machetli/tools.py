@@ -222,8 +222,9 @@ def run_with_limits(command, *, time_limit=1800, memory_limit=None,
     def _conditional_open(filename, mode):
         if filename is None:
             yield None
-        with open(filename, mode) as file:
-            yield file
+        else:
+            with open(filename, mode) as file:
+                yield file
 
     logging.debug(f"Command:\n{command}")
 
