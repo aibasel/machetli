@@ -153,11 +153,9 @@ def parse(content, pattern, type=int):
         logging.debug(f"Failed to find pattern '{regex}'.")
 
 
-# TODO: Properly provide interface in style of subprocess.run.
 def run(command, *, cpu_time_limit=None, memory_limit=None,
         core_dump_limit=0, input_filename=None,
         stdout_filename=None, stderr_filename=None, **kwargs):
-    # TODO: Update documentation.
     """
     This function is a wrapper for the `run` function of the Python `subprocess`
     module (see
@@ -171,35 +169,35 @@ def run(command, *, cpu_time_limit=None, memory_limit=None,
       `string` or `None` as input rather than a file or anything else. If they
       are set to `None`, the output is sent to `subprocess.PIPE` instead of
       written to files.
-    # TODO: more changes to subprocess.run?
 
+    :param command:
+        A list of strings defining the command to execute. For details, see the
+        Python module `subprocess <https://docs.python.org/3/library/subprocess.html>`_.
 
-    :param command: is a list of strings defining the command to execute. For
-        details, see the Python module
-        `subprocess <https://docs.python.org/3/library/subprocess.html>`_.
+    :param cpu_time_limit:
+        Time in seconds after which the command is terminated. Because states
+        are evaluated in sequence in Machetli, it is important to use resource
+        limits to make sure a command eventually terminates. If you do not
+        require CPU time, you can also use the `subprocess.run` keyword argument
+        `timeout` which limits wall-clock time instead.
 
-    :param time_limit: time in seconds after which the command is terminated.
-        Because states are evaluated in sequence in Machetli, it is important
-        to use resource limits to make sure a command eventually terminates.
+    :param memory_limit:
+        Memory limit in MiB to use for executing the command.
 
-    :param memory_limit: memory limit in MiB to use for executing the command.
+    :param core_dump_limit:
+        Limit in MiB of data written to disk in case the executed command
+        crashes. By default we allow no core dump.
 
-    :param log_output:
-        # TODO: there is no longer a method *start*, so this documentation needs
-        #  to be updated.
-        the method :meth:`start` will return whatever the command writes to
-        stdout and stderr as strings. However, this log output will not be
-        written to the main log or to disk, unless you specify it otherwise in
-        this option. Use the *log_output* option ``"on_fail"`` if you want log
-        files to be written when *command* terminates on a non-zero exit code or
-        use the option ``"always"`` if you want them always to be written.
-
-        .. note:: This option currently does not work and is ignored.
-
-    :param input_file:
-        in case the process takes input on stdin, you can pass a path to a file
+    :param input_filename:
+        In case the process takes input on stdin, you can pass a path to a file
         here that will be piped to stdin of the process. With the default value
         of `None`, nothing is passed to stdin.
+
+    :param stdout_filename:
+        Redirect output to stdout to be written to the file of the given name.
+
+    :param stderr_filename:
+        Redirect output to stderr to be written to the file of the given name.
 
     """
     for keyword in ["input", "capture_output", "stdout", "stderr"]:
