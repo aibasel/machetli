@@ -2,9 +2,9 @@
 This module is derived from ``tools.py`` of Lab (<https://lab.readthedocs.io>).
 Functions and classes that are not needed for this project were removed.
 """
+from contextlib import contextmanager
 import itertools
 import logging
-import os
 from pathlib import Path
 import pickle
 import re
@@ -154,10 +154,16 @@ def parse(content, pattern, type=int):
 
 
 # TODO: Properly provide interface in style of subprocess.run.
-def run_with_limits(command, time_limit=1800, memory_limit=None,
-                    log_output=None, input_file=None, stdout=None, stderr=None):
+def run_with_limits(command, *, time_limit=1800, memory_limit=None,
+                    core_dump_limit=0, input_filename=None,
+                    stdout_filename=None, stderr_filename=None, **kwargs):
+    # TODO: Update documentation.
     """
-    Run an executable command with time and memory limits.
+    This function is a wrapper for the Python function `subprocess.run` (see
+    `subprocess <https://docs.python.org/3/library/subprocess.html>`_. It can be
+    called with any of the keyword arguments of `subprocess.run`. It adds
+    additional utility to set time and memory limits for the invoked process
+    and it is possible to automatically redirect `stdout` and `stderr` to files.
 
     :param command: is a list of strings defining the command to execute. For
         details, see the Python module
@@ -187,8 +193,6 @@ def run_with_limits(command, time_limit=1800, memory_limit=None,
         of `None`, nothing is passed to stdin.
 
     """
-    log_on_fail = log_output == "on_fail"
-    log_always = log_output == "always"
 
     # This function is copied from lab.calls.call
     # (<https://github.com/aibasel/lab>).
@@ -198,7 +202,7 @@ def run_with_limits(command, time_limit=1800, memory_limit=None,
         except (OSError, ValueError) as err:
             logging.critical(
                 f"Resource limit for {kind} could not be set to "
-                f"[{soft_limit}, {hard_limit}] ({err})"
+                f"[{soft_limit=}, {hard_limit=}] ({err})"
             )
 
     def _prepare_call():
@@ -212,34 +216,34 @@ def run_with_limits(command, time_limit=1800, memory_limit=None,
             # Convert memory from MiB to Bytes.
             _set_limit(resource.RLIMIT_AS, memory_limit *
                        1024 * 1024, hard_mem_limit)
-        _set_limit(resource.RLIMIT_CORE, 0, 0)
+        _set_limit(resource.RLIMIT_CORE, core_dump_limit, core_dump_limit)
+
+    @contextmanager
+    def _conditional_open(filename, mode):
+        if filename is None:
+            yield None
+        with open(filename, mode) as file:
+            yield file
 
     logging.debug(f"Command:\n{command}")
 
-    stdin = subprocess.PIPE if input_file else None
-    process = subprocess.Popen(command,
-                               preexec_fn=_prepare_call,
-                               stdout=subprocess.PIPE,
-                               stderr=subprocess.PIPE,
-                               stdin=stdin,
-                               text=True)
-    input_text = None
-    if input_file:
-        with open(input_file, "r") as file:
-            input_text = file.read()
+    input_path = Path(input_filename) if input_filename else None
+    stdout_path = Path(stdout_filename) if stdout_filename else None
+    stderr_path = Path(stderr_filename) if stderr_filename else None
 
-    out_str, err_str = process.communicate(input=input_text)
+    input_content= None
+    if input_path is not None:
+        input_content = input_path.read_bytes()
 
-    # TODO: The following block stems from *run_all* and we might want to
-    #  reuse some of its logic.
-    # if log_always or log_on_fail and returncode != 0:
-    #     cwd = state["cwd"] if "cwd" in state else os.path.dirname(
-    #         get_script_path())
-    #     if stdout:
-    #         with open(os.path.join(cwd, f"{name}.log"), "w") as logfile:
-    #             logfile.write(stdout)
-    #     if stderr:
-    #         with open(os.path.join(cwd, f"{name}.err"), "w") as errfile:
-    #             errfile.write(stderr)
+    with _conditional_open(stdout_path, "wb") as stdout_file, \
+            _conditional_open(stderr_path, "wb") as stderr_file:
+        proc = subprocess.run(
+            command, preexec_fn=_prepare_call, stdout=stdout_file,
+            stderr=stderr_file, input=input_content, text=True, **kwargs)
 
-    return out_str, err_str, process.returncode
+    if stdout_path:
+        proc.stdout = stdout_path.read_text()
+    if stderr_filename:
+        proc.stderr = stderr_path.read_text()
+
+    return proc

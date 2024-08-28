@@ -17,9 +17,9 @@ def evaluate(sas_filename):
 
 def get_h(config, sas_filename):
     command = [PLANNER, "--search", config]
-    stdout, _, _ = tools.run_with_limits(
+    result = tools.run_with_limits(
         command, time_limit=10, memory_limit=3338, input_file=sas_filename)
-    for line in stdout.splitlines():
+    for line in result.stdout.splitlines():
        if m := re.match(r".*Initial.*: (\d+)", line):
            return int(m.group(1))
 

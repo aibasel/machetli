@@ -48,6 +48,9 @@ def evaluate(state):
         time.sleep(50)
         runs = [run_succeed, run_exceed_time_limit, run_exceed_memory_limit]
 
+    # TODO: This does no longer work. With the new *run_with_limits* function
+    #  the commands are automatically executed when the *run_with_limits*
+    #  function is filled with arguments.
     for run in runs:
         run()
 

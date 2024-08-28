@@ -13,9 +13,9 @@ def evaluate(sas_filename):
         PLANNER, sas_filename, "--search", "astar(lmcut())",
         "--translate-options", "--relaxed",
     ]
-    stdout, _, _ = tools.run_with_limits(
+    result_reference = tools.run_with_limits(
         reference_command, time_limit=20, memory_limit=3000)
-    cost = tools.parse(stdout, r"Plan cost: (\d+)")
+    cost = tools.parse(result_reference.stdout, r"Plan cost: (\d+)")
 
     mip_command = [
         PLANNER, sas_filename, "--search",
@@ -23,9 +23,10 @@ def evaluate(sas_filename):
         "use_time_vars=true, use_integer_vars=true)], "
         "use_integer_operator_counts=True), bound=0)",
     ]
-    stdout, _, _ = tools.run_with_limits(
+    result_mip = tools.run_with_limits(
         mip_command, time_limit=20, memory_limit=3000)
-    initial_h = tools.parse(stdout, r"Initial heuristic value .* (\d+)")
+    initial_h = tools.parse(result_mip.stdout,
+                            r"Initial heuristic value .* ("r"\d+)")
 
     if cost is None or initial_h is None:
         return False
