@@ -13,11 +13,8 @@ TRANSLATOR = os.path.join(PLANNER_REPO, "src/translate/translate.py")
 # the behaviour we are searching for.
 def evaluate(domain_filename, problem_filename):
     command = [PYTHON37, TRANSLATOR, f"{domain_filename}", f"{problem_filename}"]
-    # TODO issue57: add functionality to store logs {always, only on error} to
-    #  the run_with_limits function.
-    result = tools.run(command, timeout=20, memory_limit=3338)
+    result = tools.run(command, cpu_time_limit=20, memory_limit=3338, text=True)
 
-    ## TODO: add parsing methods?
     return "AssertionError: Negated axiom impossible" in result.stderr
 
 if __name__ == "__main__":

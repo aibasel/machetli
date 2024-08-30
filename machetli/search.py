@@ -156,7 +156,8 @@ def _get_improving_successor(evaluator_path, successors, environment, determinis
                         "option 'deterministic' an improving successor found "
                         "later would not count.")
                 else:
-                    logging.warn(f"{task.error_msg}\nCritical error in '{task.run_dir}'")
+                    logging.warning(f"{task.error_msg}\nCritical error in "
+                                    f"'{task.run_dir}'")
             elif task.status == EvaluationTask.CANCELED:
                 # We only cancel jobs in deterministic mode if there is an earlier reason to return.
                 assert not deterministic

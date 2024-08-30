@@ -13,14 +13,15 @@ def evaluate(domain, problem):
         PLANNER, domain, problem, "--search",
         "astar(lmcount(lm_rhw(use_orders=false)))",
     ]
-    result_solvable = tools.run(solvable_command, timeout=10, memory_limit=3000)
+    result_solvable = tools.run(solvable_command, cpu_time_limit=10,
+                                memory_limit=3000, text=True)
 
     unsolvable_command = [
         PLANNER, domain, problem, "--search",
         "astar(lmcount(lm_rhw(use_orders=true)))",
     ]
-    result_unsolvable = tools.run(unsolvable_command, timeout=10,
-                                  memory_limit=3000)
+    result_unsolvable = tools.run(unsolvable_command, cpu_time_limit=10,
+                                  memory_limit=3000, text=True)
 
     return ("Solution found." in result_solvable.stdout and
             "Search stopped without finding a solution." in result_unsolvable.stdout)

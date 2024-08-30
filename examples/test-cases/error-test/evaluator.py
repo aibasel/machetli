@@ -13,19 +13,16 @@ PROBLEM1 = os.path.join(DOWNWARD_BENCHMARKS, "tpp/p05.pddl")
 PROBLEM2 = os.path.join(DOWNWARD_BENCHMARKS, "tpp/p07.pddl")
 
 def run_succeed():
-    return tools.run(
-        [PYTHON, PLANNER, PROBLEM1, "--search", "astar(lmcut())"],
-        timeout=60, memory_limit=4000, log_output="on_fail")
+    tools.run([PYTHON, PLANNER, PROBLEM1, "--search", "astar(lmcut())"],
+              cpu_time_limit=60, memory_limit=4000, text=True)
 
 def run_exceed_time_limit():
-    return tools.run(
-        [PYTHON, PLANNER, PROBLEM2, "--search", "astar(lmcut())"],
-        timeout=10, memory_limit=4000, log_output="on_fail")
+    tools.run([PYTHON, PLANNER, PROBLEM2, "--search", "astar(lmcut())"],
+              cpu_time_limit=10, memory_limit=4000, text=True)
 
 def run_exceed_memory_limit():
-    return tools.run(
-        [PYTHON, PLANNER, "--search-memory-limit", "100M", PROBLEM2,
-         "--search", "astar(lmcut())"], timeout=1800, log_output="on_fail")
+    tools.run([PYTHON, PLANNER, "--search-memory-limit", "100M", PROBLEM2,
+               "--search", "astar(lmcut())"], cpu_time_limit=1800, text=True)
 
 
 def evaluate(state):
@@ -48,9 +45,6 @@ def evaluate(state):
         time.sleep(50)
         runs = [run_succeed, run_exceed_time_limit, run_exceed_memory_limit]
 
-    # TODO: This does no longer work. With the new *run_with_limits* function
-    #  the commands are automatically executed when the *run_with_limits*
-    #  function is filled with arguments.
     for run in runs:
         run()
 

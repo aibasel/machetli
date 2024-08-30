@@ -177,9 +177,10 @@ def run(command, *, cpu_time_limit=None, memory_limit=None,
     :param cpu_time_limit:
         Time in seconds after which the command is terminated. Because states
         are evaluated in sequence in Machetli, it is important to use resource
-        limits to make sure a command eventually terminates. If you do not
-        require CPU time, you can also use the `subprocess.run` keyword argument
-        `timeout` which limits wall-clock time instead.
+        limits to make sure a command eventually terminates. There also is
+        the parameter `timeout` from `subprocess.run` which is a wallclock
+        time limit and generates an exception whereas we terminate after
+        the program has been killed by the system.
 
     :param memory_limit:
         Memory limit in MiB to use for executing the command.
@@ -206,6 +207,10 @@ def run(command, *, cpu_time_limit=None, memory_limit=None,
                              "function `tools.run`. See our documentation to "
                              "find out which keywords you can use instead of "
                              "these common `subprocess.run` keywords.")
+    if "timeout" in kwargs and "cpu_time_limit" in kwargs:
+        logging.info("Are you sure you want to set both a `timeout` and a "
+                     "`cpu_time_limit` when calling `tools.run`? They might "
+                     "end up in race conditions.")
 
     # This function is copied from lab.calls.call
     # (<https://github.com/aibasel/lab>).
@@ -239,6 +244,15 @@ def run(command, *, cpu_time_limit=None, memory_limit=None,
             with open(filename, mode) as file:
                 yield file
 
+    encoding = kwargs.get("encoding")
+    text_mode = encoding or kwargs.get("errors") or kwargs.get(
+        "text") or kwargs.get("universal_newlines")
+    if text_mode and encoding is None:
+        encoding = "locale"
+
+    def _read(path):
+        return path.read_text(encoding) if text_mode else path.read_bytes()
+
     logging.debug(f"Command:\n{command}")
 
     input_path = Path(input_filename) if input_filename else None
@@ -247,17 +261,18 @@ def run(command, *, cpu_time_limit=None, memory_limit=None,
 
     input_content= None
     if input_path is not None:
-        input_content = input_path.read_bytes()
+        input_content = _read(input_path)
 
-    with _open_or_pipe(stdout_path, "wb") as stdout, \
-            _open_or_pipe(stderr_path, "wb") as stderr:
+    write_mode = "w" if text_mode else "wb"
+    with _open_or_pipe(stdout_path, write_mode) as stdout, \
+            _open_or_pipe(stderr_path, write_mode) as stderr:
         proc = subprocess.run(
             command, preexec_fn=_prepare_call, stdout=stdout,
-            stderr=stderr, input=input_content, text=True, **kwargs)
+            stderr=stderr, input=input_content, **kwargs)
 
     if stdout_path:
-        proc.stdout = stdout_path.read_text()
+        proc.stdout = _read(stdout_path)
     if stderr_filename:
-        proc.stderr = stderr_path.read_text()
+        proc.stderr = _read(stderr_path)
 
     return proc

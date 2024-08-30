@@ -15,8 +15,8 @@ def evaluate(sas_filename):
     # The downward binary we are using takes stdin arguments, so we use the Run
     # implementation RunWithInputFile which enables us to pass the contents of
     # a file to stdin when *command* is executed.
-    result = tools.run(command, input_file=f"{sas_filename}",
-                       timeout=10, memory_limit=3338)
+    result = tools.run(command, input_filename=f"{sas_filename}",
+                       cpu_time_limit=10, memory_limit=3338, text=True)
     return ("caught signal 11" in result.stdout or "caught signal 6" in result.stdout)
 
 if __name__ == "__main__":
