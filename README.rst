@@ -5,14 +5,14 @@
    
 Machetli
 ========
-   
+
 **Machetli** is a Python package for reproducing characteristics of a program
 (such as bugs) with modified instances. It is meant to be helpful for debugging
 complex programs and narrowing down where specific behaviors are caused.
 
 Currently, Machetli handles instances for automated planners, specified either
 in PDDL or in the SAS\ :sup:`+` format used by `Fast Downward
-<https://www.fast-downward.org>`_ but adding support for other file formats is
+<https://www.fast-downward.org>`__ but adding support for other file formats is
 easy.
 
 
@@ -54,5 +54,5 @@ License
 -------
 
 Machetli is licensed under GPL3. We use code from `Fast Downward
-<https://github.com/aibasel/downward>`_ and `Lab <https://github
+<https://github.com/aibasel/downward>`__ and `Lab <https://github
 .com/aibasel/lab>`_ under GPL3.
