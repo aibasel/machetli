@@ -35,7 +35,7 @@ cd $RUN_DIR
 # Wait up to 5 seconds before starting to distribute the I/O load on the NFS
 # when a lot of jobs start at the same time.
 sleep $(($RANDOM % 6))
-"{evaluator_path}" "{state_filename}" > run.log 2> run.err
+"{python}" "{evaluator_path}" "{state_filename}" > run.log 2> run.err
 RETCODE=$?
 
 echo "$RETCODE" > exit_code
