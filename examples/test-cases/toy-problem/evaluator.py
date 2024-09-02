@@ -26,11 +26,10 @@ def evaluate(state):
     """
     state_id = state["id"]
     level = state["level"]
+    # TODO: This was previously displayed on stdout locally but is not anymore.
     logging.info(f"Evaluating: <id={state_id}, level={level}>")
 
-    run = tools.Run(["echo", "Hello", "world"])
-    run.start()
-
+    tools.run(["echo", "Hello", "world"])
     return level + state_id == 3
 
 

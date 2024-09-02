@@ -13,21 +13,18 @@ def evaluate(domain, problem):
         PLANNER, domain, problem, "--search",
         "astar(lmcount(lm_rhw(use_orders=false)))",
     ]
-    solvable = tools.Run(
-        solvable_command, time_limit=10, memory_limit=3000)
-    stdout, stderr, _ = solvable.start()
-    solvable_out, solvable_err, _ = solvable.start()
+    result_solvable = tools.run(solvable_command, cpu_time_limit=10,
+                                memory_limit=3000, text=True)
 
     unsolvable_command = [
         PLANNER, domain, problem, "--search",
         "astar(lmcount(lm_rhw(use_orders=true)))",
     ]
-    unsolvable = tools.Run(
-        unsolvable_command, time_limit=10, memory_limit=3000)
-    unsolvable_out, unsolvable_err, _ = unsolvable.start()
+    result_unsolvable = tools.run(unsolvable_command, cpu_time_limit=10,
+                                  memory_limit=3000, text=True)
 
-    return "Solution found." in solvable_out and \
-            "Search stopped without finding a solution." in unsolvable_out
+    return ("Solution found." in result_solvable.stdout and
+            "Search stopped without finding a solution." in result_unsolvable.stdout)
 
 if __name__ == "__main__":
     pddl.run_evaluator(evaluate)

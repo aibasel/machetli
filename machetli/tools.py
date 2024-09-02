@@ -2,18 +2,16 @@
 This module is derived from ``tools.py`` of Lab (<https://lab.readthedocs.io>).
 Functions and classes that are not needed for this project were removed.
 """
+from contextlib import contextmanager
 import itertools
 import logging
-import os
 from pathlib import Path
 import pickle
-import pprint
-import random
 import re
 import resource
+import shutil
 import subprocess
 import sys
-import time
 
 
 DEFAULT_ENCODING = "utf-8"
@@ -32,20 +30,10 @@ def batched(iterable, n):
 
     """
     if n < 1:
-        raise ValueError('n must be at least one')
+        raise ValueError(f'batch size was {n=} but must be at least one')
     it = iter(iterable)
     while batch := tuple(itertools.islice(it, n)):
         yield batch
-
-
-def get_string(s):
-    """
-    Decode a byte string.
-    """
-    if isinstance(s, bytes):
-        return s.decode(DEFAULT_ENCODING)
-    else:
-        raise ValueError("tools.get_string() only accepts byte strings")
 
 
 def get_script_path():
@@ -56,23 +44,11 @@ def get_script_path():
     return Path(sys.argv[0]).absolute()
 
 
-def get_script_dir():
-    """
-    Get absolute path to the directory containing the main script, or the
-    current working directory, if the Python session is interactive.
-    """
-    script_path = get_script_path()
-    if script_path.is_file():
-        return get_script_path().parent.absolute()
-    else:
-        return Path().absolute()
-
-
 def get_python_executable():
     """
     Get path to the main Python executable.
     """
-    return sys.executable or "python"
+    return sys.executable or shutil.which("python")
 
 
 def configure_logging(level=logging.INFO):
@@ -121,33 +97,6 @@ def configure_logging(level=logging.INFO):
     root_logger.addHandler(stderr_handler)
     root_logger.setLevel(level)
 
-# TODO: only used by a deprecated parser function. will be removed.
-def make_list(value):
-    """
-    Turn tuples, sets, lists and single objects into lists of objects.
-
-    .. note:: Deprecated (might be removed soon)
-    """
-    if value is None:
-        return []
-    elif isinstance(value, list):
-        return value[:]
-    elif isinstance(value, (tuple, set)):
-        return list(value)
-    else:
-        return [value]
-
-
-def makedirs(path):
-    """
-    os.makedirs() variant that doesn't complain if the path already exists.
-    """
-    try:
-        os.makedirs(path)
-    except OSError:
-        # Directory probably already exists.
-        pass
-
 
 def write_state(state, file_path):
     """
@@ -163,17 +112,6 @@ def read_state(file_path):
     """
     with open(file_path, "rb") as state_file:
         return pickle.load(state_file)
-
-
-# This function is copied from lab.calls.call (<https://lab.readthedocs.org>).
-def _set_limit(kind, soft_limit, hard_limit):
-    try:
-        resource.setrlimit(kind, (soft_limit, hard_limit))
-    except (OSError, ValueError) as err:
-        logging.critical(
-            f"Resource limit for {kind} could not be set to "
-            f"[{soft_limit}, {hard_limit}] ({err})"
-        )
 
 
 def parse(content, pattern, type=int):
@@ -215,104 +153,126 @@ def parse(content, pattern, type=int):
         logging.debug(f"Failed to find pattern '{regex}'.")
 
 
-class Run:
-    # TODO issue74: we might want to get rid of this class and replace it by a
-    # function with a cleaner interface.
+def run(command, *, cpu_time_limit=None, memory_limit=None,
+        core_dump_limit=0, input_filename=None,
+        stdout_filename=None, stderr_filename=None, **kwargs):
     """
-    Define an executable command with time and memory limits.
+    This function is a wrapper for the `run` function of the Python `subprocess`
+    module (see
+    `subprocess <https://docs.python.org/3/library/subprocess.html>`_). It is
+    meant as a convenience to ease common use cases of Machetli. A majority of
+    the keyword parameters of `subprocess.run` are supported with the following
+    changes:
+    - `capture_output` is disallowed since we always capture output.
+    - `input`, `stdout`, and `stderr` are replaced with `input_filename`,
+      `stdout_filename`, and `stderr_filename`, respectively. They expect a
+      `string` or `None` as input rather than a file or anything else. If they
+      are set to `None`, the output is sent to `subprocess.PIPE` instead of
+      written to files.
 
-    :param command: is a list of strings defining the command to execute. For details, see
-        the Python module
-        `subprocess <https://docs.python.org/3/library/subprocess.html>`_.
+    :param command:
+        A list of strings defining the command to execute. For details, see the
+        Python module `subprocess <https://docs.python.org/3/library/subprocess.html>`_.
 
-    :param time_limit: time in seconds after which the command is terminated.
-        Because states are evaluated in sequence in Machetli, it is important
-        to use resource limits to make sure a command eventually terminates.
+    :param cpu_time_limit:
+        Time in seconds after which the command is terminated. Because states
+        are evaluated in sequence in Machetli, it is important to use resource
+        limits to make sure a command eventually terminates. There also is
+        the parameter `timeout` from `subprocess.run` which is a wallclock
+        time limit and generates an exception whereas we terminate after
+        the program has been killed by the system.
 
-    :param memory_limit: memory limit in MiB to use for executing the command.
+    :param memory_limit:
+        Memory limit in MiB to use for executing the command.
 
-    :param log_output:
-        the method :meth:`start` will return whatever the command writes to
-        stdout and stderr as strings. However, this log output will not be
-        written to the main log or to disk, unless you specify it otherwise in
-        this option. Use the *log_output* option ``"on_fail"`` if you want log
-        files to be written when *command* terminates on a non-zero exit code or
-        use the option ``"always"`` if you want them always to be written.
+    :param core_dump_limit:
+        Limit in MiB of data written to disk in case the executed command
+        crashes. By default we allow no core dump.
 
-        .. note:: This option currently does not work and is ignored.
-
-    :param input_file:
-        in case the process takes input on stdin, you can pass a path to a file
+    :param input_filename:
+        In case the process takes input on stdin, you can pass a path to a file
         here that will be piped to stdin of the process. With the default value
         of `None`, nothing is passed to stdin.
 
+    :param stdout_filename:
+        Redirect output to stdout to be written to the file of the given name.
+
+    :param stderr_filename:
+        Redirect output to stderr to be written to the file of the given name.
+
     """
+    for keyword in ["input", "capture_output", "stdout", "stderr"]:
+        if keyword in kwargs:
+            logging.critical(f"Unsupported keyword parameter `{keyword}` of "
+                             "function `tools.run`. See our documentation to "
+                             "find out which keywords you can use instead of "
+                             "these common `subprocess.run` keywords.")
+    if "timeout" in kwargs and "cpu_time_limit" in kwargs:
+        logging.info("Are you sure you want to set both a `timeout` and a "
+                     "`cpu_time_limit` when calling `tools.run`? They might "
+                     "end up in race conditions.")
 
-    def __init__(self, command, time_limit=1800, memory_limit=None,
-                 log_output=None, input_file=None):
-        self.command = command
-        self.time_limit = time_limit
-        self.memory_limit = memory_limit
-        self.log_on_fail = log_output == "on_fail"
-        self.log_always = log_output == "always"
-        self.input_file = input_file
+    # This function is copied from lab.calls.call
+    # (<https://github.com/aibasel/lab>).
+    def _set_limit(kind, soft_limit, hard_limit):
+        try:
+            resource.setrlimit(kind, (soft_limit, hard_limit))
+        except (OSError, ValueError) as err:
+            logging.critical(
+                f"Resource limit for {kind} could not be set to "
+                f"[{soft_limit=}, {hard_limit=}] ({err})"
+            )
 
-    def __repr__(self):
-        cmd = " ".join([os.path.basename(part) for part in self.command])
-        if self.input_file:
-            cmd += f" < {self.input_file}"
-        return f'Run(\"{cmd}\")'
+    def _prepare_call():
+        # When the soft CPU time limit is reached, SIGXCPU is emitted. Once we
+        # reach the higher hard time limit, SIGILL is sent. Having some
+        # padding between the two limits allows programs to handle SIGXCPU.
+        if cpu_time_limit is not None:
+            _set_limit(resource.RLIMIT_CPU, cpu_time_limit, cpu_time_limit + 5)
+        if memory_limit is not None:
+            _, hard_mem_limit = resource.getrlimit(resource.RLIMIT_AS)
+            # Convert memory from MiB to Bytes.
+            _set_limit(resource.RLIMIT_AS, memory_limit *
+                       1024 * 1024, hard_mem_limit)
+        _set_limit(resource.RLIMIT_CORE, core_dump_limit, core_dump_limit)
 
-    def start(self):
-        """
-        Run the command with the given resource limits
-        
-        :returns: the 3-tuple (stdout, stderr, returncode) with the values
-            obtained from the executed command.
-        """
-        # These declarations are needed for the _prepare_call() function.
-        time_limit = self.time_limit
-        memory_limit = self.memory_limit
+    @contextmanager
+    def _open_or_pipe(filename, mode):
+        if filename is None:
+            yield subprocess.PIPE
+        else:
+            with open(filename, mode) as file:
+                yield file
 
-        def _prepare_call():
-            # When the soft time limit is reached, SIGXCPU is emitted. Once we
-            # reach the higher hard time limit, SIGKILL is sent. Having some
-            # padding between the two limits allows programs to handle SIGXCPU.
-            if time_limit is not None:
-                _set_limit(resource.RLIMIT_CPU, time_limit, time_limit + 5)
-            if memory_limit is not None:
-                _, hard_mem_limit = resource.getrlimit(resource.RLIMIT_AS)
-                # Convert memory from MiB to Bytes.
-                _set_limit(resource.RLIMIT_AS, memory_limit *
-                           1024 * 1024, hard_mem_limit)
-            _set_limit(resource.RLIMIT_CORE, 0, 0)
+    encoding = kwargs.get("encoding")
+    text_mode = encoding or kwargs.get("errors") or kwargs.get(
+        "text") or kwargs.get("universal_newlines")
+    if text_mode and encoding is None:
+        encoding = "locale"
 
-        logging.debug(f"Command:\n{self.command}")
+    def _read(path):
+        return path.read_text(encoding) if text_mode else path.read_bytes()
 
-        stdin = subprocess.PIPE if self.input_file else None
-        process = subprocess.Popen(self.command,
-                                   preexec_fn=_prepare_call,
-                                   stdout=subprocess.PIPE,
-                                   stderr=subprocess.PIPE,
-                                   stdin=stdin,
-                                   text=True)
-        input_text = None
-        if self.input_file:
-            with open(self.input_file, "r") as file:
-                input_text = file.read()
+    logging.debug(f"Command:\n{command}")
 
-        out_str, err_str = process.communicate(input=input_text)
+    input_path = Path(input_filename) if input_filename else None
+    stdout_path = Path(stdout_filename) if stdout_filename else None
+    stderr_path = Path(stderr_filename) if stderr_filename else None
 
-        # TODO: The following block stems from *run_all* and we might want to
-        #  reuse some of its logic.
-        # if run.log_always or run.log_on_fail and returncode != 0:
-        #     cwd = state["cwd"] if "cwd" in state else os.path.dirname(
-        #         get_script_path())
-        #     if stdout:
-        #         with open(os.path.join(cwd, f"{name}.log"), "w") as logfile:
-        #             logfile.write(stdout)
-        #     if stderr:
-        #         with open(os.path.join(cwd, f"{name}.err"), "w") as errfile:
-        #             errfile.write(stderr)
+    input_content= None
+    if input_path is not None:
+        input_content = _read(input_path)
 
-        return out_str, err_str, process.returncode
+    write_mode = "w" if text_mode else "wb"
+    with _open_or_pipe(stdout_path, write_mode) as stdout, \
+            _open_or_pipe(stderr_path, write_mode) as stderr:
+        proc = subprocess.run(
+            command, preexec_fn=_prepare_call, stdout=stdout,
+            stderr=stderr, input=input_content, **kwargs)
+
+    if stdout_path:
+        proc.stdout = _read(stdout_path)
+    if stderr_filename:
+        proc.stderr = _read(stderr_path)
+
+    return proc

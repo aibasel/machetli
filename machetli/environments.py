@@ -21,7 +21,7 @@ from machetli.errors import SubmissionError, PollingError, \
     format_called_process_error
 from machetli.evaluator import EXIT_CODE_BEHAVIOR_PRESENT, \
     EXIT_CODE_BEHAVIOR_NOT_PRESENT, EXIT_CODE_RESOURCE_LIMIT
-from machetli.tools import write_state, Run
+from machetli.tools import write_state, run
 
 
 class EvaluationTask():
@@ -89,11 +89,15 @@ def _update_completed_task_status(task, exit_code):
     elif exit_code == EXIT_CODE_BEHAVIOR_NOT_PRESENT:
         task.status = EvaluationTask.DONE_AND_BEHAVIOR_NOT_PRESENT
     elif exit_code == EXIT_CODE_RESOURCE_LIMIT:
+        # TODO: We closed issue66, so this would need another reference.
         # TODO issue66: Detect running out of resources correctly:
         # the process cannot always report this with a custom exit code because
         # it is killed when it runs out of resources. Maybe handle it in
         # the slurm wrapper or check for exit codes produced by signals here?
         task.status = EvaluationTask.OUT_OF_RESOURCES
+    elif "TimeoutExpired" in (task.run_dir/"run.err").read_text():
+        task.status = EvaluationTask.OUT_OF_RESOURCES
+    # TODO: We closed issue66, so we should resolve this or change the reference.
     elif False: # TODO issue66 (detect memouts)
         task.status = EvaluationTask.OUT_OF_RESOURCES
     else:

@@ -17,9 +17,8 @@ def evaluate(domain_filename, problem_filename):
 
 def get_h(config, domain_filename, problem_filename):
     command = [PLANNER, domain_filename, problem_filename, "--search", config]
-    run = tools.Run(command, time_limit=10, memory_limit=3338)
-    stdout, _, _ = run.start()
-    for line in stdout.splitlines():
+    result = tools.run(command, cpu_time_limit=10, memory_limit=3338, text=True)
+    for line in result.stdout.splitlines():
        if m := re.match(r".*Initial.*: (\d+)", line):
            return int(m.group(1))
 
