@@ -1,10 +1,9 @@
 import copy
 import logging
-import random
 
 from machetli.pddl import visitors
 from machetli.pddl.constants import KEY_IN_STATE
-from machetli.successors import Successor, SuccessorGenerator
+from machetli.successors import Successor, SuccessorGenerator, RNG
 
 
 class RemoveActions(SuccessorGenerator):
@@ -16,7 +15,7 @@ class RemoveActions(SuccessorGenerator):
     def get_successors(self, state):
         task = state[KEY_IN_STATE]
         action_names = [action.name for action in task.actions]
-        random.Random().shuffle(action_names)
+        RNG.shuffle(action_names)
         for name in action_names:
             child_state = copy.deepcopy(state)
             pre_child_task = child_state[KEY_IN_STATE]
@@ -56,7 +55,7 @@ class RemovePredicates(SuccessorGenerator):
         task = state[KEY_IN_STATE]
         predicate_names = [predicate.name for predicate in task.predicates if
                            not (predicate.name == "dummy_axiom_trigger" or predicate.name == "=")]
-        random.Random().shuffle(predicate_names)
+        RNG.shuffle(predicate_names)
         for name in predicate_names:
             child_state = copy.deepcopy(state)
             pre_child_task = child_state[KEY_IN_STATE]
@@ -75,7 +74,7 @@ class RemoveObjects(SuccessorGenerator):
     def get_successors(self, state):
         task = state[KEY_IN_STATE]
         object_names = [obj.name for obj in task.objects]
-        random.Random().shuffle(object_names)
+        RNG.shuffle(object_names)
         for name in object_names:
             child_state = copy.deepcopy(state)
             pre_child_task = child_state[KEY_IN_STATE]

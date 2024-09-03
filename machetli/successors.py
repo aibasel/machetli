@@ -10,6 +10,17 @@ generators for PDDL and SAS\ :sup:`+` files are implemented in the packages
 :ref:`extending Machetli<extending-machetli>`.
 """
 
+import random
+
+
+RNG = random.Random(2024)
+"""
+Random number generator used for shuffling the order of successors in successor
+generators. Using a fixed seed here makes the order of generated successors
+reproducible.
+"""
+
+
 class Successor:
     def __init__(self, state, msg):
         self.state = state

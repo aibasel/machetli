@@ -5,7 +5,7 @@ import random
 from machetli.sas.constants import KEY_IN_STATE
 from machetli.sas.sas_tasks import SASTask, SASMutexGroup, SASInit, SASGoal, \
     SASOperator, SASAxiom
-from machetli.successors import Successor, SuccessorGenerator
+from machetli.successors import Successor, SuccessorGenerator, RNG
 
 
 class RemoveOperators(SuccessorGenerator):
@@ -16,7 +16,7 @@ class RemoveOperators(SuccessorGenerator):
     def get_successors(self, state):
         task = state[KEY_IN_STATE]
         operator_names = [op.name for op in task.operators]
-        random.Random().shuffle(operator_names)
+        RNG.shuffle(operator_names)
         for name in operator_names:
             child_state = copy.deepcopy(state)
             pre_child_task = child_state[KEY_IN_STATE]
@@ -42,7 +42,7 @@ class RemoveVariables(SuccessorGenerator):
     def get_successors(self, state):
         task = state[KEY_IN_STATE]
         variables = [var for var in range(len(task.variables.axiom_layers))]
-        random.Random().shuffle(variables)
+        RNG.shuffle(variables)
         for var in variables:
             child_state = copy.deepcopy(state)
             pre_child_task = child_state[KEY_IN_STATE]
@@ -150,9 +150,9 @@ class RemovePrePosts(SuccessorGenerator):
     def get_successors(self, state):
         task = state[KEY_IN_STATE]
         num_ops = len(task.operators)
-        for op in random.sample(range(num_ops), num_ops):
+        for op in RNG.sample(range(num_ops), num_ops):
             num_eff = len(task.operators[op].pre_post)
-            for effect in random.sample(range(num_eff), num_eff):
+            for effect in RNG.sample(range(num_eff), num_eff):
                 child_state = copy.deepcopy(state)
                 del child_state[KEY_IN_STATE].operators[op].pre_post[effect]
                 yield Successor(child_state, f"Removed an effect of operator '{task.operators[op].name}'.")
@@ -172,13 +172,13 @@ class SetUnspecifiedPreconditions(SuccessorGenerator):
     def get_successors(self, state):
         task = state[KEY_IN_STATE]
         num_ops = len(task.operators)
-        for op in random.sample(range(num_ops), num_ops):
+        for op in RNG.sample(range(num_ops), num_ops):
             num_eff = len(task.operators[op].pre_post)
-            for effect in random.sample(range(num_eff), num_eff):
+            for effect in RNG.sample(range(num_eff), num_eff):
                 var, pre, post, cond = task.operators[op].pre_post[effect]
                 if pre == -1:
                     num_val = task.variables.ranges[var]
-                    for val in random.sample(range(num_val), num_val):
+                    for val in RNG.sample(range(num_val), num_val):
                         child_state = copy.deepcopy(state)
                         child_state[KEY_IN_STATE].operators[op].pre_post[
                             effect] = (var, val, post, cond)
@@ -263,7 +263,7 @@ class RemoveGoals(SuccessorGenerator):
     def get_successors(self, state):
         task = state[KEY_IN_STATE]
         num_goals = len(task.goal.pairs)
-        for goal_id in random.sample(range(num_goals), num_goals):
+        for goal_id in RNG.sample(range(num_goals), num_goals):
             child_state = copy.deepcopy(state)
             del child_state[KEY_IN_STATE].goal.pairs[goal_id]
             yield Successor(child_state, f"Removed a goal. Remaining goals: {num_goals - 1}")
