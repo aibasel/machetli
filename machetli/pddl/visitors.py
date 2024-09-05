@@ -77,14 +77,6 @@ class TaskElementVisitor:
         raise NotImplementedError
 
 
-def contains(dumpable_object, item_name) -> bool:
-    """Returns true if item_name is present in dump string of dumpable_object."""
-    str_io = io.StringIO()
-    with redirect_stdout(str_io):
-        dumpable_object.dump()
-    return item_name in str_io.getvalue()
-
-
 class TaskElementErasePredicateVisitor(TaskElementVisitor):
     """Partial implementation of TaskElementVisitor interface for predicate deletion."""
 
