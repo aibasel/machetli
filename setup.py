@@ -1,3 +1,14 @@
+# Publishing a new version:
+#
+# 1. Update the version tag in this file.
+# 2. Remove the `dist/` and the `machetli.egg-info` directories
+# 3. Run the following steps (needs `pip install build twine`):
+#
+#     $ python3 -m build
+#     $ python3 -m twine upload dist/*
+#
+# 4. Enter the API token
+
 from setuptools import setup, find_packages
 
 with open("README.rst", "r", encoding="utf-8") as fh:
