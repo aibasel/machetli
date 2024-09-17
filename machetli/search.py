@@ -167,8 +167,8 @@ def _get_improving_successor(evaluator_path, successors, environment, determinis
     message = "No improving successor was found."
     if tasks_out_of_resources:
         run_dirs = [task.run_dir for task in tasks_out_of_resources]
-        run_dirs_str = "\n".join(sorted(run_dirs))
+        run_dirs_str = "\n".join(str(s) for s in sorted(run_dirs))
         message += (
-            f" Note that the following tasks ran out of resources and thus "
+            f" Note that the following tasks ran out of resources and thus"
             f" could not successfully be checked:\n{run_dirs_str}")
     return None, message
