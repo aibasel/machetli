@@ -17,13 +17,12 @@ It is expected that the planner was built with an LP solver
     sys.exit(msg)
 
 script_path = tools.get_script_path()
-script_dir = os.path.dirname(script_path)
-sas_filename = os.path.join(script_dir, "output_petri_sokobanp01.sas")
+script_dir = script_path.parent
+sas_filename = script_dir / "output_petri_sokobanp01.sas"
 
 initial_state = sas.generate_initial_state(sas_filename)
 
-evaluator_filename = os.path.join(os.path.dirname(tools.get_script_path()),
-                                  "evaluator.py")
+evaluator_filename = tools.get_script_path().parent / "evaluator.py"
 
 environment = environments.LocalEnvironment()
 if platform.node().endswith((".scicore.unibas.ch", ".cluster.bc2.ch")):

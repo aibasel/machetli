@@ -1,6 +1,6 @@
 import contextlib
 import logging
-import os
+from pathlib import Path
 from pickle import PickleError
 import sys
 import tempfile
@@ -22,8 +22,9 @@ def _find_domain_filename(task_filename):
     """
     Find domain filename for the given task using automatic naming rules.
     """
-    dirname, basename = os.path.split(task_filename)
-    basename_root, ext = os.path.splitext(basename)
+    task_filename = Path(task_filename)
+    dirname, basename = task_filename.parent, task_filename.name
+    basename_root, ext = task_filename.stem, task_filename.suffix
 
     domain_basenames = [
         "domain.pddl",
@@ -34,8 +35,8 @@ def _find_domain_filename(task_filename):
     ]
 
     for domain_basename in domain_basenames:
-        domain_filename = os.path.join(dirname, domain_basename)
-        if os.path.exists(domain_filename):
+        domain_filename = dirname / domain_basename
+        if domain_filename.exists():
             return domain_filename
 
     logging.critical(
@@ -79,8 +80,8 @@ def temporary_files(state: dict) -> tuple:
     write_files(state, domain_filename=domain_file.name,
                 problem_filename=problem_file.name)
     yield domain_file.name, problem_file.name
-    os.remove(domain_file.name)
-    os.remove(problem_file.name)
+    Path(domain_file.name).unlink()
+    Path(problem_file.name).unlink()
 
 
 def _run_evaluator_on_pddl_files(evaluate, domain_filename, task_filename):
@@ -265,7 +266,7 @@ def _write_domain_axioms(task, file):
 
 
 def _write_domain(task, filename):
-    with open(filename, "w") as file:
+    with Path(filename).open("w") as file:
         file.write("\n(")
         _write_domain_header(task, file)
         _write_domain_requirements(task, file)
@@ -309,7 +310,7 @@ def _write_problem_metric(task, file):
 
 
 def _write_problem(task, filename):
-    with open(filename, "w") as file:
+    with Path(filename).open("w") as file:
         file.write("\n(")
         _write_problem_header(task, file)
         _write_problem_domain(task, file)

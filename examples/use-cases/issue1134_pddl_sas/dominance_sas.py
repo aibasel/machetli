@@ -13,13 +13,12 @@ Make sure to set the environment variable DOWNWARD_REPO.
     sys.exit(msg)
 
 script_path = tools.get_script_path()
-script_dir = os.path.dirname(script_path)
-problem_filename = os.path.join(script_dir, "problem.sas")
+script_dir = script_path.parent
+problem_filename = script_dir / "problem.sas"
 
 initial_state = sas.generate_initial_state(problem_filename)
 
-evaluator_filename = os.path.join(os.path.dirname(tools.get_script_path()),
-                                  "evaluator_sas.py")
+evaluator_filename = tools.get_script_path().parent / "evaluator_sas.py"
 
 environment = environments.LocalEnvironment()
 if platform.node().endswith((".scicore.unibas.ch", ".cluster.bc2.ch")):

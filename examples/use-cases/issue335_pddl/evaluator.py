@@ -1,12 +1,13 @@
 #!/usr/bin/env python3
 
 import os
+from pathlib import Path
 
 from machetli import pddl, tools
 
 PYTHON37 = os.environ["PYTHON_3_7"]
-PLANNER_REPO = os.environ["DOWNWARD_REPO"]
-TRANSLATOR = os.path.join(PLANNER_REPO, "src/translate/translate.py")
+PLANNER_REPO = Path(os.environ["DOWNWARD_REPO"])
+TRANSLATOR = str(PLANNER_REPO / "src/translate/translate.py")
 
 # The evaluation function we are defining here is used in the search function.
 # It is executed during the search to check if generated states still produce

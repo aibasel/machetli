@@ -1,11 +1,12 @@
 #!/usr/bin/env python3
 
 import os
+from pathlib import Path
 
 from machetli import sas, tools
 
-REPO = os.environ["DOWNWARD_REPO"]
-PLANNER = os.path.join(REPO, "builds/release/bin/downward")
+REPO = Path(os.environ["DOWNWARD_REPO"])
+PLANNER = str(REPO / "builds/release/bin/downward")
 
 
 def evaluate(sas_filename):

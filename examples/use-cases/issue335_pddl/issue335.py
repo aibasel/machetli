@@ -22,16 +22,16 @@ Downward repository (https://github.com/aibasel/downward) at commit 09ccef5fd.
     sys.exit(msg)
 
 script_path = tools.get_script_path()
-script_dir = os.path.dirname(script_path)
+script_dir = script_path.parent
 
-domain_filename = os.path.join(script_dir, "cntr-domain.pddl")
-problem_filename = os.path.join(script_dir, "cntr-problem.pddl")
+domain_filename = script_dir / "cntr-domain.pddl"
+problem_filename = script_dir / "cntr-problem.pddl"
 
 # Here, we define the initial state the search should be started from. Generally, you can
 # store anything in this dictionary that could be useful for the minimization task.
 initial_state = pddl.generate_initial_state(domain_filename, problem_filename)
 successor_generators = [pddl.RemoveObjects(), pddl.RemovePredicates(replace_with="true")]
-evaluator_filename = os.path.join(script_dir, "evaluator.py")
+evaluator_filename = script_dir / "evaluator.py"
 
 # The defined environment depends on where you want to execute the search:
 #   - on you local machine

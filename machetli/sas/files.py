@@ -1,7 +1,6 @@
 import tempfile
 import contextlib
 import logging
-import os
 from pathlib import Path
 from pickle import PickleError
 import sys
@@ -49,7 +48,7 @@ def temporary_file(state: dict) -> str:
     state[KEY_IN_STATE].output(f)
     f.close()
     yield f.name
-    os.remove(f.name)
+    Path(f.name).unlink()
 
 
 def _run_evaluator_on_sas_file(evaluate, sas_filename):
@@ -231,5 +230,5 @@ def write_file(state: dict, filename: str):
     """
     Write the problem represented in `state` to disk.
     """
-    with open(filename, "w") as file:
+    with Path(filename).open("w") as file:
         state[KEY_IN_STATE].output(file)

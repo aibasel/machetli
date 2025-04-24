@@ -48,8 +48,7 @@ if platform.node().endswith((".scicore.unibas.ch", ".cluster.bc2.ch")):
         export=["DOWNWARD_REPO", "DOWNWARD_BENCHMARKS"],
         extra_options="#SBATCH --cpus-per-task=2")
 
-evaluator_filename = os.path.join(os.path.dirname(get_script_path()),
-                                  "evaluator.py")
+evaluator_filename = get_script_path().parent / "evaluator.py"
 
 search_result = search(
     {"level": 1, "id": 1},

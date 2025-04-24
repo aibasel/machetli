@@ -8,7 +8,6 @@
 
 import copy
 import logging
-import os.path
 import platform
 import pprint
 
@@ -28,8 +27,7 @@ class MyGenerator(SuccessorGenerator):
 
 initial_state = {"level": 0, "id": 0}
 successor_generator = MyGenerator()
-evaluator_filename = os.path.join(os.path.dirname(tools.get_script_path()),
-                                  "evaluator.py")
+evaluator_filename = tools.get_script_path().parent / "evaluator.py"
 environment = environments.LocalEnvironment()
 if platform.node().endswith((".scicore.unibas.ch", ".cluster.bc2.ch")):
     environment = environments.BaselSlurmEnvironment(batch_size=2)

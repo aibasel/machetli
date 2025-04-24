@@ -9,10 +9,11 @@
 #
 # 4. Enter the API token
 
+from pathlib import Path
+
 from setuptools import setup, find_packages
 
-with open("README.rst", "r", encoding="utf-8") as fh:
-    long_description = fh.read()
+long_description = Path("README.rst").read_text(encoding="utf-8")
 
 setup(
     name="machetli",
