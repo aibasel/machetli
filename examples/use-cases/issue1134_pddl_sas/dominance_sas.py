@@ -3,6 +3,7 @@ import os
 import platform
 import pprint
 import sys
+from pathlib import Path
 
 from machetli import environments, sas, search, tools
 
@@ -13,12 +14,12 @@ Make sure to set the environment variable DOWNWARD_REPO.
     sys.exit(msg)
 
 script_path = tools.get_script_path()
-script_dir = script_path.parent
-problem_filename = script_dir / "problem.sas"
+script_dir = tools.get_script_dir()
+problem = script_dir / "problem.sas"
 
-initial_state = sas.generate_initial_state(problem_filename)
+initial_state = sas.generate_initial_state(problem)
 
-evaluator_filename = tools.get_script_path().parent / "evaluator_sas.py"
+evaluator = script_dir / "evaluator_sas.py"
 
 environment = environments.LocalEnvironment()
 if platform.node().endswith((".scicore.unibas.ch", ".cluster.bc2.ch")):
@@ -26,8 +27,8 @@ if platform.node().endswith((".scicore.unibas.ch", ".cluster.bc2.ch")):
 
 
 result = search(initial_state, [sas.RemoveOperators(), sas.RemoveVariables(), sas.RemovePrePosts(), sas.SetUnspecifiedPreconditions(), sas.MergeOperators(), sas.RemoveGoals()],
-                evaluator_filename, environment)
+                evaluator, environment)
 
-sas.write_file(result, "result.sas")
+sas.write_file(result, Path("result.sas"))
 
 pprint.pprint(result)

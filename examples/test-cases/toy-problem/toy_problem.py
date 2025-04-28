@@ -27,11 +27,11 @@ class MyGenerator(SuccessorGenerator):
 
 initial_state = {"level": 0, "id": 0}
 successor_generator = MyGenerator()
-evaluator_filename = tools.get_script_path().parent / "evaluator.py"
+evaluator = tools.get_script_dir() / "evaluator.py"
 environment = environments.LocalEnvironment()
 if platform.node().endswith((".scicore.unibas.ch", ".cluster.bc2.ch")):
     environment = environments.BaselSlurmEnvironment(batch_size=2)
 
-search_result = search(initial_state, successor_generator, evaluator_filename, environment)
+search_result = search(initial_state, successor_generator, evaluator, environment)
 
 logging.info(f"Search result:\n{pprint.pformat(search_result)}")

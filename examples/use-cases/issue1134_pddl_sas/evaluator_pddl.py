@@ -7,7 +7,7 @@ from pathlib import Path
 from machetli import pddl, tools
 
 REPO = Path(os.environ["DOWNWARD_REPO"])
-PLANNER = str(REPO / "fast-downward.py")
+PLANNER = REPO / "fast-downward.py"
 IF_CONFIG = "astar(operatorcounting([delete_relaxation_if_constraints(use_time_vars=true, use_integer_vars=false)], use_integer_operator_counts=false), bound=0)"
 RR_CONFIG = "astar(operatorcounting([delete_relaxation_rr_constraints(acyclicity_type=time_labels, use_integer_vars=false)], use_integer_operator_counts=false), bound=0)"
 

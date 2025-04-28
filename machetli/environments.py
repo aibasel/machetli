@@ -458,10 +458,10 @@ class SlurmEnvironment(Environment):
         job.slurm_id = match.group(1)
         logging.info(f"Submitted batch job {job.slurm_id}")
 
-    def _wait_for_filesystem(self, *paths):
+    def _wait_for_filesystem(self, *paths: [Path]):
         attempts = int(self.FILESYSTEM_TIME_LIMIT / self.FILESYSTEM_TIME_INTERVAL)
         for _ in range(attempts):
-            paths = [path for path in paths if not Path(path).exists()]
+            paths = [path for path in paths if not path.exists()]
             if not paths:
                 return True
             time.sleep(self.FILESYSTEM_TIME_INTERVAL)

@@ -44,6 +44,13 @@ def get_script_path():
     return Path(sys.argv[0]).absolute()
 
 
+def get_script_dir():
+    """
+    Get absolute directory of the main script.
+    """
+    return get_script_path().parent
+
+
 def get_python_executable():
     """
     Get path to the main Python executable.
@@ -102,14 +109,14 @@ def write_state(state, file_path):
     """
     Use pickle to write a given state to disk.
     """
-    Path(file_path).write_bytes(pickle.dumps(state))
+    file_path.write_bytes(pickle.dumps(state))
 
 
 def read_state(file_path):
     """
     Use pickle to read a state from disk.
     """
-    return pickle.loads(Path(file_path).read_bytes())
+    return pickle.loads(file_path.read_bytes())
 
 
 def parse(content, pattern, type=int):
@@ -239,7 +246,7 @@ def run(command, *, cpu_time_limit=None, memory_limit=None,
         if filename is None:
             yield subprocess.PIPE
         else:
-            with Path(filename).open(mode) as file:
+            with filename.open(mode) as file:
                 yield file
 
     encoding = kwargs.get("encoding")

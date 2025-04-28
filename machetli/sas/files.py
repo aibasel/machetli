@@ -29,7 +29,7 @@ def generate_initial_state(sas_file: str) -> dict:
 
 
 @contextlib.contextmanager
-def temporary_file(state: dict) -> str:
+def temporary_file(state: dict) -> Path:
     r"""
     Context manager that generates a temporary SAS\ :sup:`+` file
     containing the task stored in the `state` dictionary. After the
@@ -42,17 +42,17 @@ def temporary_file(state: dict) -> str:
         with temporary_file(state) as sas_filename:
             cmd = ["fast-downward.py", f"{sas_filename}", "--search", "astar(lmcut())"]
 
-    :return: the filename.
+    :return: the file path.
     """
     f = tempfile.NamedTemporaryFile(mode="w+t", suffix=".sas", delete=False)
     state[KEY_IN_STATE].output(f)
     f.close()
-    yield f.name
+    yield Path(f.name)
     Path(f.name).unlink()
 
 
-def _run_evaluator_on_sas_file(evaluate, sas_filename):
-    if evaluate(sas_filename):
+def _run_evaluator_on_sas_file(evaluate, sas_path):
+    if evaluate(sas_path):
         sys.exit(EXIT_CODE_BEHAVIOR_PRESENT)
     else:
         sys.exit(EXIT_CODE_BEHAVIOR_NOT_PRESENT)
@@ -82,13 +82,13 @@ def run_evaluator(evaluate):
         are treated as failed evaluations by the search.
     """
     if len(sys.argv) == 2:
-        filename = sys.argv[1]
+        path = Path(sys.argv[1])
         try:
-            state = tools.read_state(filename)
-            with temporary_file(state) as sas_filename:
-                _run_evaluator_on_sas_file(evaluate, sas_filename)
+            state = tools.read_state(path)
+            with temporary_file(state) as sas_path:
+                _run_evaluator_on_sas_file(evaluate, sas_path)
         except (FileNotFoundError, PickleError):
-            _run_evaluator_on_sas_file(evaluate, filename)
+            _run_evaluator_on_sas_file(evaluate, path)
     else:
         logging.critical(
             "Error: evaluator has to be called with either a path to a pickled "
@@ -226,9 +226,9 @@ def _read_axioms(lines, num_axioms):
     return axioms
 
 
-def write_file(state: dict, filename: str):
+def write_file(state: dict, path: Path):
     """
     Write the problem represented in `state` to disk.
     """
-    with Path(filename).open("w") as file:
+    with path.open("w") as file:
         state[KEY_IN_STATE].output(file)

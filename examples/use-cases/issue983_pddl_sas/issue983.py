@@ -9,7 +9,7 @@ from pathlib import Path
 from machetli import environments, pddl, sas, search, tools
 
 PLANNER_REPO = Path(os.environ["DOWNWARD_REPO"])
-TRANSLATOR = str(PLANNER_REPO / "src/translate/translate.py")
+TRANSLATOR = PLANNER_REPO / "src/translate/translate.py"
 
 if platform.node().endswith((".scicore.unibas.ch", ".cluster.bc2.ch")):
     environment = environments.BaselSlurmEnvironment(
@@ -20,7 +20,7 @@ else:
 # This experiment was first conducted on Fast Downward revision 80c1b35 where
 # h+ was inadmissible.
 
-script_dir = tools.get_script_path().parent
+script_dir = tools.get_script_dir()
 domain = script_dir / "problem/p27-domain.pddl"
 problem = script_dir / "problem/p27.pddl"
 
@@ -30,8 +30,8 @@ successor_generators = [
     pddl.RemoveActions(),
     pddl.RemoveObjects(),
 ]
-evaluator_filename = script_dir / "pddl_evaluator.py"
-result = search(initial_state, successor_generators, evaluator_filename,
+evaluator = script_dir / "pddl_evaluator.py"
+result = search(initial_state, successor_generators, evaluator,
                 environment)
 
 pddl_result_names = (
@@ -58,7 +58,7 @@ successor_generators = [
     sas.SetUnspecifiedPreconditions(),
     sas.MergeOperators(),
 ]
-evaluator_filename = script_dir / "sas_evaluator.py"
-result = search(initial_state, successor_generators, evaluator_filename,
+evaluator = script_dir / "sas_evaluator.py"
+result = search(initial_state, successor_generators, evaluator,
                 environment)
-sas.write_file(result, "problem/result.sas")
+sas.write_file(result, Path("problem/result.sas"))

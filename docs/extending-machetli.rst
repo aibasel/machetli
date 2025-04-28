@@ -127,12 +127,12 @@ generators can directly access entities like sections, included packages, etc.
 .. code-block:: python
     :linenos:
 
-    def generate_initial_state(filename):
-        content = Path(filename).read_text()
+    def generate_initial_state(path: Path):
+        content = path.read_text()
         return {"latex" : content}
 
-    def write_files(state, filename):
-        Path(filename).write_text(state["latex"])
+    def write_files(state, path: Path):
+        path.write_text(state["latex"])
 
 We then create a context manager to temporarily write a modified document to disk:
 
@@ -143,20 +143,21 @@ We then create a context manager to temporarily write a modified document to dis
     import contextlib
     import os
     import tempfile
+    from pathlib import Path
 
     @contextlib.contextmanager
     def temporary_file(state):
         f = tempfile.NamedTemporaryFile(mode="w+t", suffix=".tex", delete=False)
         f.write(state["latex"])
         f.close()
-        yield f.name
-        os.remove(f.name)
+        yield Path(f.name)
+        Path(f.name).unlink()
 
 For added convenience, we implement a ``run_successor`` function:
 
 .. code-block:: python
     :linenos:
-    :lineno-start: 18
+    :lineno-start: 19
 
     import logging
     from pickle import PickleError
@@ -167,7 +168,7 @@ For added convenience, we implement a ``run_successor`` function:
         if len(sys.argv) == 2:
             filename = sys.argv[1]
             try:
-                state = tools.read_state(filename)
+                state = tools.read_state(Path(filename))
             except PickleError:
                 state = generate_initial_state(filename)
         else:
@@ -186,7 +187,7 @@ document:
 
 .. code-block:: python
     :linenos:
-    :lineno-start: 39
+    :lineno-start: 40
 
     from machetli.successors import Successor, SuccessorGenerator
 

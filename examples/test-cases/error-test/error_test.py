@@ -15,7 +15,7 @@ import sys
 from machetli import environments
 from machetli.successors import Successor, SuccessorGenerator
 from machetli.search import search
-from machetli.tools import get_script_path
+from machetli.tools import get_script_dir
 
 if "DOWNWARD_REPO" not in os.environ:
     msg = """
@@ -48,12 +48,12 @@ if platform.node().endswith((".scicore.unibas.ch", ".cluster.bc2.ch")):
         export=["DOWNWARD_REPO", "DOWNWARD_BENCHMARKS"],
         extra_options="#SBATCH --cpus-per-task=2")
 
-evaluator_filename = get_script_path().parent / "evaluator.py"
+evaluator = get_script_dir() / "evaluator.py"
 
 search_result = search(
     {"level": 1, "id": 1},
     MyGenerator(),
-    evaluator_filename,
+    evaluator,
     environment,
     deterministic=False)
 

@@ -9,7 +9,7 @@ from pathlib import Path
 from machetli import environments, pddl, sas, search, tools
 
 PLANNER_REPO = Path(os.environ["DOWNWARD_REPO"])
-TRANSLATOR = str(PLANNER_REPO / "src/translate/translate.py")
+TRANSLATOR = PLANNER_REPO / "src/translate/translate.py"
 
 if platform.node().endswith((".scicore.unibas.ch", ".cluster.bc2.ch")):
     environment = environments.BaselSlurmEnvironment(
@@ -17,7 +17,7 @@ if platform.node().endswith((".scicore.unibas.ch", ".cluster.bc2.ch")):
 else:
     environment = environments.LocalEnvironment()
 
-script_dir = tools.get_script_path().parent
+script_dir = tools.get_script_dir()
 domain = script_dir / "robert-tony/domain.pddl"
 problem = script_dir / "robert-tony/problem.pddl"
 
@@ -27,9 +27,8 @@ successor_generators = [
     pddl.RemoveActions(),
     pddl.RemoveObjects(),
 ]
-evaluator_filename = script_dir / "pddl_evaluator.py"
-result = search(initial_state, successor_generators, evaluator_filename,
-                environment)
+evaluator = script_dir / "pddl_evaluator.py"
+result = search(initial_state, successor_generators, evaluator, environment)
 
 pddl_result_names = (
     script_dir / "robert-tony/small-domain.pddl",
@@ -55,7 +54,6 @@ successor_generators = [
     sas.SetUnspecifiedPreconditions(),
     sas.MergeOperators(),
 ]
-evaluator_filename = script_dir / "sas_evaluator.py"
-result = search(initial_state, successor_generators, evaluator_filename,
-                environment)
-sas.write_file(result, "robert-tony/result.sas")
+evaluator = script_dir / "sas_evaluator.py"
+result = search(initial_state, successor_generators, evaluator, environment)
+sas.write_file(result, Path("robert-tony/result.sas"))

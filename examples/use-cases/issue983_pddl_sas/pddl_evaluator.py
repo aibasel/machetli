@@ -6,7 +6,7 @@ from pathlib import Path
 from machetli import pddl, tools
 
 PLANNER_REPO = Path(os.environ["DOWNWARD_REPO"])
-PLANNER = str(PLANNER_REPO / "fast-downward.py")
+PLANNER = PLANNER_REPO / "fast-downward.py"
 
 
 def evaluate(domain, problem):

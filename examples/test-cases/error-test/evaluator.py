@@ -9,9 +9,9 @@ from machetli import tools, evaluator
 DOWNWARD_REPO = Path(os.environ["DOWNWARD_REPO"])
 DOWNWARD_BENCHMARKS = Path(os.environ["DOWNWARD_BENCHMARKS"])
 PYTHON = tools.get_python_executable()
-PLANNER = str(DOWNWARD_REPO / "fast-downward.py")
-PROBLEM1 = str(DOWNWARD_BENCHMARKS / "tpp/p05.pddl")
-PROBLEM2 = str(DOWNWARD_BENCHMARKS / "tpp/p07.pddl")
+PLANNER = DOWNWARD_REPO / "fast-downward.py"
+PROBLEM1 = DOWNWARD_BENCHMARKS / "tpp/p05.pddl"
+PROBLEM2 = DOWNWARD_BENCHMARKS / "tpp/p07.pddl"
 
 def run_succeed():
     tools.run([PYTHON, PLANNER, PROBLEM1, "--search", "astar(lmcut())"],
