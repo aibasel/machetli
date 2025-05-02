@@ -105,18 +105,18 @@ def configure_logging(level=logging.INFO):
     root_logger.setLevel(level)
 
 
-def write_state(state, file_path):
+def write_state(state, file_path: Path | str):
     """
     Use pickle to write a given state to disk.
     """
-    file_path.write_bytes(pickle.dumps(state))
+    Path(file_path).write_bytes(pickle.dumps(state))
 
 
-def read_state(file_path):
+def read_state(file_path: Path | str):
     """
     Use pickle to read a state from disk.
     """
-    return pickle.loads(file_path.read_bytes())
+    return pickle.loads(Path(file_path).read_bytes())
 
 
 def parse(content, pattern, type=int):

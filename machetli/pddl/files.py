@@ -39,15 +39,16 @@ def _find_domain_path(task_path: Path):
         "Error: Could not find domain file using automatic naming rules.")
 
 
-def generate_initial_state(domain_filename, task_filename) -> dict:
+def generate_initial_state(domain_path: Path | str,
+                           task_path: Path | str) -> dict:
     """
     Parse the PDDL task defined in the given PDDL files. 
 
     :return: a dictionary pointing to the task specified in the files.
     """
     return {
-        KEY_IN_STATE: pddl_parser.open(domain_filename=domain_filename,
-                                       task_filename=task_filename)
+        KEY_IN_STATE: pddl_parser.open(domain_filename=domain_path,
+                                       task_filename=task_path)
     }
 
 
@@ -73,8 +74,8 @@ def temporary_files(state: dict) -> tuple:
     problem_file = tempfile.NamedTemporaryFile(
         mode="w+t", suffix=".pddl", delete=False)
     problem_file.close()
-    write_files(state, domain_filename=domain_file.name,
-                problem_filename=problem_file.name)
+    write_files(state, domain_path=domain_file.name,
+                problem_path=problem_file.name)
     yield domain_file.name, problem_file.name
     Path(domain_file.name).unlink()
     Path(problem_file.name).unlink()
@@ -131,7 +132,7 @@ def run_evaluator(evaluate):
     filenames = sys.argv[1:]
     if len(filenames) == 1:
         try:
-            state = tools.read_state(Path(filenames[0]))
+            state = tools.read_state(filenames[0])
             with temporary_files(state) as (domain_filename, task_filename):
                 _run_evaluator_on_pddl_files(evaluate, domain_filename,
                                              task_filename)
@@ -315,9 +316,10 @@ def _write_problem(task, path: Path):
         file.write(")\n")
 
 
-def write_files(state: dict, domain_filename: str, problem_filename: str):
+def write_files(state: dict, domain_path: Path | str,
+                problem_path: Path | str):
     """
     Write the domain and problem files represented in `state` to disk.
     """
-    _write_domain(state[KEY_IN_STATE], Path(domain_filename))
-    _write_problem(state[KEY_IN_STATE], Path(problem_filename))
+    _write_domain(state[KEY_IN_STATE], Path(domain_path))
+    _write_problem(state[KEY_IN_STATE], Path(problem_path))

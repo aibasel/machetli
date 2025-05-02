@@ -3,7 +3,6 @@ import os
 import platform
 import pprint
 import sys
-from pathlib import Path
 
 from machetli import environments, sas, search, tools
 
@@ -29,6 +28,6 @@ if platform.node().endswith((".scicore.unibas.ch", ".cluster.bc2.ch")):
 result = search(initial_state, [sas.RemoveOperators(), sas.RemoveVariables(), sas.RemovePrePosts(), sas.SetUnspecifiedPreconditions(), sas.MergeOperators(), sas.RemoveGoals()],
                 evaluator, environment)
 
-sas.write_file(result, Path("result.sas"))
+sas.write_file(result, "result.sas")
 
 pprint.pprint(result)

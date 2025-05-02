@@ -14,7 +14,7 @@ from machetli.evaluator import EXIT_CODE_CRITICAL, EXIT_CODE_BEHAVIOR_PRESENT, \
     EXIT_CODE_BEHAVIOR_NOT_PRESENT
 
 
-def generate_initial_state(sas_file: str) -> dict:
+def generate_initial_state(sas_file: Path | str) -> dict:
     r"""
     Parse the SAS\ :sup:`+` task defined in the SAS\ :sup:`+` file
     `sas_file` and return an initial state containing the parsed
@@ -226,9 +226,9 @@ def _read_axioms(lines, num_axioms):
     return axioms
 
 
-def write_file(state: dict, path: Path):
+def write_file(state: dict, path: Path | str):
     """
     Write the problem represented in `state` to disk.
     """
-    with path.open("w") as file:
+    with Path(path).open("w") as file:
         state[KEY_IN_STATE].output(file)

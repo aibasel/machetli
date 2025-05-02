@@ -3,7 +3,6 @@ import os
 import platform
 import pprint
 import sys
-from pathlib import Path
 
 from machetli import environments, sas, search, tools
 
@@ -17,8 +16,7 @@ It is expected that the planner was built with an LP solver
     """
     sys.exit(msg)
 
-script_path = tools.get_script_path()
-script_dir = script_path.parent
+script_dir = tools.get_script_dir()
 sas_path = script_dir / "output_petri_sokobanp01.sas"
 
 initial_state = sas.generate_initial_state(sas_path)
@@ -33,6 +31,6 @@ if platform.node().endswith((".scicore.unibas.ch", ".cluster.bc2.ch")):
 result = search(initial_state, [sas.RemoveVariables(), sas.RemoveOperators()],
                 evaluator, environment)
 
-sas.write_file(result, Path("result.sas"))
+sas.write_file(result, "result.sas")
 
 pprint.pprint(result)

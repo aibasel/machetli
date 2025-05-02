@@ -10,7 +10,6 @@ functions come with specific packages.
 
 import logging
 import sys
-from pathlib import Path
 
 from machetli.tools import read_state
 
@@ -65,7 +64,7 @@ def run_evaluator(evaluate):
         logging.critical("Expected path to the state to evaluate as the single "
                          "command line parameter.")
         sys.exit(EXIT_CODE_CRITICAL)
-    state = read_state(Path(sys.argv[1]))
+    state = read_state(sys.argv[1])
 
     if evaluate(state):
         sys.exit(EXIT_CODE_BEHAVIOR_PRESENT)

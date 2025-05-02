@@ -2,7 +2,7 @@
 
 import argparse
 
-from machetli import sas, tools
+from machetli import sas
 from machetli.evaluator import is_evaluator_successful
 
 parser = argparse.ArgumentParser()

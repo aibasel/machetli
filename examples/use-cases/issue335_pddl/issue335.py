@@ -21,8 +21,7 @@ Downward repository (https://github.com/aibasel/downward) at commit 09ccef5fd.
     """
     sys.exit(msg)
 
-script_path = tools.get_script_path()
-script_dir = script_path.parent
+script_dir = tools.get_script_dir()
 
 domain = script_dir / "cntr-domain.pddl"
 problem = script_dir / "cntr-problem.pddl"

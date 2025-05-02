@@ -45,8 +45,8 @@ except subprocess.CalledProcessError as err:
     cmd = " ".join(translate)
     sys.exit(f"Error: Call '{cmd}' failed.")
 
-sas_file = script_dir / "output.sas"
-initial_state = sas.generate_initial_state(sas_file)
+sas_path = script_dir / "output.sas"
+initial_state = sas.generate_initial_state(sas_path)
 successor_generators = [
     sas.RemoveOperators(),
     sas.RemoveVariables(),
@@ -56,4 +56,4 @@ successor_generators = [
 ]
 evaluator = script_dir / "sas_evaluator.py"
 result = search(initial_state, successor_generators, evaluator, environment)
-sas.write_file(result, Path("robert-tony/result.sas"))
+sas.write_file(result, "robert-tony/result.sas")
