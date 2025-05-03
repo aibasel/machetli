@@ -1,9 +1,7 @@
-import contextlib
 import logging
 import os
 from pickle import PickleError
 import sys
-import tempfile
 
 from machetli.pddl.constants import KEY_IN_STATE
 from machetli.pddl.downward import pddl_parser
@@ -52,35 +50,6 @@ def generate_initial_state(domain_filename, task_filename) -> dict:
         KEY_IN_STATE: pddl_parser.open(domain_filename=domain_filename,
                                        task_filename=task_filename)
     }
-
-
-@contextlib.contextmanager
-def temporary_files(state: dict) -> tuple:
-    """
-    Context manager that generates temporary PDDL files containing the
-    task stored in the `state` dictionary. After the context is left,
-    the generated files are deleted.
-
-    Example:
-
-    .. code-block:: python
-
-        with temporary_files(state) as domain, problem:
-            cmd = ["fast-downward.py", f"{domain}", f"{problem}", "--search", "astar(lmcut())"]
-
-    :return: a tuple containing domain and problem filename.
-    """
-    domain_file = tempfile.NamedTemporaryFile(
-        mode="w+t", suffix=".pddl", delete=False)
-    domain_file.close()
-    problem_file = tempfile.NamedTemporaryFile(
-        mode="w+t", suffix=".pddl", delete=False)
-    problem_file.close()
-    write_files(state, domain_filename=domain_file.name,
-                problem_filename=problem_file.name)
-    yield domain_file.name, problem_file.name
-    os.remove(domain_file.name)
-    os.remove(problem_file.name)
 
 
 def _run_evaluator_on_pddl_files(evaluate, domain_filename, task_filename):
@@ -135,9 +104,8 @@ def run_evaluator(evaluate):
     if len(filenames) == 1:
         try:
             state = tools.read_state(filenames[0])
-            with temporary_files(state) as (domain_filename, task_filename):
-                _run_evaluator_on_pddl_files(evaluate, domain_filename,
-                                             task_filename)
+            write_files(state, "domain.pddl", "problem.pddl")
+            _run_evaluator_on_pddl_files(evaluate, "domain.pddl", "problem.pddl")
         except (FileNotFoundError, PickleError):
             task_filename = filenames[0]
             domain_filename = _find_domain_filename(task_filename)

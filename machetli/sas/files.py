@@ -1,7 +1,4 @@
-import tempfile
-import contextlib
 import logging
-import os
 from pathlib import Path
 from pickle import PickleError
 import sys
@@ -27,29 +24,6 @@ def generate_initial_state(sas_file: str) -> dict:
     return {
         KEY_IN_STATE: _read_task(Path(sas_file))
     }
-
-
-@contextlib.contextmanager
-def temporary_file(state: dict) -> str:
-    r"""
-    Context manager that generates a temporary SAS\ :sup:`+` file
-    containing the task stored in the `state` dictionary. After the
-    context is left, the generated file is deleted.
-
-    Example:
-
-    .. code-block:: python
-
-        with temporary_file(state) as sas_filename:
-            cmd = ["fast-downward.py", f"{sas_filename}", "--search", "astar(lmcut())"]
-
-    :return: the filename.
-    """
-    f = tempfile.NamedTemporaryFile(mode="w+t", suffix=".sas", delete=False)
-    state[KEY_IN_STATE].output(f)
-    f.close()
-    yield f.name
-    os.remove(f.name)
 
 
 def _run_evaluator_on_sas_file(evaluate, sas_filename):
@@ -86,8 +60,8 @@ def run_evaluator(evaluate):
         filename = sys.argv[1]
         try:
             state = tools.read_state(filename)
-            with temporary_file(state) as sas_filename:
-                _run_evaluator_on_sas_file(evaluate, sas_filename)
+            write_file(state, "task.sas")
+            _run_evaluator_on_sas_file(evaluate, "task.sas")
         except (FileNotFoundError, PickleError):
             _run_evaluator_on_sas_file(evaluate, filename)
     else:
