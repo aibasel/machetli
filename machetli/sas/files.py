@@ -42,6 +42,8 @@ def run_evaluator(evaluate):
     :attr:`EXIT_CODE_BEHAVIOR_PRESENT<machetli.evaluator.EXIT_CODE_BEHAVIOR_PRESENT>`,
     otherwise use
     :attr:`EXIT_CODE_BEHAVIOR_NOT_PRESENT<machetli.evaluator.EXIT_CODE_BEHAVIOR_NOT_PRESENT>`.
+    In addition to running the evaluator, this function creates the SAS\ :sup:`+`
+    file as 'task.sas' in the current directory.
 
     This function is meant to be used as the main function of an evaluator
     script. Instead of a path to the state, the command line arguments can also
