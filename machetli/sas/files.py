@@ -1,5 +1,3 @@
-import tempfile
-import contextlib
 import logging
 from pathlib import Path
 from pickle import PickleError
@@ -28,29 +26,6 @@ def generate_initial_state(sas_file: Path | str) -> dict:
     }
 
 
-@contextlib.contextmanager
-def temporary_file(state: dict) -> Path:
-    r"""
-    Context manager that generates a temporary SAS\ :sup:`+` file
-    containing the task stored in the `state` dictionary. After the
-    context is left, the generated file is deleted.
-
-    Example:
-
-    .. code-block:: python
-
-        with temporary_file(state) as sas_filename:
-            cmd = ["fast-downward.py", f"{sas_filename}", "--search", "astar(lmcut())"]
-
-    :return: the file path.
-    """
-    f = tempfile.NamedTemporaryFile(mode="w+t", suffix=".sas", delete=False)
-    state[KEY_IN_STATE].output(f)
-    f.close()
-    yield Path(f.name)
-    Path(f.name).unlink()
-
-
 def _run_evaluator_on_sas_file(evaluate, sas_path):
     if evaluate(sas_path):
         sys.exit(EXIT_CODE_BEHAVIOR_PRESENT)
@@ -67,6 +42,8 @@ def run_evaluator(evaluate):
     :attr:`EXIT_CODE_BEHAVIOR_PRESENT<machetli.evaluator.EXIT_CODE_BEHAVIOR_PRESENT>`,
     otherwise use
     :attr:`EXIT_CODE_BEHAVIOR_NOT_PRESENT<machetli.evaluator.EXIT_CODE_BEHAVIOR_NOT_PRESENT>`.
+    In addition to running the evaluator, this function creates the SAS\ :sup:`+`
+    file as 'task.sas' in the current directory.
 
     This function is meant to be used as the main function of an evaluator
     script. Instead of a path to the state, the command line arguments can also
@@ -85,8 +62,8 @@ def run_evaluator(evaluate):
         path = Path(sys.argv[1])
         try:
             state = tools.read_state(path)
-            with temporary_file(state) as sas_path:
-                _run_evaluator_on_sas_file(evaluate, sas_path)
+            write_file(state, "task.sas")
+            _run_evaluator_on_sas_file(evaluate, "task.sas")
         except (FileNotFoundError, PickleError):
             _run_evaluator_on_sas_file(evaluate, path)
     else:

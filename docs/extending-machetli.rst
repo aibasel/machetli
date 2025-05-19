@@ -97,17 +97,14 @@ package :mod:`machetli.pddl`:
   In the existing packages, we use a constant ``KEY_IN_STATE`` for this
   purpose.
 * :meth:`write_files<machetli.pddl.write_files>` writes the parsed data to disk.
-  This is used at the end of the search to store the result.
+  This is used to store the PDDL input files for each state and at the end of the
+  search to store the result.
 
-While these two are technically sufficient, we recommend to also provide functions
-to simplify writing evaluators. In package :mod:`machetli.pddl`, these are:
+While these two are technically sufficient, we recommend to also provide a function
+to simplify writing evaluators. In package :mod:`machetli.pddl`, this is:
 
-* :meth:`temporary_files<machetli.pddl.temporary_files>` temporarily writes the
-  parsed data contained in the state to disk. We use the Python libraries
-  ``contextlib`` and ``tempfile`` to make this easy to use and recommend to
-  follow the same pattern.
 * :meth:`run_evaluator<machetli.pddl.run_evaluator>` loads the state given to
-  the evaluator script, temporarily writes the PDDL files to disk, and
+  the evaluator script, writes the PDDL files to disk, and
   then calls a PDDL specific evaluation function. We also recommend to have this
   function fall back to generating a state directly from your file type (a PDDL
   instance in this case) to make testing the evaluator easier.
@@ -134,32 +131,15 @@ generators can directly access entities like sections, included packages, etc.
     def write_files(state, path: Path):
         path.write_text(state["latex"])
 
-We then create a context manager to temporarily write a modified document to disk:
-
-.. code-block:: python
-    :linenos:
-    :lineno-start: 7
-
-    import contextlib
-    import os
-    import tempfile
-    from pathlib import Path
-
-    @contextlib.contextmanager
-    def temporary_file(state):
-        f = tempfile.NamedTemporaryFile(mode="w+t", suffix=".tex", delete=False)
-        f.write(state["latex"])
-        f.close()
-        yield Path(f.name)
-        Path(f.name).unlink()
 
 For added convenience, we implement a ``run_successor`` function:
 
 .. code-block:: python
     :linenos:
-    :lineno-start: 19
+    :lineno-start: 7
 
     import logging
+    from pathlib import Path
     from pickle import PickleError
     import sys
     from machetli import tools, evaluator
@@ -175,11 +155,11 @@ For added convenience, we implement a ``run_successor`` function:
             logging.critical("Call evaluator with state or tex file.")
             sys.exit(evaluator.EXIT_CODE_CRITICAL)
 
-        with temporary_file(state) as tex_filename:
-            if evaluate(tex_filename):
-                sys.exit(evaluator.EXIT_CODE_IMPROVING)
-            else:
-                sys.exit(evaluator.EXIT_CODE_NOT_IMPROVING)
+        write_files(state, "file.tex")
+        if evaluate("file.tex"):
+            sys.exit(evaluator.EXIT_CODE_IMPROVING)
+        else:
+            sys.exit(evaluator.EXIT_CODE_NOT_IMPROVING)
 
 
 Finally, we add a simple successor generator that removes a single line from the
@@ -187,7 +167,7 @@ document:
 
 .. code-block:: python
     :linenos:
-    :lineno-start: 40
+    :lineno-start: 29
 
     from machetli.successors import Successor, SuccessorGenerator
 
