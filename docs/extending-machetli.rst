@@ -124,23 +124,22 @@ generators can directly access entities like sections, included packages, etc.
 .. code-block:: python
     :linenos:
 
-    def generate_initial_state(filename):
-        with open(filename) as f:
-            content = f.read()
+    def generate_initial_state(path: Path):
+        content = path.read_text()
         return {"latex" : content}
 
-    def write_files(state, filename):
-        with open(filename, "w") as f:
-            f.write(state["latex"])
+    def write_files(state, path: Path):
+        path.write_text(state["latex"])
 
 
 For added convenience, we implement a ``run_successor`` function:
 
 .. code-block:: python
     :linenos:
-    :lineno-start: 9
+    :lineno-start: 7
 
     import logging
+    from pathlib import Path
     from pickle import PickleError
     import sys
     from machetli import tools, evaluator
@@ -151,7 +150,7 @@ For added convenience, we implement a ``run_successor`` function:
             try:
                 state = tools.read_state(filename)
             except PickleError:
-                state = generate_initial_state(filename)
+                state = generate_initial_state(Path(filename))
         else:
             logging.critical("Call evaluator with state or tex file.")
             sys.exit(evaluator.EXIT_CODE_CRITICAL)
@@ -168,7 +167,7 @@ document:
 
 .. code-block:: python
     :linenos:
-    :lineno-start: 30
+    :lineno-start: 29
 
     from machetli.successors import Successor, SuccessorGenerator
 

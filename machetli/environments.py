@@ -9,7 +9,6 @@ and waiting for jobs.
 
 from importlib import resources
 import logging
-import os
 from pathlib import Path
 import pprint
 import re
@@ -459,10 +458,10 @@ class SlurmEnvironment(Environment):
         job.slurm_id = match.group(1)
         logging.info(f"Submitted batch job {job.slurm_id}")
 
-    def _wait_for_filesystem(self, *paths):
+    def _wait_for_filesystem(self, *paths: [Path]):
         attempts = int(self.FILESYSTEM_TIME_LIMIT / self.FILESYSTEM_TIME_INTERVAL)
         for _ in range(attempts):
-            paths = [path for path in paths if not os.path.exists(path)]
+            paths = [path for path in paths if not path.exists()]
             if not paths:
                 return True
             time.sleep(self.FILESYSTEM_TIME_INTERVAL)
@@ -479,8 +478,8 @@ class SlurmEnvironment(Environment):
             f"Parameters for sbatch template:\n{pprint.pformat(job_parameters)}")
         
         job.sbatch_filename = job.batch_dir/f"{job.name}.sbatch"
-        with open(job.sbatch_filename, "w") as f:
-            f.write(self.sbatch_template.format(**job_parameters))
+        content = self.sbatch_template.format(**job_parameters)
+        Path(job.sbatch_filename).write_text(content)
 
     def _get_slurm_status(self, job):
         try:
@@ -555,8 +554,7 @@ class SlurmEnvironment(Environment):
 
 
 def _parse_exit_code(result_file):
-    with open(result_file, "r") as rf:
-        exitcode = int(rf.read())
+    exitcode = int(Path(result_file).read_text())
     return exitcode
 
 

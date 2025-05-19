@@ -21,17 +21,16 @@ Downward repository (https://github.com/aibasel/downward) at commit 09ccef5fd.
     """
     sys.exit(msg)
 
-script_path = tools.get_script_path()
-script_dir = os.path.dirname(script_path)
+script_dir = tools.get_script_dir()
 
-domain_filename = os.path.join(script_dir, "cntr-domain.pddl")
-problem_filename = os.path.join(script_dir, "cntr-problem.pddl")
+domain = script_dir / "cntr-domain.pddl"
+problem = script_dir / "cntr-problem.pddl"
 
 # Here, we define the initial state the search should be started from. Generally, you can
 # store anything in this dictionary that could be useful for the minimization task.
-initial_state = pddl.generate_initial_state(domain_filename, problem_filename)
+initial_state = pddl.generate_initial_state(domain, problem)
 successor_generators = [pddl.RemoveObjects(), pddl.RemovePredicates(replace_with="true")]
-evaluator_filename = os.path.join(script_dir, "evaluator.py")
+evaluator = script_dir / "evaluator.py"
 
 # The defined environment depends on where you want to execute the search:
 #   - on you local machine
@@ -45,7 +44,7 @@ if platform.node().endswith((".scicore.unibas.ch", ".cluster.bc2.ch")):
 # generator(s), the evaluator class and the environment to be used to the
 # main function, which will return the resulting state, once the search
 # is finished.
-result = search(initial_state, successor_generators, evaluator_filename, environment)
+result = search(initial_state, successor_generators, evaluator, environment)
 
 # If you want the modified PDDL task to be dumped to files (which you
 # probably do!), you need to explicitly do this here. Otherwise, it

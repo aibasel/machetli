@@ -1,9 +1,8 @@
 #!/usr/bin/env python
 
 import argparse
-import os
 
-from machetli import pddl, tools
+from machetli import pddl
 from machetli.evaluator import is_evaluator_successful
 
 parser = argparse.ArgumentParser()
@@ -12,7 +11,6 @@ parser.add_argument("domain", type=str)
 parser.add_argument("problem", type=str)
 args = parser.parse_args()
 
-script_dir = os.path.dirname(tools.get_script_path())
 initial_state = pddl.generate_initial_state(args.domain, args.problem)
 
 print("Testing evaluator...")

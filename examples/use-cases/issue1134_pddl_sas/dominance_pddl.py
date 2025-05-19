@@ -13,14 +13,13 @@ Make sure to set the environment variable DOWNWARD_REPO.
     sys.exit(msg)
 
 script_path = tools.get_script_path()
-script_dir = os.path.dirname(script_path)
-domain_filename = os.path.join(script_dir, "p11-domain.pddl")
-problem_filename = os.path.join(script_dir, "p11-airport3-p1.pddl")
+script_dir = tools.get_script_dir()
+domain = script_dir / "p11-domain.pddl"
+problem = script_dir / "p11-airport3-p1.pddl"
 
-initial_state = pddl.generate_initial_state(domain_filename, problem_filename)
+initial_state = pddl.generate_initial_state(domain, problem)
 
-evaluator_filename = os.path.join(os.path.dirname(tools.get_script_path()),
-                                  "evaluator_pddl.py")
+evaluator = script_dir / "evaluator_pddl.py"
 
 environment = environments.LocalEnvironment()
 if platform.node().endswith((".scicore.unibas.ch", ".cluster.bc2.ch")):
@@ -28,7 +27,7 @@ if platform.node().endswith((".scicore.unibas.ch", ".cluster.bc2.ch")):
 
 
 result = search(initial_state, [pddl.RemoveActions(), pddl.RemovePredicates(), pddl.RemoveObjects()],
-                evaluator_filename, environment)
+                evaluator, environment)
 
 pddl.write_files(result, "result_domain.pddl", "result.pddl")
 

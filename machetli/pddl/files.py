@@ -1,5 +1,5 @@
 import logging
-import os
+from pathlib import Path
 from pickle import PickleError
 import sys
 
@@ -16,39 +16,37 @@ SIN = " "  # single indentation
 DIN = "  "  # double indentation
 
 
-def _find_domain_filename(task_filename):
+def _find_domain_path(task_path: Path):
     """
-    Find domain filename for the given task using automatic naming rules.
+    Find domain path for the given task using automatic naming rules.
     """
-    dirname, basename = os.path.split(task_filename)
-    basename_root, ext = os.path.splitext(basename)
-
     domain_basenames = [
         "domain.pddl",
-        basename_root + "-domain" + ext,
-        basename[:3] + "-domain.pddl", # for airport
-        "domain_" + basename,
-        "domain-" + basename,
+        task_path.stem + "-domain" + task_path.suffix,
+        task_path.name[:3] + "-domain.pddl",  # for airport
+        "domain_" + task_path.name,
+        "domain-" + task_path.name,
     ]
 
     for domain_basename in domain_basenames:
-        domain_filename = os.path.join(dirname, domain_basename)
-        if os.path.exists(domain_filename):
-            return domain_filename
+        domain_path = task_path.parent / domain_basename
+        if domain_path.exists():
+            return domain_path
 
     logging.critical(
         "Error: Could not find domain file using automatic naming rules.")
 
 
-def generate_initial_state(domain_filename, task_filename) -> dict:
+def generate_initial_state(domain_path: Path | str,
+                           task_path: Path | str) -> dict:
     """
     Parse the PDDL task defined in the given PDDL files. 
 
     :return: a dictionary pointing to the task specified in the files.
     """
     return {
-        KEY_IN_STATE: pddl_parser.open(domain_filename=domain_filename,
-                                       task_filename=task_filename)
+        KEY_IN_STATE: pddl_parser.open(domain_filename=domain_path,
+                                       task_filename=task_path)
     }
 
 
@@ -109,10 +107,9 @@ def run_evaluator(evaluate):
             write_files(state, "domain.pddl", "problem.pddl")
             _run_evaluator_on_pddl_files(evaluate, "domain.pddl", "problem.pddl")
         except (FileNotFoundError, PickleError):
-            task_filename = filenames[0]
-            domain_filename = _find_domain_filename(task_filename)
-            _run_evaluator_on_pddl_files(evaluate, domain_filename,
-                                         task_filename)
+            task_path = Path(filenames[0])
+            domain_path = _find_domain_path(task_path)
+            _run_evaluator_on_pddl_files(evaluate, domain_path, task_path)
     elif len(filenames) == 2:
         domain_filename, task_filename = filenames
         _run_evaluator_on_pddl_files(evaluate, domain_filename, task_filename)
@@ -234,8 +231,8 @@ def _write_domain_axioms(task, file):
         file.write(SIN + ")\n")
 
 
-def _write_domain(task, filename):
-    with open(filename, "w") as file:
+def _write_domain(task, path: Path):
+    with path.open("w") as file:
         file.write("\n(")
         _write_domain_header(task, file)
         _write_domain_requirements(task, file)
@@ -278,8 +275,8 @@ def _write_problem_metric(task, file):
         file.write("%s(:metric minimize (total-cost))\n" % SIN)
 
 
-def _write_problem(task, filename):
-    with open(filename, "w") as file:
+def _write_problem(task, path: Path):
+    with path.open("w") as file:
         file.write("\n(")
         _write_problem_header(task, file)
         _write_problem_domain(task, file)
@@ -289,9 +286,10 @@ def _write_problem(task, filename):
         file.write(")\n")
 
 
-def write_files(state: dict, domain_filename: str, problem_filename: str):
+def write_files(state: dict, domain_path: Path | str,
+                problem_path: Path | str):
     """
     Write the domain and problem files represented in `state` to disk.
     """
-    _write_domain(state[KEY_IN_STATE], domain_filename)
-    _write_problem(state[KEY_IN_STATE], problem_filename)
+    _write_domain(state[KEY_IN_STATE], Path(domain_path))
+    _write_problem(state[KEY_IN_STATE], Path(problem_path))

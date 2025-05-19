@@ -12,7 +12,7 @@ from machetli.evaluator import EXIT_CODE_CRITICAL, EXIT_CODE_BEHAVIOR_PRESENT, \
     EXIT_CODE_BEHAVIOR_NOT_PRESENT
 
 
-def generate_initial_state(sas_file: str) -> dict:
+def generate_initial_state(sas_file: Path | str) -> dict:
     r"""
     Parse the SAS\ :sup:`+` task defined in the SAS\ :sup:`+` file
     `sas_file` and return an initial state containing the parsed
@@ -26,8 +26,8 @@ def generate_initial_state(sas_file: str) -> dict:
     }
 
 
-def _run_evaluator_on_sas_file(evaluate, sas_filename):
-    if evaluate(sas_filename):
+def _run_evaluator_on_sas_file(evaluate, sas_path):
+    if evaluate(sas_path):
         sys.exit(EXIT_CODE_BEHAVIOR_PRESENT)
     else:
         sys.exit(EXIT_CODE_BEHAVIOR_NOT_PRESENT)
@@ -59,13 +59,13 @@ def run_evaluator(evaluate):
         are treated as failed evaluations by the search.
     """
     if len(sys.argv) == 2:
-        filename = sys.argv[1]
+        path = Path(sys.argv[1])
         try:
-            state = tools.read_state(filename)
+            state = tools.read_state(path)
             write_file(state, "task.sas")
             _run_evaluator_on_sas_file(evaluate, "task.sas")
         except (FileNotFoundError, PickleError):
-            _run_evaluator_on_sas_file(evaluate, filename)
+            _run_evaluator_on_sas_file(evaluate, path)
     else:
         logging.critical(
             "Error: evaluator has to be called with either a path to a pickled "
@@ -203,9 +203,9 @@ def _read_axioms(lines, num_axioms):
     return axioms
 
 
-def write_file(state: dict, filename: str):
+def write_file(state: dict, path: Path | str):
     """
     Write the problem represented in `state` to disk.
     """
-    with open(filename, "w") as file:
+    with Path(path).open("w") as file:
         state[KEY_IN_STATE].output(file)

@@ -2,15 +2,16 @@
 
 import os
 import time
+from pathlib import Path
 
 from machetli import tools, evaluator
 
-DOWNWARD_REPO = os.environ["DOWNWARD_REPO"]
-DOWNWARD_BENCHMARKS = os.environ["DOWNWARD_BENCHMARKS"]
+DOWNWARD_REPO = Path(os.environ["DOWNWARD_REPO"])
+DOWNWARD_BENCHMARKS = Path(os.environ["DOWNWARD_BENCHMARKS"])
 PYTHON = tools.get_python_executable()
-PLANNER = os.path.join(DOWNWARD_REPO, "fast-downward.py")
-PROBLEM1 = os.path.join(DOWNWARD_BENCHMARKS, "tpp/p05.pddl")
-PROBLEM2 = os.path.join(DOWNWARD_BENCHMARKS, "tpp/p07.pddl")
+PLANNER = DOWNWARD_REPO / "fast-downward.py"
+PROBLEM1 = DOWNWARD_BENCHMARKS / "tpp/p05.pddl"
+PROBLEM2 = DOWNWARD_BENCHMARKS / "tpp/p07.pddl"
 
 def run_succeed():
     tools.run([PYTHON, PLANNER, PROBLEM1, "--search", "astar(lmcut())"],
