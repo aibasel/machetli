@@ -22,12 +22,11 @@ where ``result`` is the value returned by the
 The successor generators described below denote possible transformations.
 """
 
-from machetli.pddl.files import generate_initial_state, temporary_files, \
-    write_files, run_evaluator
+from machetli.pddl.files import generate_initial_state, write_files, run_evaluator
 
 # We specify the imported functions and classes in __all__ so they will be
 # documented when the documentation of this package is generated.
-__all__ = ["generate_initial_state", "temporary_files", "write_files", "run_evaluator"]
+__all__ = ["generate_initial_state", "write_files", "run_evaluator"]
 
 
 def _import_successor_generators():
