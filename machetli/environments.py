@@ -136,15 +136,8 @@ class Environment:
     """
 
     def __init__(self, batch_size=1, loglevel=logging.INFO):
-        # TODO: this is accidentally doing what we want: in interactive python sessions
-        # we don't have a script path and want to use the name of the current working directory
-        # as the experiment name. This is what get_script_path returns, but this is coincidental.
-        script_path = tools.get_script_path()
-        self.exp_name = script_path.stem
-        self.eval_dir = Path(f"{self.exp_name}-eval")
-        if re.search(r"\s+", str(self.eval_dir)):
-            logging.critical("The script path must not contain any whitespace characters.")
-
+        self.exp_name = tools.get_experiment_name()
+        self.eval_dir = tools.get_eval_dir()
         self.iteration_id = 0
         self.batch_id = 0
         self.batch_size = batch_size

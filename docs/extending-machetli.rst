@@ -90,12 +90,12 @@ above. In addition, you should provide functions to parse your instances and
 write them back to disk. As an example, consider the methods provided in the
 package :mod:`machetli.pddl`:
 
-* :meth:`generate_initial_state<machetli.pddl.generate_initial_state>` parses a
-  PDDL file form the disk and returns a state containing the parsed data.
-  Machetli states are dictionaries and you can store parsed data under any key
-  you want as long as the successor generators know about and use the same key.
-  In the existing packages, we use a constant ``KEY_IN_STATE`` for this
-  purpose.
+* :meth:`generate_initial_state<machetli.pddl.generate_initial_state>` parses
+  PDDL files from the disk, writes the normalized PDDL files to disk and returns
+  a state containing the parsed data. Machetli states are dictionaries and you
+  can store parsed data under any key you want as long as the successor
+  generators know about and use the same key. In the existing packages, we use
+  a constant ``KEY_IN_STATE`` for this purpose.
 * :meth:`write_files<machetli.pddl.write_files>` writes the parsed data to disk.
   This is used to store the PDDL input files for each state and at the end of the
   search to store the result.
@@ -124,7 +124,13 @@ generators can directly access entities like sections, included packages, etc.
 .. code-block:: python
     :linenos:
 
+    from pathlib import Path
+    from machetli import tools
+
     def generate_initial_state(path: Path):
+        initial_state_dir = tools.get_eval_dir() / "iteration_00000"
+        initial_state_dir.mkdir(parents=True, exist_ok=True)
+        write_files({KEY_IN_STATE: task}, initial_state_dir / "file.tex")
         content = path.read_text()
         return {"latex" : content}
 
@@ -136,13 +142,12 @@ For added convenience, we implement a ``run_successor`` function:
 
 .. code-block:: python
     :linenos:
-    :lineno-start: 7
+    :lineno-start: 13
 
     import logging
-    from pathlib import Path
     from pickle import PickleError
     import sys
-    from machetli import tools, evaluator
+    from machetli import evaluator
 
     def run_evaluator(evaluate):
         if len(sys.argv) == 2:
@@ -167,7 +172,7 @@ document:
 
 .. code-block:: python
     :linenos:
-    :lineno-start: 29
+    :lineno-start: 34
 
     from machetli.successors import Successor, SuccessorGenerator
 
