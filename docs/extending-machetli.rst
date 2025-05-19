@@ -166,11 +166,11 @@ For added convenience, we implement a ``run_successor`` function:
 
     def run_evaluator(evaluate):
         if len(sys.argv) == 2:
-            filename = Path(sys.argv[1])
+            filename = sys.argv[1]
             try:
                 state = tools.read_state(filename)
             except PickleError:
-                state = generate_initial_state(filename)
+                state = generate_initial_state(Path(filename))
         else:
             logging.critical("Call evaluator with state or tex file.")
             sys.exit(evaluator.EXIT_CODE_CRITICAL)
