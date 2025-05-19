@@ -44,10 +44,22 @@ def generate_initial_state(domain_path: Path | str,
 
     :return: a dictionary pointing to the task specified in the files.
     """
-    return {
-        KEY_IN_STATE: pddl_parser.open(domain_filename=domain_path,
-                                       task_filename=task_path)
-    }
+    task = pddl_parser.open(domain_filename=domain_path,
+                            task_filename=task_path)
+    eval_dir = tools.get_eval_dir()
+    initial_state_dir = eval_dir / "iteration_00000"
+    initial_state_dir.mkdir(parents=True, exist_ok=True)
+    if ((initial_state_dir / "domain.pddl").exists()
+            or (initial_state_dir / "problem.pddl").exists()):
+        logging.critical(
+            f"Could not write normalized files for "
+            f"the initial state to '{initial_state_dir}'. "
+            f"Do you have old experiment data at '{eval_dir}'?")
+        sys.exit("aborting")
+    write_files({KEY_IN_STATE: task}, initial_state_dir / "domain.pddl",
+                initial_state_dir / "problem.pddl")
+
+    return {KEY_IN_STATE: task}
 
 
 def _run_evaluator_on_pddl_files(evaluate, domain_filename, task_filename):
