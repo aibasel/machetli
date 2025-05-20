@@ -124,6 +124,8 @@ generators can directly access entities like sections, included packages, etc.
 .. code-block:: python
     :linenos:
 
+    from pathlib import Path
+
     def generate_initial_state(path: Path):
         content = path.read_text()
         return {"latex" : content}
@@ -136,10 +138,9 @@ For added convenience, we implement a ``run_successor`` function:
 
 .. code-block:: python
     :linenos:
-    :lineno-start: 7
+    :lineno-start: 9
 
     import logging
-    from pathlib import Path
     from pickle import PickleError
     import sys
     from machetli import tools, evaluator
@@ -167,7 +168,7 @@ document:
 
 .. code-block:: python
     :linenos:
-    :lineno-start: 29
+    :lineno-start: 30
 
     from machetli.successors import Successor, SuccessorGenerator
 
