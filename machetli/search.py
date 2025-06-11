@@ -32,7 +32,7 @@ def search(initial_state, successor_generator, evaluator_path, environment=None,
         the behaviour that the search is analyzing is still present in the
         state. Please refer to the user documentation on :ref:`how to write an
         evaluator <usage-evaluator>`.
-        
+
     :param environment: determines how the search should be executed. If no
         environment is specified, a :class:`LocalEnvironment
         <machetli.environments.LocalEnvironment>` is used that executes
@@ -130,7 +130,7 @@ def search(initial_state, successor_generator, evaluator_path, environment=None,
 
 def _evaluate_initial_state(evaluator_path, environment, deterministic):
     logging.info("Trying to reproduce the behavior in the initial state.")
-    task = environment.evaluate_initial_state(evaluator_path, None)
+    task = environment.evaluate_initial_state(evaluator_path)
     if task.status == EvaluationTask.DONE_AND_BEHAVIOR_NOT_PRESENT:
         logging.warning("Could not reproduce the behavior in the initial state. "
                         "Please check your evaluator script.")
