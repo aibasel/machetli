@@ -4,7 +4,7 @@ everything is executed sequentially on your local machine. However, the search
 can also be parallelized in a grid environment. In that case multiple successors
 of a state will be evaluated in parallel on the compute nodes of the grid with
 the main search running on the login node, generating successors and dispatching
-and waiting for jobs. 
+and waiting for jobs.
 """
 
 from importlib import resources
@@ -20,6 +20,7 @@ from machetli.errors import SubmissionError, PollingError, \
     format_called_process_error
 from machetli.evaluator import EXIT_CODE_BEHAVIOR_PRESENT, \
     EXIT_CODE_BEHAVIOR_NOT_PRESENT, EXIT_CODE_RESOURCE_LIMIT
+from machetli.successors import Successor
 from machetli.tools import write_state, run
 
 
@@ -38,7 +39,7 @@ class EvaluationTask():
     Status of tasks that successfully evaluated their successor and showed that
     this successor exhibits the behavior that the evaluator is checking for.
     """
-    DONE_AND_BEHAVIOR_NOT_PRESENT= "behavior not present"
+    DONE_AND_BEHAVIOR_NOT_PRESENT = "behavior not present"
     """
     Status of tasks that successfully evaluated their successor but showed that
     this successor does not exhibit the behavior that the evaluator is checking for.
@@ -149,6 +150,8 @@ class Environment:
         self.batch_id = 0
         self.batch_size = batch_size
         self.loglevel = loglevel
+        self.initial_state = None
+        self.initial_state_run_dir = None
 
     def start_new_iteration(self):
         """
@@ -158,33 +161,65 @@ class Environment:
         self.iteration_id += 1
         self.batch_id = 0
 
-    def _prepare_job(self, evaluator_path, batch):
+    def _start_new_batch(self) -> tuple[Path, str]:
+        self.batch_id += 1
+        iteration_name = f"iteration_{self.iteration_id:05}"
+        batch_name = f"batch_{self.batch_id:05}"
+        job_name = f"{self.exp_name}-{iteration_name}-{batch_name}"
+        batch_dir = self.eval_dir/iteration_name/batch_name
+        return batch_dir, job_name
+
+    def _populate_run_dir(self, batch_dir, task_id, state) -> Path:
+        run_dir = batch_dir/f"{task_id:05}"
+        try:
+            run_dir.mkdir(parents=True, exist_ok=False)
+        except FileExistsError:
+            raise SubmissionError(
+                f"Could not create run_dir at '{run_dir}'. Do you have old "
+                f"experiment data at '{self.eval_dir}'?")
+        write_state(state, run_dir/self.STATE_FILENAME)
+        return run_dir
+
+
+    def _prepare_job(self, evaluator_path, batch) -> EvaluationJob:
         """
         Creates a run directory for each successor in *batch* and writes a
         pickled version of the state to disk. Returns an EvaluationJob that
         represents the current status of this batch's evaluation.
         """
-        self.batch_id += 1
-        iteration_name = f"iteration_{self.iteration_id:05}"
-        batch_name = f"batch_{self.batch_id:05}"
-        job_name = f"{self.exp_name}-{iteration_name}-{batch_name}"
-
-        batch_dir = self.eval_dir/iteration_name/batch_name
+        batch_dir, job_name = self._start_new_batch()
         tasks = []
         for task_id, successor in enumerate(batch):
-            run_dir = batch_dir/f"{task_id:05}"
-            try:
-                run_dir.mkdir(parents=True, exist_ok=False)
-            except FileExistsError:
-                raise SubmissionError(
-                    f"Could not create run_dir at '{run_dir}'. Do you have old "
-                    f"experiment data at '{self.eval_dir}'?")
-            write_state(successor.state, run_dir/self.STATE_FILENAME)
+            run_dir = self._populate_run_dir(batch_dir, task_id, successor.state)
             tasks.append(EvaluationTask(successor, task_id, run_dir))
         return EvaluationJob(job_name, evaluator_path, batch_dir, tasks)
 
     def _run_job(self, job, on_task_completed) -> list[EvaluationTask]:
         raise NotImplementedError
+
+    def remember_initial_state(self, initial_state):
+        """
+        Store the initial state in a run directory. This is used by the search to
+        evaluate the initial state if no successor of it was improving.
+        """
+        batch_dir, _ = self._start_new_batch()
+        self.initial_state = initial_state
+        self.initial_state_run_dir = self._populate_run_dir(batch_dir, 0, initial_state)
+
+    def evaluate_initial_state(self, evaluator_path, on_task_completed=None) -> EvaluationTask:
+        """
+        Evaluate the initial state that was stored with :meth:`remember_initial_state`
+        earlier. If the state wasn't stored earlier, a SubmissionError is raised.
+        """
+        if self.initial_state_run_dir is None:
+            raise SubmissionError("Could not evaluate initial state. Call "
+            "'environment.remember_initial_state' before 'environment.evaluate_initial_state'.")
+        init = Successor(self.initial_state,
+                         "Evaluating successor state after search.")
+        tasks = [EvaluationTask(init, 0, self.initial_state_run_dir)]
+        job = EvaluationJob(f"{self.exp_name}-initial-state", evaluator_path, self.initial_state_run_dir.parent, tasks)
+        self._run_job(job, on_task_completed)
+        return job.tasks[0]
 
     def run(self, evaluator_path, batch, on_task_completed) -> list[EvaluationTask]:
         """
@@ -196,7 +231,7 @@ class Environment:
         :param evaluator_path: path to a script that is used to evaluate a
             successor. The user documentation contains more information on
             :ref:`how to write an evaluator<usage-evaluator>`.
-        
+
         :param successors: list of :class:`Successors
             <machetli.successors.Successor>` to be evaluated.
 
@@ -225,7 +260,9 @@ class LocalEnvironment(Environment):
             if task.status == EvaluationTask.CANCELED:
                 continue
             self._run_task(job.evaluator_path, task)
-            ids_to_cancel = on_task_completed(task) or []
+            ids_to_cancel = []
+            if on_task_completed:
+                ids_to_cancel = on_task_completed(task) or []
             for i in ids_to_cancel:
                 if job.tasks[i].status == EvaluationTask.PENDING:
                     job.tasks[i].status = EvaluationTask.CANCELED
@@ -476,7 +513,7 @@ class SlurmEnvironment(Environment):
         job_parameters = self._get_job_params(job)
         logging.debug(
             f"Parameters for sbatch template:\n{pprint.pformat(job_parameters)}")
-        
+
         job.sbatch_filename = job.batch_dir/f"{job.name}.sbatch"
         content = self.sbatch_template.format(**job_parameters)
         Path(job.sbatch_filename).write_text(content)
@@ -593,7 +630,7 @@ class BaselSlurmEnvironment(SlurmEnvironment):
     DEFAULT_MEMORY_PER_CPU = "3872M"
     """
     Unless otherwise specified, we reserve 3.8 GB of memory per core which is
-    available on both partitions. 
+    available on both partitions.
     To change this use `memory_per_cpu` in the constructor and either run on
     "infai_2" (up to 6354 MB) or reserve more cores per task.
     """

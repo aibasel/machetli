@@ -32,7 +32,7 @@ def search(initial_state, successor_generator, evaluator_path, environment=None,
         the behaviour that the search is analyzing is still present in the
         state. Please refer to the user documentation on :ref:`how to write an
         evaluator <usage-evaluator>`.
-        
+
     :param environment: determines how the search should be executed. If no
         environment is specified, a :class:`LocalEnvironment
         <machetli.environments.LocalEnvironment>` is used that executes
@@ -95,7 +95,17 @@ def search(initial_state, successor_generator, evaluator_path, environment=None,
     configure_logging(environment.loglevel)
     successor_generator = make_single_successor_generator(successor_generator)
 
+    environment.start_new_iteration()
+    try:
+        environment.remember_initial_state(initial_state)
+    except SubmissionError as e:
+        # Remembering the initial state can raise a SubmissionError because we
+        # prepare a run directory for it immediately to have it available in
+        # case the search crashes.
+        logging.critical(f"Could not store initial state:\n{e}")
+
     logging.info("Starting search ...")
+    left_initial_state = False
     current_state = initial_state
     while True:
         environment.start_new_iteration()
@@ -111,9 +121,28 @@ def search(initial_state, successor_generator, evaluator_path, environment=None,
         if message:
             logging.info(message)
         if improving_state:
+            left_initial_state = True
             current_state = improving_state
         else:
+            if not left_initial_state:
+                _evaluate_initial_state(evaluator_path, environment, deterministic)
             return current_state
+
+def _evaluate_initial_state(evaluator_path, environment, deterministic):
+    logging.info("Trying to reproduce the behavior in the initial state.")
+    task = environment.evaluate_initial_state(evaluator_path)
+    if task.status == EvaluationTask.DONE_AND_BEHAVIOR_NOT_PRESENT:
+        logging.warning("Could not reproduce the behavior in the initial state. "
+                        "Please check your evaluator script.")
+    elif task.status == EvaluationTask.OUT_OF_RESOURCES:
+        logging.warning("Could not reproduce the behavior in the initial state "
+                        "because the evaluation ran out of resources.")
+    elif task.status == EvaluationTask.CRITICAL:
+        logging.warning("Could not reproduce the behavior in the initial state "
+                        "because the evaluator script crashed with a critical error.")
+    else:
+        assert task.status == EvaluationTask.DONE_AND_BEHAVIOR_PRESENT
+        logging.info("Confirmed that the behavior is present in the initial state.")
 
 
 def _get_improving_successor(evaluator_path, successors, environment, deterministic):
