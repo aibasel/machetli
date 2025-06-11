@@ -95,6 +95,7 @@ def search(initial_state, successor_generator, evaluator_path, environment=None,
     configure_logging(environment.loglevel)
     successor_generator = make_single_successor_generator(successor_generator)
 
+    environment.start_new_iteration()
     try:
         environment.remember_initial_state(initial_state)
     except SubmissionError as e:
@@ -102,6 +103,7 @@ def search(initial_state, successor_generator, evaluator_path, environment=None,
         # prepare a run directory for it immediately to have it available in
         # case the search crashes.
         logging.critical(f"Could not store initial state:\n{e}")
+
     logging.info("Starting search ...")
     left_initial_state = False
     current_state = initial_state
