@@ -38,7 +38,7 @@ class EvaluationTask():
     Status of tasks that successfully evaluated their successor and showed that
     this successor exhibits the behavior that the evaluator is checking for.
     """
-    DONE_AND_BEHAVIOR_NOT_PRESENT= "behavior not present"
+    DONE_AND_BEHAVIOR_NOT_PRESENT = "behavior not present"
     """
     Status of tasks that successfully evaluated their successor but showed that
     this successor does not exhibit the behavior that the evaluator is checking for.
@@ -136,12 +136,21 @@ class Environment:
     """
 
     def __init__(self, batch_size=1, loglevel=logging.INFO):
-        self.exp_name = tools.get_experiment_name()
-        self.eval_dir = tools.get_eval_dir()
+        # TODO: this is accidentally doing what we want: in interactive python sessions
+        # we don't have a script path and want to use the name of the current working directory
+        # as the experiment name. This is what get_script_path returns, but this is coincidental.
+        script_path = tools.get_script_path()
+        self.exp_name = script_path.stem
+        self.eval_dir = Path(f"{self.exp_name}-eval")
+        if re.search(r"\s+", str(self.eval_dir)):
+            logging.critical("The script path must not contain any whitespace characters.")
+
         self.iteration_id = 0
         self.batch_id = 0
         self.batch_size = batch_size
         self.loglevel = loglevel
+        self.initial_state = None
+        self.initial_state_run_dir = None
 
     def start_new_iteration(self):
         """
@@ -151,33 +160,63 @@ class Environment:
         self.iteration_id += 1
         self.batch_id = 0
 
-    def _prepare_job(self, evaluator_path, batch):
+    def _start_new_batch(self) -> tuple[Path, str]:
+        self.batch_id += 1
+        iteration_name = f"iteration_{self.iteration_id:05}"
+        batch_name = f"batch_{self.batch_id:05}"
+        job_name = f"{self.exp_name}-{iteration_name}-{batch_name}"
+        batch_dir = self.eval_dir/iteration_name/batch_name
+        return batch_dir, job_name
+
+    def _populate_run_dir(self, batch_dir, task_id, state) -> Path:
+        run_dir = batch_dir/f"{task_id:05}"
+        try:
+            run_dir.mkdir(parents=True, exist_ok=False)
+        except FileExistsError:
+            raise SubmissionError(
+                f"Could not create run_dir at '{run_dir}'. Do you have old "
+                f"experiment data at '{self.eval_dir}'?")
+        write_state(state, run_dir/self.STATE_FILENAME)
+        return run_dir
+
+
+    def _prepare_job(self, evaluator_path, batch) -> EvaluationJob:
         """
         Creates a run directory for each successor in *batch* and writes a
         pickled version of the state to disk. Returns an EvaluationJob that
         represents the current status of this batch's evaluation.
         """
-        self.batch_id += 1
-        iteration_name = f"iteration_{self.iteration_id:05}"
-        batch_name = f"batch_{self.batch_id:05}"
-        job_name = f"{self.exp_name}-{iteration_name}-{batch_name}"
-
-        batch_dir = self.eval_dir/iteration_name/batch_name
+        batch_dir, job_name = self._start_new_batch()
         tasks = []
         for task_id, successor in enumerate(batch):
-            run_dir = batch_dir/f"{task_id:05}"
-            try:
-                run_dir.mkdir(parents=True, exist_ok=False)
-            except FileExistsError:
-                raise SubmissionError(
-                    f"Could not create run_dir at '{run_dir}'. Do you have old "
-                    f"experiment data at '{self.eval_dir}'?")
-            write_state(successor.state, run_dir/self.STATE_FILENAME)
+            run_dir = self._populate_run_dir(batch_dir, task_id, successor.state)
             tasks.append(EvaluationTask(successor, task_id, run_dir))
         return EvaluationJob(job_name, evaluator_path, batch_dir, tasks)
 
     def _run_job(self, job, on_task_completed) -> list[EvaluationTask]:
         raise NotImplementedError
+    
+    def remember_initial_state(self, initial_state):
+        """
+        Store the initial state in a run directory. This is used by the search to
+        evaluate the initial state if no successor of it was improving.
+        """
+        batch_dir, _ = self._start_new_batch()
+        self.initial_state = initial_state.state
+        self.initial_state_run_dir = self._populate_run_dir(batch_dir, 0, initial_state.state)
+
+    def evaluate_initial_state(self, evaluator_path, on_task_completed) -> EvaluationTask:
+        """
+        Evaluate the initial state that was stored with :meth:`remember_initial_state`
+        earlier. If the state wasn't stored earlier, a SubmissionError is raised.
+        """
+        if self.initial_state_run_dir is None:
+            raise SubmissionError("Could not evaluate initial state. Call "
+            "'environment.remember_initial_state' before 'environment.evaluate_initial_state'.")
+        tasks = [EvaluationTask(self.initial_state, 0, self.initial_state_run_dir)]
+        job = EvaluationJob(f"{self.exp_name}-initial-state", evaluator_path, self.initial_state_run_dir.parent, tasks)
+        self._run_job(job, on_task_completed)
+        return job.tasks[0]
 
     def run(self, evaluator_path, batch, on_task_completed) -> list[EvaluationTask]:
         """

@@ -21,18 +21,9 @@ def generate_initial_state(sas_file: Path | str) -> dict:
     :return: a dictionary pointing to the SAS\ :sup:`+` task specified
              in the file `sas_file`.
     """
-    task = _read_task(Path(sas_file))
-    eval_dir = tools.get_eval_dir()
-    initial_state_dir = eval_dir / "iteration_00000"
-    initial_state_dir.mkdir(parents=True, exist_ok=True)
-    if (initial_state_dir / "task.sas").exists():
-        logging.critical(
-            f"Could not write normalized file for "
-            f"the initial state to '{initial_state_dir}'. "
-            f"Do you have old experiment data at '{eval_dir}'?")
-        sys.exit("aborting")
-    write_file({KEY_IN_STATE: task}, initial_state_dir / "task.sas")
-    return {KEY_IN_STATE: task}
+    return {
+        KEY_IN_STATE: _read_task(Path(sas_file))
+    }
 
 
 def _run_evaluator_on_sas_file(evaluate, sas_path):

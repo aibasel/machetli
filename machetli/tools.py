@@ -51,28 +51,6 @@ def get_script_dir():
     return get_script_path().parent
 
 
-def get_experiment_name():
-    """
-    Get the name of the experiment as a string.
-    """
-    # TODO: this is accidentally doing what we want: in interactive python sessions
-    # we don't have a script path and want to use the name of the current working directory
-    # as the experiment name. This is what get_script_path returns, but this is coincidental.
-    return get_script_path().stem
-
-
-def get_eval_dir():
-    """
-    Get the evaluation directory as a Path.
-    """
-    eval_dir = Path(f"{get_experiment_name()}-eval")
-    if re.search(r"\s+", str(eval_dir)):
-        logging.critical("The script path must not contain any "
-                         "whitespace characters.")
-        sys.exit("aborting")
-    return eval_dir
-
-
 def get_python_executable():
     """
     Get path to the main Python executable.
