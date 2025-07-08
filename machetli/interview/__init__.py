@@ -1,6 +1,7 @@
 import argparse
 import json
 from pathlib import Path
+import sys
 
 from machetli.interview import planning
 from machetli.interview.questions import run_interview, print_separator
@@ -25,14 +26,14 @@ def _parse_args():
 
 def _get_answers(config_path, quiet):
     config = _load_config(config_path)
-    # TODO: if we want to support questions from different modules, we need a
-    # way to switch between them. This might need a more complex model of how to
-    # go from one question to the next. For example, a function in each question
-    # returning the key of the next question to ask.
-    questions = planning.get_questions()
     if quiet:
         return config
     else:
+        # TODO: if we want to support questions from different modules, we need a
+        # way to switch between them. This might need a more complex model of how to
+        # go from one question to the next. For example, a function in each question
+        # returning the key of the next question to ask.
+        questions = planning.get_questions()
         return run_interview(questions, config)
 
 
@@ -42,6 +43,7 @@ def _generate_files(config):
         path.mkdir(parents=True, exist_ok=False)
     except:
         print(f"Could not create directory for scripts: '{path}'")
+        sys.exit(1)
 
     config_path = path / "config.json"
     _write_config(config_path, config)
