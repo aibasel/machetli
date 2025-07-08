@@ -64,7 +64,7 @@ def evaluate($instance):
     if value is None:
         return False
 #else
-    exit_code = result.exit_code
+    exit_code = result.returncode
 #end if
 
 #if has_reference_planner
@@ -74,7 +74,7 @@ def evaluate($instance):
     if reference_value is None:
         return False
 #else
-    reference_exit_code = reference_result.exit_code
+    reference_exit_code = reference_result.returncode
 #end if
 #end if
 
