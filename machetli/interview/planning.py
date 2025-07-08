@@ -415,7 +415,7 @@ def _validate_new_path(text):
 def _detect_domain(answers):
     problem = answers["problem"]
     default = str(Path(problem).parent / "domain.pddl")
-    return find_domain_path(problem) or default
+    return str(find_domain_path(Path(problem))) or default
 
 def _detect_translator(answers):
     default = "translate.py"
