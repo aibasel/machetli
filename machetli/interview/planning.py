@@ -4,6 +4,7 @@ from pathlib import Path
 import re
 import shutil
 import stat
+import sys
 
 from Cheetah.Template import Template
 import questionary
@@ -332,13 +333,14 @@ def generate_files(config):
                 config["reference_planner_cmd"] = config["sas_reference_planner_cmd"]
             _fill_template("evaluator.py.tmpl", config, script_path / "sas_evaluator.py", executable=True)
         if "problem" in config:
-            shutil.copy(config["problem"], script_path / "initial-problem.pddl")
+            shutil.copy(Path(config["problem"]).expanduser(), script_path / "initial-problem.pddl")
         if "domain" in config:
-            shutil.copy(config["domain"], script_path / "initial-domain.pddl")
+            shutil.copy(Path(config["domain"]).expanduser(), script_path / "initial-domain.pddl")
         if "sas_file" in config:
-            shutil.copy(config["sas_file"], script_path / "initial-task.sas")
+            shutil.copy(Path(config["sas_file"]).expanduser(), script_path / "initial-task.sas")
     except OSError as e:
         print(f"Error copying file: {e}")
+        sys.exit(1)
 
     executable = str(script_path / "run.py")
     if script_path.is_absolute() or executable.startswith("./") or executable.startswith("../"):
