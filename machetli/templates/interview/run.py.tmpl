@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
 import platform
+import re
 #if $input_type == "PDDL then SAS"
 import subprocess
 import sys
@@ -29,7 +30,7 @@ from machetli import pddl, sas
 #set $generators = $pddl_generators
 #end if
 
-if platform.node().endswith((".scicore.unibas.ch", ".cluster.bc2.ch")):
+if re.fullmatch(r"login12|ic[ab]\d\d", platform.node()):
     environment = environments.BaselSlurmEnvironment(batch_size=100)
 else:
     environment = environments.LocalEnvironment()
