@@ -34,13 +34,18 @@ def _import_successor_generators():
     # so users can access them without knowing about the subpackage generators.
     import machetli.pddl.generators as generators
 
+    # Also generate a dict of all generators for easier access
+    all_generators = {}
+
     for key, value in generators.__dict__.items():
         if (isinstance(value, type)
             and issubclass(value, generators.SuccessorGenerator)
                 and value != generators.SuccessorGenerator):
             __all__.append(key)
             globals()[key] = value
+            all_generators[key] = value
+    return all_generators
 
 
-_import_successor_generators()
+GENERATORS = _import_successor_generators()
 del _import_successor_generators

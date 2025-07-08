@@ -141,7 +141,7 @@ class Environment:
         # as the experiment name. This is what get_script_path returns, but this is coincidental.
         script_path = tools.get_script_path()
         self.exp_name = script_path.stem
-        self.eval_dir = Path(f"{self.exp_name}-eval")
+        self.eval_dir = script_path.parent / f"{self.exp_name}-eval"
         if re.search(r"\s+", str(self.eval_dir)):
             logging.critical("The script path must not contain any whitespace characters.")
 

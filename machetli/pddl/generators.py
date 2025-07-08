@@ -12,6 +12,9 @@ class RemoveActions(SuccessorGenerator):
     where this action schema is removed. The order of the successors is
     randomized.
     """
+    def get_description(self):
+        return "Tries to remove individual action schemas."
+
     def get_successors(self, state):
         task = state[KEY_IN_STATE]
         action_names = [action.name for action in task.actions]
@@ -39,6 +42,12 @@ class RemovePredicates(SuccessorGenerator):
 
     The order of the successors is randomized.
     """
+    def get_description(self):
+        if self.replace_with == "dynamic":
+            return "Tries to remove individual predicates, replacing positive atoms with true and negative atoms with false."
+        else:
+            return f"Tries to remove individual predicates, replacing them with {self.replace_with}."
+
     def __init__(self, replace_with="dynamic"):
         self.replace_with = replace_with
         if replace_with == "dynamic":
@@ -71,6 +80,9 @@ class RemoveObjects(SuccessorGenerator):
     removes this object from the PDDL task. The order of the successors
     is randomized.
     """
+    def get_description(self):
+        return "Tries to remove individual objects."
+
     def get_successors(self, state):
         task = state[KEY_IN_STATE]
         object_names = [obj.name for obj in task.objects]

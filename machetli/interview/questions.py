@@ -1,94 +1,134 @@
-import json
-from pathlib import Path
-from machetli.interview import pddl, sas, pddl_then_sas, utils
+import questionary
+import shutil
+import textwrap
+from typing import Any, Callable, Dict, Optional
+
+STYLE_DISABLED = "fg:#858585 italic"
+
+class HelpText():
+    def __init__(self,
+                key: str,
+                text: str,
+                print_if: Optional[Callable[[Dict[str,Any]], bool]] = None) -> None:
+        self.key = key
+        self.text = text
+        self.print_if = print_if or (lambda _: True)
+
+    def print(self):
+        questionary.print(self.text)
 
 
-def get_general_questions():
-    questions = [
-        {
-            "key": "PLANNER",
-            "prompt": "Please specify the path to your planner:"
-        },
-        {
-            "key": "STRING_IN_OUTPUT",
-            "prompt": "What string should I look for?"
-        }
-    ]
-    return questions
+class Question():
+    def __init__(self,
+                key: str,
+                prompt_fn: Callable[..., Any],
+                default: Any | Callable[[Dict[str,Any]], Any] = None,
+                bottom_toolbar: Optional[str | Callable[[Dict[str,Any]],str]] = None,
+                pre_process: Optional[Callable[[Any], Any]] = None,
+                post_process: Optional[Callable[[Any], Any]] = None,
+                ask_if: Optional[Callable[[Dict[str,Any]], bool]] = None,
+                **args: Any) -> None:
+        self.key = key
+        self.prompt_fn = prompt_fn
+        self.default = default
+        self.bottom_toolbar = bottom_toolbar
+        self.pre_process = pre_process or (lambda x: x)
+        self.post_process = post_process or (lambda x: x)
+        self.ask_if = ask_if or (lambda _: True)
+        self.args = args
+
+    def _get_default(self, answers: Dict[str,Any]):
+        if self.key in answers:
+            default = answers[self.key]
+        elif callable(self.default):
+            default = self.default(answers)
+        else:
+            default = self.default
+        if default is None:
+            return None
+        else:
+            return self.pre_process(default)
+
+    def _get_bottom_toolbar(self, answers: Dict[str,Any]) -> Optional[str]:
+        if callable(self.bottom_toolbar):
+            toolbar = self.bottom_toolbar(answers)
+        else:
+            toolbar = self.bottom_toolbar
+        if toolbar is not None:
+            toolbar = textwrap.fill(toolbar, width=get_terminal_width())
+        return toolbar
 
 
-def select_module(config):
-    value = utils.ask_value(config, "MODULE",
-              "Which kind of input do you want Machetli to simplify?",
-              options=["PDDL domain and problem files", "A SAS^+ file",
-                       "Start with PDDL files and then translate the result to "
-                       "SAS^+ and continue simplifying"])
-    if "pddl" in value.lower() and "sas" in value.lower():
-        return pddl_then_sas
-    elif "pddl" in value.lower():
-        return pddl
-    elif "sas" in value.lower():
-        return sas
-    else:
+    def ask(self, answers: Dict[str,Any]):
+        args = dict(self.args)
+        default = self._get_default(answers)
+        if isinstance(default, list) and "choices" in args:
+            choices = args["choices"]
+            for choice in choices:
+                choice.checked = (choice.title in default)
+        elif default is not None:
+            args["default"] = default
+        bottom_toolbar = self._get_bottom_toolbar(answers)
+        if bottom_toolbar is not None:
+            args["bottom_toolbar"] = bottom_toolbar
+        prompt = self.prompt_fn(**args)
+        raw = prompt.unsafe_ask()
+        return self.post_process(raw)
+
+
+def get_terminal_width():
+    try:
+        return shutil.get_terminal_size().columns
+    except OSError:
+        return 80
+
+def print_separator():
+    width = get_terminal_width()
+    questionary.print("-" * width, style=STYLE_DISABLED)
+
+def run_interview(questions: list[Question|HelpText], preanswers: Dict[str, Any]):
+    print("Starting Interview. Press Ctrl+C to cancel a question and go back to the previous question.\n")
+    index = 0
+    history = []
+    answers = dict(preanswers)
+    next_interrupt_exits = False
+    try:
+        while index < len(questions):
+            question = questions[index]
+
+            if isinstance(question, HelpText):
+                help = question
+                if help.print_if(answers):
+                    help.print()
+                index += 1
+                continue
+
+            if not question.ask_if(answers):
+                index += 1
+                continue
+            try:
+                answer = question.ask(answers)
+            except KeyboardInterrupt:
+                if next_interrupt_exits:
+                    return None
+                if history:
+                    questionary.print(
+                        "Cancelled. Going back to previous question.",
+                        style=STYLE_DISABLED)
+                    index = history.pop()
+                else:
+                    questionary.print(
+                        "Already at first question, cannot go back further. "
+                        "Press Ctrl+C again to exit.",
+                        style=STYLE_DISABLED)
+                    next_interrupt_exits = True
+                print_separator()
+                continue
+            next_interrupt_exits = False
+            answers[question.key] = answer
+            history.append(index)
+            index += 1
+        return answers
+    except EOFError:
+        print("Aborting interview.")
         return None
-
-
-def start_interview(config_path=None):
-    config = utils.load_config(config_path)
-    module = select_module(config)
-    if module:
-        for question in module.get_questions():
-            utils.ask_value(
-                config,
-                question["key"],
-                question["prompt"],
-                default=question.get("default"),
-                options=question.get("options")
-            )
-        module.ask_command(config)
-
-    for question in get_general_questions():
-        utils.ask_value(
-            config,
-            question["key"],
-            question["prompt"],
-            default=question.get("default"),
-            options=question.get("options")
-        )
-
-    output_path = (
-        config_path
-        if config_path is not None
-        else "config.json"
-    )
-    utils.write_file_with_confirmation(Path(output_path),
-                                       json.dumps(config, indent=2))
-
-    generate_experiment(config, module)
-
-
-def generate_experiment(config, module):
-    command_template = config.get("COMMAND_AS_LIST")
-    if not command_template or not module:
-        print("No COMMAND_AS_LIST in config. "
-              "Skipping experiment generation.")
-        return
-
-    formatted_config = {
-        k: utils.format_value(v, config) for k, v in config.items()
-    }
-    experiment_template = module.get_experiment_template()
-    evaluator_template = module.get_evaluator_template()
-    experiment_template = experiment_template.format(**formatted_config)
-    evaluator_template = evaluator_template.format(**formatted_config)
-
-    experiment_output_path = Path("experiment.py")
-    evaluator_output_path = Path("evaluator.py")
-    utils.write_file_with_confirmation(experiment_output_path,
-                                       experiment_template)
-    utils.write_file_with_confirmation(evaluator_output_path,
-                                       evaluator_template)
-    print(
-        f"Execute the experiment by calling "
-        f"'python3 {experiment_output_path}' from your command line."
-    )

@@ -13,6 +13,9 @@ class RemoveOperators(SuccessorGenerator):
     For each operator, generate a successor where this operator is
     removed. The order of the successors is randomized.
     """
+    def get_description(self):
+        return "Tries to remove individual operators."
+
     def get_successors(self, state):
         task = state[KEY_IN_STATE]
         operator_names = [op.name for op in task.operators]
@@ -39,6 +42,9 @@ class RemoveVariables(SuccessorGenerator):
     condition, effect fact, or goal. The order of the successors is
     randomized.
     """
+    def get_description(self):
+        return "Tries to project away individual variables."
+
     def get_successors(self, state):
         task = state[KEY_IN_STATE]
         variables = [var for var in range(len(task.variables.axiom_layers))]
@@ -147,6 +153,9 @@ class RemovePrePosts(SuccessorGenerator):
     the order of precondition/effect pairs of the same operator, but all
     successors stemming from the same operator follow consecutively.
     """
+    def get_description(self):
+        return "Tries to remove individual precondition/effect pairs in operators. This ignores a variable in an operators."
+
     def get_successors(self, state):
         task = state[KEY_IN_STATE]
         num_ops = len(task.operators)
@@ -160,7 +169,7 @@ class RemovePrePosts(SuccessorGenerator):
 
 class SetUnspecifiedPreconditions(SuccessorGenerator):
     """
-    For each operator and each variable this operator on which this operator 
+    For each operator and each variable on which this operator 
     has an effect but no precondition, and for each possible value of this
     variable, generate a successor with an additional precondition on the
     variable. This limits the situations where the operator can be applied,
@@ -169,6 +178,9 @@ class SetUnspecifiedPreconditions(SuccessorGenerator):
     operator, but all successors stemming from the same operator follow
     consecutively.
     """
+    def get_description(self):
+        return "Tries to add preconditions to an operator, in cases the operator has and effect but no precondition on a variable."
+
     def get_successors(self, state):
         task = state[KEY_IN_STATE]
         num_ops = len(task.operators)
@@ -195,6 +207,9 @@ class MergeOperators(SuccessorGenerator):
     executing the two operators in sequence. Cases where this is not
     possible (e.g., with conflicting prevail conditions) are skipped.
     """
+    def get_description(self):
+        return "Tries to replace a pair of operator with a single operator equivalent to applying both in sequence."
+
     def get_successors(self, state):
         task = state[KEY_IN_STATE]
         for op1, op2 in itertools.permutations(task.operators, 2):
@@ -260,6 +275,9 @@ class RemoveGoals(SuccessorGenerator):
     For each goal condition, generate a successor where this goal condition
     is removed. The order of the successors is randomized
     """
+    def get_description(self):
+        return "Tries to remove goal conditions."
+
     def get_successors(self, state):
         task = state[KEY_IN_STATE]
         num_goals = len(task.goal.pairs)

@@ -17,7 +17,7 @@ long_description = Path("README.rst").read_text(encoding="utf-8")
 
 setup(
     name="machetli",
-    version="0.9",
+    version="0.10",
     description="Locate bugs in your program",
     long_description=long_description,
     long_description_content_type="text/x-rst",
@@ -39,8 +39,18 @@ setup(
     ],
     packages=find_packages(),
     python_requires=">=3.7",
+    install_requires = ["questionary >= 2.1.0", "CT3 >= 3.4"],
     include_package_data=True,
     package_data={
-        "machetli": ["templates/slurm-array-job.template"],
+        "machetli": [
+            "templates/slurm-array-job.template"
+            "templates/interview/evaluator.py.tmpl"
+            "templates/interview/run.py.tmpl"
+        ],
+    },
+    entry_points={
+        "console_scripts": [
+            "machetli = machetli.interview:main",
+        ],
     },
 )

@@ -185,10 +185,14 @@ def run(command, *, cpu_time_limit=None, memory_limit=None,
         limits to make sure a command eventually terminates. There also is
         the parameter `timeout` from `subprocess.run` which is a wallclock
         time limit and generates an exception whereas we terminate after
-        the program has been killed by the system.
+        the program has been killed by the system. Alternatively to passing
+        an integer, the time limit can also be passed as a string containing
+        an integer and a suffix `s` (seconds), `m` (minutes), or `h` (hours).
 
     :param memory_limit:
-        Memory limit in MiB to use for executing the command.
+        Memory limit in MiB to use for executing the command. Alternatively,
+        a string containing an integer and a suffix `K` (KiB), `M` (MiB), or
+        `G` (GiB).
 
     :param core_dump_limit:
         Limit in MiB of data written to disk in case the executed command
@@ -217,6 +221,32 @@ def run(command, *, cpu_time_limit=None, memory_limit=None,
                      "`cpu_time_limit` when calling `tools.run`? They might "
                      "end up in race conditions.")
 
+    # Convert cpu time limit to seconds.
+    if isinstance(cpu_time_limit, str):
+        if m:= re.match(r"\s*(?P<value>\d+)\s*(?P<suffix>[sSmMhH])?", cpu_time_limit):
+            suffix = m.group("suffix").lower()
+            factor = {"s": 1, "m": 60, "h": 60**2}.get(suffix, 1)
+            value = int(m.group("value"))
+            cpu_time_limit = value * factor
+        else:
+            logging.critical("Unsupported format for parameter `cpu_time_limit` of "
+                             "function `tools.run`. We only support suffixes `s`, "
+                             f"`m`, and `h` but got `{cpu_time_limit}`")
+
+    # Convert memory limit to Bytes.
+    if isinstance(memory_limit, str):
+        if m:= re.match(r"\s*(?P<value>\d+)\s*(?P<suffix>[kKmMgG])?", memory_limit):
+            suffix = m.group("suffix").upper()
+            factor = {"K": 1024, "M": 1024**2, "G": 1024**3}.get(suffix, 1024**2)
+            value = int(m.group("value"))
+            memory_limit = value * factor
+        else:
+            logging.critical("Unsupported format for parameter `memory_limit` of "
+                             "function `tools.run`. We only support suffixes `K`, "
+                             f"`M`, and `G` but got `{memory_limit}`")
+    elif isinstance(memory_limit, int):
+        memory_limit = memory_limit * 1024**2
+
     # This function is copied from lab.calls.call
     # (<https://github.com/aibasel/lab>).
     def _set_limit(kind, soft_limit, hard_limit):
@@ -236,9 +266,7 @@ def run(command, *, cpu_time_limit=None, memory_limit=None,
             _set_limit(resource.RLIMIT_CPU, cpu_time_limit, cpu_time_limit + 5)
         if memory_limit is not None:
             _, hard_mem_limit = resource.getrlimit(resource.RLIMIT_AS)
-            # Convert memory from MiB to Bytes.
-            _set_limit(resource.RLIMIT_AS, memory_limit *
-                       1024 * 1024, hard_mem_limit)
+            _set_limit(resource.RLIMIT_AS, memory_limit, hard_mem_limit)
         _set_limit(resource.RLIMIT_CORE, core_dump_limit, core_dump_limit)
 
     @contextmanager
