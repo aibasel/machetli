@@ -418,7 +418,7 @@ def _validate_at_least_one(values):
         return "Please select at least one option"
 
 def _validate_existing_file(text):
-    if Path(text).expanduser().exists():
+    if Path(text).expanduser().is_file():
         return True
     else:
         return f"File '{text}' not found."
