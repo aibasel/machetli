@@ -7,9 +7,9 @@ STYLE_DISABLED = "fg:#858585 italic"
 
 class HelpText():
     def __init__(self,
-                key: str,
-                text: str,
-                print_if: Optional[Callable[[Dict[str,Any]], bool]] = None) -> None:
+                 key: str,
+                 text: str,
+                 print_if: Optional[Callable[[Dict[str,Any]], bool]] = None) -> None:
         self.key = key
         self.text = text
         self.print_if = print_if or (lambda _: True)
@@ -20,14 +20,14 @@ class HelpText():
 
 class Question():
     def __init__(self,
-                key: str,
-                prompt_fn: Callable[..., Any],
-                default: Any | Callable[[Dict[str,Any]], Any] = None,
-                bottom_toolbar: Optional[str | Callable[[Dict[str,Any]],str]] = None,
-                pre_process: Optional[Callable[[Any], Any]] = None,
-                post_process: Optional[Callable[[Any], Any]] = None,
-                ask_if: Optional[Callable[[Dict[str,Any]], bool]] = None,
-                **args: Any) -> None:
+                 key: str,
+                 prompt_fn: Callable[..., Any],
+                 default: Any | Callable[[Dict[str,Any]], Any] = None,
+                 bottom_toolbar: Optional[str | Callable[[Dict[str,Any]],str]] = None,
+                 pre_process: Optional[Callable[[Any], Any]] = None,
+                 post_process: Optional[Callable[[Any], Any]] = None,
+                 ask_if: Optional[Callable[[Dict[str,Any]], bool]] = None,
+                 **args: Any) -> None:
         self.key = key
         self.prompt_fn = prompt_fn
         self.default = default
@@ -55,9 +55,8 @@ class Question():
         else:
             toolbar = self.bottom_toolbar
         if toolbar is not None:
-            toolbar = textwrap.fill(toolbar, width=get_terminal_width())
+            toolbar = textwrap.fill(toolbar, width=_get_terminal_width())
         return toolbar
-
 
     def ask(self, answers: Dict[str,Any]):
         args = dict(self.args)
@@ -76,14 +75,14 @@ class Question():
         return self.post_process(raw)
 
 
-def get_terminal_width():
+def _get_terminal_width():
     try:
         return shutil.get_terminal_size().columns
     except OSError:
         return 80
 
 def print_separator():
-    width = get_terminal_width()
+    width = _get_terminal_width()
     questionary.print("-" * width, style=STYLE_DISABLED)
 
 def run_interview(questions: list[Question|HelpText], preanswers: Dict[str, Any]):
