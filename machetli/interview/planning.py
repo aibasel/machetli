@@ -39,7 +39,6 @@ def get_questions() -> list[Question|HelpText]:
             ],
             use_arrow_keys=True,
             use_shortcuts=True,
-            show_description=True,
         ),
         Question(
             key="problem",
@@ -71,18 +70,18 @@ def get_questions() -> list[Question|HelpText]:
                 questionary.Choice(
                     title="My planner returns an unexpected exit code.",
                     value=EVALUATOR_TYPE_EXIT_CODE,
-                    description="Machetli will run the planner, and check for the exit code."),
+                    description="Machetli will run the planner and check the exit code."),
                 questionary.Choice(
                     title="My planner prints a line that it shouldn't.",
                     value=EVALUATOR_TYPE_OUTPUT,
-                    description="Machetli will run the planner, and check for the existence of a "
-                    "given pattern in the output of the run."),
+                    description="Machetli will run the planner and check whether a "
+                    "given pattern occurs in the output of the run."),
                 questionary.Choice(
                     title="The exit code of my planner differs from a reference planner.",
                     value=EVALUATOR_TYPE_EXIT_CODE_DIFF,
                     description="Machetli will run both planners and compare their exit codes."),
                 questionary.Choice(
-                    title="The output of my planner differs from a reference planner",
+                    title="The output of my planner differs from a reference planner.",
                     value=EVALUATOR_TYPE_OUTPUT_DIFF,
                     description="Machetli will run both planners, parse a value from their output "
                     "and compare the parsed values."),
@@ -112,7 +111,7 @@ def get_questions() -> list[Question|HelpText]:
             ask_if=_need_pddl_and_sas_planners,
             message="How should the planner be executed on SAS^+ files?",
             default=lambda answers: _detect_sas_cmd_from_pddl_cmd(answers["planner_cmd"]),
-            # pretend the input type is SAS^+ for this question.
+            # Pretend the input type is SAS^+ for this question.
             bottom_toolbar=_get_planner_command_instruction(
                             {"input_type": INPUT_TYPE_SAS}),
             validate=_validate_non_empty,
@@ -121,7 +120,8 @@ def get_questions() -> list[Question|HelpText]:
         ),
         HelpText(
             key="translatorhelp",
-            text="To be able to translate PDDL files into SAS^+, Machetli needs access to a translator.",
+            text="To be able to translate PDDL files into SAS^+, Machetli "
+                "needs access to a translator.",
             print_if=_need_pddl_and_sas_planners,
         ),
         Question(
@@ -136,7 +136,8 @@ def get_questions() -> list[Question|HelpText]:
             key="reference_planner",
             prompt_fn=questionary.path,
             ask_if=_need_reference_planner,
-            message="Please specify the path to the planner that we should compare to. We call this the reference planner:",
+            message="Please specify the path to the planner that Machetli "
+                "should compare to. We call this the reference planner:",
             default=lambda answers: answers["planner"],
             validate=_validate_non_empty,
         ),
@@ -165,8 +166,9 @@ def get_questions() -> list[Question|HelpText]:
             post_process=_bash_tokenize,
         ),
         HelpText(
-            key="limitshelp",
-            text="You should limit resources so the individual runs do not run forever or exhaust memory of the host.",
+            key="limits_help",
+            text="You should limit resources so the individual runs do not run "
+                "forever or exhaust memory of the host.",
         ),
         Question(
             key="time_limit",
@@ -186,14 +188,14 @@ def get_questions() -> list[Question|HelpText]:
         ),
         HelpText(
             key="parsed_value_help",
-            text="You said that we should look for a value in your output. "
+            text="You said that Machetli should look for a value in the planner's output. "
                  "We will now ask details about this value.",
             print_if=_need_parsed_value,
         ),
         Question(
             key="parsed_value_source",
             prompt_fn=questionary.text,
-            message="Where should we parse the value from?",
+            message="Where should Machetli parse the value from?",
             ask_if=_need_parsed_value,
             default = "stdout",
             bottom_toolbar=
@@ -217,7 +219,7 @@ def get_questions() -> list[Question|HelpText]:
             key="parsed_value_type",
             prompt_fn=questionary.select,
             ask_if=_need_parsed_value,
-            message="Should we cast the value in a particular type before comparing it?",
+            message="Should Machetli cast the value in a particular type before comparing it?",
             choices=[
                 questionary.Choice("String", "str"),
                 questionary.Choice("Integer", "int"),
@@ -228,12 +230,12 @@ def get_questions() -> list[Question|HelpText]:
             key="parsed_value_evaluation",
             prompt_fn=questionary.text,
             ask_if=_need_single_parsed_value,
-            message="How can we detect if the observed behavior is present?",
+            message="How can Machetli detect if the observed behavior is present?",
             bottom_toolbar=
                 "Write a Python expression involving the variable 'value' "
                 "that evaluates to True if the behavior is present, e.g. "
                 "'value > 5'. In cases where the values cannot be found in "
-                "the output, we assume that the behavior does not occur.",
+                "the output, Machetli assumes that the behavior does not occur.",
             default="True",
             validate=_validate_non_empty,
         ),
@@ -241,13 +243,13 @@ def get_questions() -> list[Question|HelpText]:
             key="parsed_value_evaluation",
             prompt_fn=questionary.text,
             ask_if=_need_multiple_parsed_values,
-            message="How can we detect if the observed behavior is present?",
+            message="How can Machetli detect if the observed behavior is present?",
             bottom_toolbar=
                 "Write a Python expression involving the variables 'value' "
                 "and 'reference_value' that evaluates to True if the behavior "
                 "is present, e.g. 'value > reference_value'. In cases where "
-                "one of the values cannot be found in the output, we assume "
-                "that the behavior does not occur.",
+                "one of the values cannot be found in the output, Machetli "
+                "assumes that the behavior does not occur.",
             default="value != reference_value",
             validate=_validate_non_empty,
         ),
@@ -255,7 +257,7 @@ def get_questions() -> list[Question|HelpText]:
             key="exit_code_evaluation",
             prompt_fn=questionary.text,
             ask_if=_need_single_exit_code,
-            message="How can we detect if the observed behavior is present?",
+            message="How can Machetli detect if the observed behavior is present?",
             bottom_toolbar=
                 "Write a Python expression involving the variable 'exit_code' "
                 "that evaluates to True if the behavior is present, e.g. "
@@ -267,7 +269,7 @@ def get_questions() -> list[Question|HelpText]:
             key="exit_code_evaluation",
             prompt_fn=questionary.text,
             ask_if=_need_multiple_exit_codes,
-            message="How can we detect if the observed behavior is present?",
+            message="How can Machetli detect if the observed behavior is present?",
             bottom_toolbar=
                 "Write a Python expression involving the variables 'exit_code' "
                 "and 'reference_exit_code' that evaluates to True if the behavior "
@@ -495,7 +497,7 @@ def _bash_tokenize(value):
         return "".join(word)
 
     while i < length:
-        # Skip leading whitespace
+        # Skip leading whitespace.
         while i < length and value[i].isspace():
             i += 1
         if i < length:
