@@ -43,9 +43,9 @@ setup(
     include_package_data=True,
     package_data={
         "machetli": [
-            "templates/slurm-array-job.template"
-            "templates/interview/evaluator.py.tmpl"
-            "templates/interview/run.py.tmpl"
+            "templates/slurm-array-job.template",
+            "templates/interview/evaluator.py.tmpl",
+            "templates/interview/run.py.tmpl",
         ],
     },
     entry_points={
