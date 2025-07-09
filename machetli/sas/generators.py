@@ -154,7 +154,8 @@ class RemovePrePosts(SuccessorGenerator):
     successors stemming from the same operator follow consecutively.
     """
     def get_description(self):
-        return "Tries to remove individual precondition/effect pairs in operators. This ignores a variable in an operators."
+        return ("Tries to remove individual precondition/effect pairs in "
+                "operators. This ignores a variable in an operators.")
 
     def get_successors(self, state):
         task = state[KEY_IN_STATE]
@@ -179,7 +180,8 @@ class SetUnspecifiedPreconditions(SuccessorGenerator):
     consecutively.
     """
     def get_description(self):
-        return "Tries to add preconditions to an operator, in cases the operator has and effect but no precondition on a variable."
+        return ("Tries to add preconditions to an operator, which have an "
+                "effect but no precondition on a variable.")
 
     def get_successors(self, state):
         task = state[KEY_IN_STATE]
@@ -208,7 +210,8 @@ class MergeOperators(SuccessorGenerator):
     possible (e.g., with conflicting prevail conditions) are skipped.
     """
     def get_description(self):
-        return "Tries to replace a pair of operator with a single operator equivalent to applying both in sequence."
+        return ("Tries to replace a pair of operators with a single operator "
+                "equivalent to applying both in sequence.")
 
     def get_successors(self, state):
         task = state[KEY_IN_STATE]
