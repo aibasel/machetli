@@ -8,11 +8,11 @@ import re
     #return str(pathlib.Path(path).expanduser().resolve())
 #end def
 #if $input_type == "PDDL"
-#set $module = "pddl"
-#set $instance = "domain, problem"
+    #set $module = "pddl"
+    #set $instance = "domain, problem"
 #else
-#set $module = "sas"
-#set $instance = "task"
+    #set $module = "sas"
+    #set $instance = "task"
 #end if
 #set $has_reference_planner = self.hasVar("reference_planner")
 #set $should_parse_value = self.hasVar("parsed_value_regex")
