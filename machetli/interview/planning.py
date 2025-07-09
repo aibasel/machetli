@@ -24,7 +24,7 @@ EVALUATOR_TYPE_EXIT_CODE_DIFF = "exit code difference"
 EVALUATOR_TYPE_OUTPUT_DIFF = "output difference"
 
 
-def get_questions() -> list[Question]:
+def get_questions() -> list[Question|HelpText]:
     return [
         Question(
             key="input_type",
@@ -304,7 +304,16 @@ def get_questions() -> list[Question]:
             prompt_fn=questionary.path,
             message="Where should Machetli store the generated scripts?",
             default="machetli_" + datetime.now().strftime("%Y-%m-%d_%H-%M"),
-            validate=_validate_new_path,
+        ),
+        Question(
+            key="overwrite_script_location",
+            prompt_fn=questionary.select,
+            ask_if=lambda answers: Path(answers["script_location"]).expanduser().exists(),
+            message="This directory already exists. (Press Ctrl+c to select a different loction)",
+            choices=[
+                questionary.Choice("Yes, overwrite the directory", True),
+                questionary.Choice("No, abort the interview (scripts will not be written to disk)", False)
+            ],
         ),
     ]
 

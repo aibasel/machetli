@@ -1,6 +1,7 @@
 import argparse
 import json
 from pathlib import Path
+import shutil
 import sys
 
 from machetli.interview import planning
@@ -43,6 +44,13 @@ def _get_answers(config_path, skip_interview):
 
 def _generate_files(config):
     path = Path(config["script_location"])
+    if path.exists():
+        if config["overwrite_script_location"]:
+            shutil.rmtree(path)
+        else:
+            print(f"Directory '{path}' exists. Skipping file generation.")
+            exit(0)
+
     try:
         path.mkdir(parents=True, exist_ok=False)
     except:
