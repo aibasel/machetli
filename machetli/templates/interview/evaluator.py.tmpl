@@ -10,7 +10,7 @@ import re
 #if $input_type == "PDDL"
     #set $module = "pddl"
     #set $instance = "domain, problem"
-#else
+#elif $input_type == "SAS"
     #set $module = "sas"
     #set $instance = "task"
 #end if
@@ -43,7 +43,7 @@ def run_planner(planner, $instance, cmd_template, logname):
 def parse_value(result):
 #if $parsed_value_source == "stdout"
     content = result.stdout
-#elif $parsed_value_source == "sterr"
+#elif $parsed_value_source == "stderr"
     content = result.stderr
 #else
     content = Path("$parsed_value_source").readtext()
