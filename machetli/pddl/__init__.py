@@ -34,7 +34,7 @@ def _import_successor_generators():
     # so users can access them without knowing about the subpackage generators.
     import machetli.pddl.generators as generators
 
-    # Also generate a dict of all generators for easier access
+    # Also generate a dict of all generators for easier access.
     all_generators = {}
 
     for key, value in generators.__dict__.items():
