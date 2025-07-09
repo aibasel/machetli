@@ -46,7 +46,7 @@ def get_questions() -> list[Question|HelpText]:
             prompt_fn=questionary.path,
             ask_if=_need_pddl_input,
             message="Please specify the problem file:",
-            validate=_validate_non_empty,
+            validate=_validate_existing_file,
         ),
         Question(
             key="domain",
@@ -54,14 +54,14 @@ def get_questions() -> list[Question|HelpText]:
             ask_if=_need_pddl_input,
             message="Please specify the domain file:",
             default=_detect_domain,
-            validate=_validate_non_empty,
+            validate=_validate_existing_file,
         ),
         Question(
             key="sas_task",
             prompt_fn=questionary.path,
             ask_if=_need_sas_input,
             message="Please specify the SAS^+ file:",
-            validate=_validate_non_empty,
+            validate=_validate_existing_file,
         ),
         Question(
             key="evaluator_type",
@@ -417,15 +417,15 @@ def _validate_at_least_one(values):
     else:
         return "Please select at least one option"
 
-def _validate_new_path(text):
-    if Path(text).exists():
-        return f"The directory '{text}' already exists."
-    else:
+def _validate_existing_file(text):
+    if Path(text).expanduser().exists():
         return True
+    else:
+        return f"File '{text}' not found."
 
 def _detect_domain(answers):
     problem = answers["problem"]
-    default = Path(problem).parent / "domain.pddl"
+    default = Path(problem).expanduser().parent / "domain.pddl"
     return str(find_domain_path(Path(problem)) or default)
 
 def _detect_translator(answers):
