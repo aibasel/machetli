@@ -157,6 +157,32 @@ def parse(content, pattern, type=int):
     else:
         logging.debug(f"Failed to find pattern '{regex}'.")
 
+def _parse_limit(limit, suffixes, default):
+    suffixes_str = "".join(suffixes)
+    if limit is None:
+        return None
+    elif isinstance(limit, str):
+        if m:= re.match(r"\s*(?P<value>\d+)\s*(?P<suffix>["
+                        + suffixes_str.lower() + suffixes_str.upper() +
+                        r"])?", limit):
+            suffix = m.group("suffix")
+            factor = suffixes.get(suffix.lower(), suffixes.get(suffix.upper(), default))
+            value = int(m.group("value"))
+            return value * factor
+        else:
+            supported_suffixes = ", ".join(suffixes_str)
+            raise ValueError(f"We only support suffixes {{{supported_suffixes}}} "
+                             f"but got `{limit}`")
+    elif isinstance(limit, int):
+        return limit * suffixes[default]
+    else:
+        raise ValueError(f"Unsupported type '{limit.type}'.")
+
+def _time_limit_to_seconds(limit):
+    return _parse_limit(limit, {"s": 1, "m": 60, "h": 60**2}, "s")
+
+def _memory_limit_to_bytes(limit):
+    return _parse_limit(limit, {"K": 1024, "M": 1024**2, "G": 1024**3}, "M")
 
 def run(command, *, cpu_time_limit=None, memory_limit=None,
         core_dump_limit=0, input_filename=None,
@@ -185,9 +211,9 @@ def run(command, *, cpu_time_limit=None, memory_limit=None,
         limits to make sure a command eventually terminates. There also is
         the parameter `timeout` from `subprocess.run` which is a wallclock
         time limit and generates an exception whereas we terminate after
-        the program has been killed by the system. Alternatively to passing
-        an integer, the time limit can also be passed as a string containing
-        an integer and a suffix `s` (seconds), `m` (minutes), or `h` (hours).
+        the program has been killed by the system. Instead of passing an
+        integer, the time limit can also be passed as a string containing an
+        integer and a suffix `s` (seconds), `m` (minutes), or `h` (hours).
 
     :param memory_limit:
         Memory limit in MiB to use for executing the command. Alternatively,
@@ -221,31 +247,17 @@ def run(command, *, cpu_time_limit=None, memory_limit=None,
                      "`cpu_time_limit` when calling `tools.run`? They might "
                      "end up in race conditions.")
 
-    # Convert cpu time limit to seconds.
-    if isinstance(cpu_time_limit, str):
-        if m:= re.match(r"\s*(?P<value>\d+)\s*(?P<suffix>[sSmMhH])?", cpu_time_limit):
-            suffix = m.group("suffix").lower()
-            factor = {"s": 1, "m": 60, "h": 60**2}.get(suffix, 1)
-            value = int(m.group("value"))
-            cpu_time_limit = value * factor
-        else:
-            logging.critical("Unsupported format for parameter `cpu_time_limit` of "
-                             "function `tools.run`. We only support suffixes `s`, "
-                             f"`m`, and `h` but got `{cpu_time_limit}`")
+    try:
+        cpu_time_limit = _time_limit_to_seconds(cpu_time_limit)
+    except ValueError as e:
+        logging.critical("Unsupported format for parameter `cpu_time_limit` of "
+                         f"function `tools.run`. {e}")
 
-    # Convert memory limit to Bytes.
-    if isinstance(memory_limit, str):
-        if m:= re.match(r"\s*(?P<value>\d+)\s*(?P<suffix>[kKmMgG])?", memory_limit):
-            suffix = m.group("suffix").upper()
-            factor = {"K": 1024, "M": 1024**2, "G": 1024**3}.get(suffix, 1024**2)
-            value = int(m.group("value"))
-            memory_limit = value * factor
-        else:
-            logging.critical("Unsupported format for parameter `memory_limit` of "
-                             "function `tools.run`. We only support suffixes `K`, "
-                             f"`M`, and `G` but got `{memory_limit}`")
-    elif isinstance(memory_limit, int):
-        memory_limit = memory_limit * 1024**2
+    try:
+        memory_limit = _memory_limit_to_bytes(memory_limit)
+    except ValueError as e:
+        logging.critical("Unsupported format for parameter `memory_limit` of "
+                         f"function `tools.run`. {e}")
 
     # This function is copied from lab.calls.call
     # (<https://github.com/aibasel/lab>).
