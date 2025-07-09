@@ -20,13 +20,17 @@ def _parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument("-c", "--config", type=Path, default=None,
                         help="Path to existing JSON config")
-    parser.add_argument("-q", "--quiet", action="store_true", default=False,
+    parser.add_argument("-s", "--skip-interview", action="store_true", default=False,
                         help="Skip interview questions and use answers from config")
-    return parser.parse_args()
+    args = parser.parse_args()
+    if args.skip_interview and not args.config:
+        print("Cannot skip the interview without providing a config file")
+        sys.exit(1)
+    return args
 
-def _get_answers(config_path, quiet):
+def _get_answers(config_path, skip_interview):
     config = _load_config(config_path)
-    if quiet:
+    if skip_interview:
         return config
     else:
         # TODO: if we want to support questions from different modules, we need a
@@ -63,7 +67,7 @@ def _generate_files(config):
 
 def main():
     args = _parse_args()
-    answers = _get_answers(args.config, args.quiet)
+    answers = _get_answers(args.config, args.skip_interview)
     if answers:
         _generate_files(answers)
 
