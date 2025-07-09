@@ -57,12 +57,12 @@ def _generate_files(config):
     print_separator()
     print(
         f"Machetli created the files for your search in the directory '{path}'. "
-        "To make changes to the setup, you can adapt those files or you can re-run "
-        "this interview seeded with the answers given above with\n"
-        f"    machetli -c {config_path}\n"
         "You can start the search by calling \n\n"
         f"    {main_script}\n\n"
         "from your command line."
+        "To make changes to the setup, you can adapt those files or you can re-run "
+        "this interview seeded with the answers given above with "
+        f"'machetli -c {config_path}'"
     )
 
 def main():
