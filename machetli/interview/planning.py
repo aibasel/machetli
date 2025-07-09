@@ -464,7 +464,7 @@ def _get_planner_command_instruction(answers):
     else:
         assert False
     return ("Input the command line of your planner call, using {planner} to represent\n"
-        f"the binary{input_help}.\n"
+        f"the planner{input_help}.\n"
         "Use \"\" to group arguments as you would on a shell.\n"
         f"For example: {example}.")
 
