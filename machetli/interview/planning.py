@@ -217,7 +217,7 @@ def get_questions() -> list[Question|HelpText]:
                 "The first match of the line will be used and the first group in the regex "
                 "will be used to parse the value. For example use 'Total time: (\\d+)s' to "
                 "parse the number of seconds after 'Total time:'.",
-            validate=_validate_non_empty,
+            validate=_validate_regex,
         ),
         Question(
             key="parsed_value_type",
@@ -430,6 +430,16 @@ def _validate_existing_file(text):
         return True
     else:
         return f"File '{text}' not found."
+
+def _validate_regex(text):
+    if not text:
+        return "Please enter a value"
+    try:
+        re.compile(text)
+        return True
+    except re.error as e:
+        return str(e)
+
 
 def _detect_domain(answers):
     problem = answers["problem"]
