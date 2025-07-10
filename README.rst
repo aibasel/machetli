@@ -1,8 +1,8 @@
 .. image:: docs/machetli.svg
    :width: 20 %
    :align: right
-   :alt: 
-   
+   :alt:
+
 Machetli
 ========
 
@@ -33,10 +33,12 @@ If you want to avoid changes to your system-wide Python installation you can
 Usage
 -----
 
-An `interactive demo of Machetli <https://tinyurl.com/machetli-demo>`_ is
-available as a Jupyter notebook on Google Colab. You can find additional
-examples in the directory `examples
-<https://github.com/aibasel/machetli/tree/main/examples>`_.
+The easiest way to get started is by calling ``machetli`` from the command line.
+Machetli guides you through the process of setting up scripts for its most
+common use case. If your use case is different you can find an
+`interactive demo of Machetli <https://tinyurl.com/machetli-demo>`_ as a Jupyter
+notebook on Google Colab. You can find additional examples in the directory
+`examples <https://github.com/aibasel/machetli/tree/main/examples>`_.
 
 For a more detailed description, please refer to the `documentation
 <https://machetli.readthedocs.io/en/latest/usage.html>`_.

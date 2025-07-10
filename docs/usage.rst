@@ -8,6 +8,15 @@ To use Machetli, you have to write two Python scripts:
 * a search script that tells Machetli how to explore the
   space of instance modifications.
 
+After installation, you can simply call ``machetli`` in a shell. Doing so
+starts an interactive dialogue in which Machetli asks some questions about what
+you would like to do. In the end, it automatically generates evaluator and
+search scripts for your use case, which you can then immediately run to simplify
+your problem. While it is convenient, this dialogue is limited to our most
+common use cases and you may need more elaborate evaluator and search scripts.
+In this case, you can either adapt the generated files or write your own
+following the guidelines below.
+
 .. _usage-evaluator:
 
 Writing an evaluator script
@@ -147,7 +156,7 @@ the search function. By default, Machetli uses a
 :class:`LocalEnvironment<machetli.environments.LocalEnvironment>` which executes
 everything in sequenceon the local machine. If you use a
 :class:`SlurmEnvironment<machetli.environments.SlurmEnvironment>` instead, the
-evaluation of generated states will be scheduled in batches on a grid running 
+evaluation of generated states will be scheduled in batches on a grid running
 `Slurm <https://slurm.schedmd.com/overview.html>`_.
 
 .. note:: Uni Basel users can use the specialized class :class:`BaselSlurmEnvironment<machetli.environments.BaselSlurmEnvironment>` instead.
