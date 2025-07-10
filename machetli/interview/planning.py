@@ -157,7 +157,7 @@ def get_questions() -> list[Question|HelpText]:
             prompt_fn=questionary.text,
             ask_if=_need_pddl_and_sas_reference_planners,
             message="How should the reference planner be executed on SAS^+ files?",
-            default=lambda answers: answers["sas_planner_cmd"],
+            default=lambda answers: _detect_sas_cmd_from_pddl_cmd(answers["reference_planner_cmd"]),
             # pretend the input type is SAS^+ for this question.
             bottom_toolbar=_get_planner_command_instruction(
                             {"input_type": INPUT_TYPE_SAS}),
