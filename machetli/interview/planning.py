@@ -102,8 +102,8 @@ def get_questions() -> list[Question|HelpText]:
             message="How should the planner be executed?",
             bottom_toolbar=_get_planner_command_instruction,
             validate=_validate_non_empty,
-            pre_process=_bash_untokenize,
-            post_process=_bash_tokenize,
+            convert_data_to_input=_bash_untokenize,
+            convert_input_to_data=_bash_tokenize,
         ),
         Question(
             key="sas_planner_cmd",
@@ -115,8 +115,8 @@ def get_questions() -> list[Question|HelpText]:
             bottom_toolbar=_get_planner_command_instruction(
                             {"input_type": INPUT_TYPE_SAS}),
             validate=_validate_non_empty,
-            pre_process=_bash_untokenize,
-            post_process=_bash_tokenize,
+            convert_data_to_input=_bash_untokenize,
+            convert_input_to_data=_bash_tokenize,
         ),
         HelpText(
             key="translatorhelp",
@@ -149,8 +149,8 @@ def get_questions() -> list[Question|HelpText]:
             default=lambda answers: answers["planner_cmd"],
             bottom_toolbar=_get_planner_command_instruction,
             validate=_validate_non_empty,
-            pre_process=_bash_untokenize,
-            post_process=_bash_tokenize,
+            convert_data_to_input=_bash_untokenize,
+            convert_input_to_data=_bash_tokenize,
         ),
         Question(
             key="sas_reference_planner_cmd",
@@ -162,8 +162,8 @@ def get_questions() -> list[Question|HelpText]:
             bottom_toolbar=_get_planner_command_instruction(
                             {"input_type": INPUT_TYPE_SAS}),
             validate=_validate_non_empty,
-            pre_process=_bash_untokenize,
-            post_process=_bash_tokenize,
+            convert_data_to_input=_bash_untokenize,
+            convert_input_to_data=_bash_tokenize,
         ),
         HelpText(
             key="limits_help",
@@ -349,8 +349,8 @@ def generate_files(config):
             shutil.copy(Path(config["problem"]).expanduser(), script_path / "initial-problem.pddl")
         if "domain" in config:
             shutil.copy(Path(config["domain"]).expanduser(), script_path / "initial-domain.pddl")
-        if "sas_file" in config:
-            shutil.copy(Path(config["sas_file"]).expanduser(), script_path / "initial-task.sas")
+        if "sas_task" in config:
+            shutil.copy(Path(config["sas_task"]).expanduser(), script_path / "initial-task.sas")
     except OSError as e:
         print(f"Error copying file: {e}")
         sys.exit(1)
@@ -463,8 +463,8 @@ def _get_planner_command_instruction(answers):
         input_help = " and {domain}/{problem} to represent the input files"
         example = "{planner} {domain} {problem} --search \"astar(lmcut())\""
     elif _need_sas_input(answers):
-        input_help = " and {sas_task} to represent the input file"
-        example = "{planner} {sas_task} --search \"astar(lmcut())\""
+        input_help = " and {task} to represent the input file"
+        example = "{planner} {task} --search \"astar(lmcut())\""
     else:
         assert False
     return ("Input the command line of your planner call, using {planner} to represent\n"

@@ -24,16 +24,16 @@ class Question():
                  prompt_fn: Callable[..., Any],
                  default: Any | Callable[[Dict[str,Any]], Any] = None,
                  bottom_toolbar: Optional[str | Callable[[Dict[str,Any]],str]] = None,
-                 pre_process: Optional[Callable[[Any], Any]] = None,
-                 post_process: Optional[Callable[[Any], Any]] = None,
+                 convert_data_to_input: Optional[Callable[[Any], Any]] = None,
+                 convert_input_to_data: Optional[Callable[[Any], Any]] = None,
                  ask_if: Optional[Callable[[Dict[str,Any]], bool]] = None,
                  **args: Any) -> None:
         self.key = key
         self.prompt_fn = prompt_fn
         self.default = default
         self.bottom_toolbar = bottom_toolbar
-        self.pre_process = pre_process or (lambda x: x)
-        self.post_process = post_process or (lambda x: x)
+        self.convert_data_to_input = convert_data_to_input or (lambda x: x)
+        self.convert_input_to_data = convert_input_to_data or (lambda x: x)
         self.ask_if = ask_if or (lambda _: True)
         self.args = args
 
@@ -47,7 +47,7 @@ class Question():
         if default is None:
             return None
         else:
-            return self.pre_process(default)
+            return self.convert_data_to_input(default)
 
     def _get_bottom_toolbar(self, answers: Dict[str,Any]) -> Optional[str]:
         if callable(self.bottom_toolbar):
@@ -72,7 +72,7 @@ class Question():
             args["bottom_toolbar"] = bottom_toolbar
         prompt = self.prompt_fn(**args)
         raw = prompt.unsafe_ask()
-        return self.post_process(raw)
+        return self.convert_input_to_data(raw)
 
 
 def _get_terminal_width():
