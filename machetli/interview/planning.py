@@ -429,12 +429,13 @@ def _validate_existing_file(text):
 
 def _detect_domain(answers):
     problem = answers["problem"]
-    default = Path(problem).expanduser().parent / "domain.pddl"
-    return str(find_domain_path(Path(problem)) or default)
+    problem_path = Path(problem).expanduser()
+    default = problem_path.parent / "domain.pddl"
+    return str(find_domain_path(problem_path) or default)
 
 def _detect_translator(answers):
     default = "translate.py"
-    planner_dir = Path(answers["planner"]).parent
+    planner_dir = Path(answers["planner"]).expanduser().parent
     candidates = [
         planner_dir / "builds" / "release" / "bin" / "translate" / "translate.py",
         planner_dir / "builds" / "debug" / "bin" / "translate" / "translate.py",
