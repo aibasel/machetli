@@ -175,7 +175,8 @@ def get_questions() -> list[Question|HelpText]:
             prompt_fn=questionary.text,
             message="Time limit:",
             default = "60s",
-            bottom_toolbar="Allowed suffixes: s(econds), m(inutes), h(ours)",
+            bottom_toolbar="Allowed suffixes: s (seconds), m (minutes), h (hours)"
+                "Integers without suffix are interpreted as seconds.",
             validate=_validate_time_limit,
         ),
         Question(
@@ -183,7 +184,8 @@ def get_questions() -> list[Question|HelpText]:
             prompt_fn=questionary.text,
             message="Memory limit:",
             default = "2G",
-            bottom_toolbar="Allowed suffixes: K(ibibyte), M(ebibyte), G(ibibyte)",
+            bottom_toolbar="Allowed suffixes: K (KiB), M (MiB), G (GiB). "
+                "Integers without suffix are interpreted as MiB.",
             validate=_validate_memory_limit,
         ),
         HelpText(
@@ -405,13 +407,13 @@ def _validate_time_limit(text):
     if re.fullmatch(r"\d+\s*[smh]?", text):
         return True
     else:
-        return "Please specify the time limit as an integer followed by 's' (default), 'm', or 'h'."
+        return "Please specify the time limit as an integer optionally followed by 's', 'm', or 'h'."
 
 def _validate_memory_limit(text):
     if re.fullmatch(r"\d+\s*[kKmMgG]?", text):
         return True
     else:
-        return "Please specify the memory limit as an integer followed by 'K' (default), 'M', or 'G'."
+        return "Please specify the memory limit as an integer optionally followed by 'K', 'M', or 'G'."
 
 def _validate_at_least_one(values):
     if values:
