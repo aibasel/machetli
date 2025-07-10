@@ -36,6 +36,9 @@ class SuccessorGenerator:
         Yield successors of *state*.
         """
         raise NotImplementedError
+    
+    def get_description(self):
+        return ""
 
 
 class ChainingSuccessorGenerator(SuccessorGenerator):

@@ -1,0 +1,93 @@
+#!/usr/bin/env python
+
+import platform
+import re
+#if $input_type == "PDDL then SAS"
+import subprocess
+import sys
+#end if
+from machetli import environments, search, tools
+
+#import pathlib
+#def get_abs_path(path)
+    #return str(pathlib.Path(path).expanduser().resolve())
+#end def
+
+#if $input_type == "PDDL"
+from machetli import pddl
+#set $module = "pddl"
+#set $evaluator_filename = "evaluator.py"
+#set $generators = $pddl_generators
+#elif $input_type == "SAS"
+from machetli import sas
+#set $module = "sas"
+#set $evaluator_filename = "evaluator.py"
+#set $generators = $sas_generators
+#elif $input_type == "PDDL then SAS"
+from machetli import pddl, sas
+#set $module = "pddl"
+#set $evaluator_filename = "pddl_evaluator.py"
+#set $generators = $pddl_generators
+#end if
+
+if re.fullmatch(r"login12|ic[ab]\d\d", platform.node()):
+    environment = environments.BaselSlurmEnvironment(batch_size=100)
+else:
+    environment = environments.LocalEnvironment()
+
+script_dir = tools.get_script_dir()
+#if $input_type == "SAS"
+task = script_dir / "initial-task.sas"
+initial_state = sas.generate_initial_state(task)
+#elif $input_type == "PDDL" or $input_type == "PDDL then SAS"
+domain = script_dir / "initial-domain.pddl"
+problem = script_dir / "initial-problem.pddl"
+initial_state = pddl.generate_initial_state(domain, problem)
+#end if
+
+successor_generators = [
+#for $generator in $generators
+    $module.${generator}(),
+#end for
+]
+
+evaluator_filename = script_dir / "$evaluator_filename"
+result = search(initial_state, successor_generators, evaluator_filename,
+                environment)
+
+#if $input_type == "SAS"
+sas.write_file(result, script_dir / "small-task.sas",)
+#elif $input_type == "PDDL" or $input_type == "PDDL then SAS"
+pddl.write_files(result,
+                 script_dir / "small-domain.pddl",
+                 script_dir / "small-problem.pddl")
+#end if
+
+#if $input_type == "PDDL then SAS"
+translator = "$get_abs_path($translator)"
+task = script_dir / "initial-task.sas"
+try:
+    subprocess.check_call([
+        translator,
+        str(script_dir / "small-domain.pddl"),
+        str(script_dir / "small-problem.pddl"),
+        "--sas-file",
+        str(task)
+    ])
+except subprocess.CalledProcessError as err:
+    sys.exit(f"Error: Could not translate PDDL files to SAS^+: {err}.")
+
+initial_state = sas.generate_initial_state(task)
+
+successor_generators = [
+#for $generator in $sas_generators
+    sas.${generator}(),
+#end for
+]
+
+evaluator_filename = script_dir / "sas_evaluator.py"
+result = search(initial_state, successor_generators, evaluator_filename,
+                environment)
+
+sas.write_file(result, script_dir / "small-task.sas",)
+#end if

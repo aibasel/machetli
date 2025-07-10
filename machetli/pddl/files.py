@@ -16,7 +16,7 @@ SIN = " "  # single indentation
 DIN = "  "  # double indentation
 
 
-def _find_domain_path(task_path: Path):
+def find_domain_path(task_path: Path):
     """
     Find domain path for the given task using automatic naming rules.
     """
@@ -32,9 +32,6 @@ def _find_domain_path(task_path: Path):
         domain_path = task_path.parent / domain_basename
         if domain_path.exists():
             return domain_path
-
-    logging.critical(
-        "Error: Could not find domain file using automatic naming rules.")
 
 
 def generate_initial_state(domain_path: Path | str,
@@ -108,7 +105,10 @@ def run_evaluator(evaluate):
             _run_evaluator_on_pddl_files(evaluate, "domain.pddl", "problem.pddl")
         except (FileNotFoundError, PickleError):
             task_path = Path(filenames[0])
-            domain_path = _find_domain_path(task_path)
+            domain_path = find_domain_path(task_path)
+            if domain_path is None:
+                logging.critical(
+                    "Error: Could not find domain file using automatic naming rules.")
             _run_evaluator_on_pddl_files(evaluate, domain_path, task_path)
     elif len(filenames) == 2:
         domain_filename, task_filename = filenames

@@ -1,0 +1,88 @@
+#!/usr/bin/env python3
+
+from pathlib import Path
+import re
+
+#import pathlib
+#def get_abs_path(path)
+    #return str(pathlib.Path(path).expanduser().resolve())
+#end def
+#if $input_type == "PDDL"
+    #set $module = "pddl"
+    #set $instance = "domain, problem"
+#elif $input_type == "SAS"
+    #set $module = "sas"
+    #set $instance = "task"
+#end if
+#set $has_reference_planner = self.hasVar("reference_planner")
+#set $should_parse_value = self.hasVar("parsed_value_regex")
+
+from machetli import $module, tools
+
+
+PLANNER = "$get_abs_path($planner)"
+PLANNER_CMD_TEMPLATE = $planner_cmd
+#if has_reference_planner
+REFERNCE_PLANNER = "$get_abs_path($reference_planner)"
+REFERNCE_PLANNER_CMD_TEMPLATE = $reference_planner_cmd
+#end if
+TIME_LIMIT = "$time_limit"
+MEMORY_LIMIT = "$memory_limit"
+#if should_parse_value
+PARSED_VALUE_REGEX = re.compile(r$repr($parsed_value_regex))
+#end if
+
+def run_planner(planner, $instance, cmd_template, logname):
+    cmd = [part.format(**locals()) for part in cmd_template]
+    return tools.run(cmd, cpu_time_limit=TIME_LIMIT,
+                     memory_limit=MEMORY_LIMIT, text=True,
+                     stdout_filename=f"{logname}.log",
+                     stderr_filename=f"{logname}.err")
+
+#if should_parse_value
+def parse_value(result):
+#if $parsed_value_source == "stdout"
+    content = result.stdout
+#elif $parsed_value_source == "stderr"
+    content = result.stderr
+#else
+    content = Path("$parsed_value_source").readtext()
+#end if
+    for line in content.splitlines():
+        if m := re.match(PARSED_VALUE_REGEX, line):
+            value = m.group(1)
+            try:
+                return ${parsed_value_type}(value)
+            except ValueError:
+                return None
+#end if
+
+def evaluate($instance):
+    result = run_planner(PLANNER, $instance, PLANNER_CMD_TEMPLATE, "planner")
+#if should_parse_value
+    value = parse_value(result)
+    if value is None:
+        return False
+#else
+    exit_code = result.returncode
+#end if
+
+#if has_reference_planner
+    reference_result = run_planner(REFERNCE_PLANNER, $instance, REFERNCE_PLANNER_CMD_TEMPLATE, "reference_planner")
+#if should_parse_value
+    reference_value = parse_value(reference_result)
+    if reference_value is None:
+        return False
+#else
+    reference_exit_code = reference_result.returncode
+#end if
+#end if
+
+#if self.hasVar("parsed_value_evaluation")
+    return $parsed_value_evaluation
+#else
+    return $exit_code_evaluation
+#end if
+
+if __name__ == "__main__":
+    ${module}.run_evaluator(evaluate)

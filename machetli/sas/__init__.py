@@ -29,18 +29,27 @@ from machetli.sas.files import generate_initial_state, write_file, run_evaluator
 __all__ = ["generate_initial_state", "write_file", "run_evaluator"]
 
 
-def _import_successor_generators():
-    # Import all successor generators and put them in the package namespace
-    # so users can access them without knowing about the subpackage generators.
+def _get_successor_generators():
+    # Import all successor generators and return a dict mapping names to classes.
     import machetli.sas.generators as generators
+    all_generators = {}
 
     for key, value in generators.__dict__.items():
         if (isinstance(value, type)
             and issubclass(value, generators.SuccessorGenerator)
                 and value != generators.SuccessorGenerator):
-            __all__.append(key)
-            globals()[key] = value
+            all_generators[key] = value
+    return all_generators
 
+def _add_to_package_namespace(generators):
+    # Plance generators in the package namespace so users can access them without
+    # knowing about the subpackage generators.
+    for key, value in generators.items():
+        __all__.append(key)
+        globals()[key] = value
 
-_import_successor_generators()
-del _import_successor_generators
+GENERATORS = _get_successor_generators()
+_add_to_package_namespace(GENERATORS)
+
+del _get_successor_generators
+del _add_to_package_namespace

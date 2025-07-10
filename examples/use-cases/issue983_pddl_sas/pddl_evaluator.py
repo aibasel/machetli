@@ -27,7 +27,7 @@ def evaluate(domain, problem):
     result_mip = tools.run(mip_command, cpu_time_limit=20, memory_limit=3000,
                            text=True)
     initial_h = tools.parse(result_mip.stdout,
-                            r"Initial heuristic value .* ("r"\d+)")
+                            r"Initial heuristic value .* (\d+)")
 
     if cost is None or initial_h is None:
         return False
