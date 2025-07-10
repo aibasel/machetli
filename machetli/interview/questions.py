@@ -1,9 +1,14 @@
 import questionary
+import questionary.prompts.common
 import shutil
 import textwrap
 from typing import Any, Callable, Dict, Optional
 
 STYLE_DISABLED = "fg:#858585 italic"
+
+questionary.prompts.common.INDICATOR_SELECTED = "[🔪]"
+questionary.prompts.common.INDICATOR_UNSELECTED = "[  ]"
+
 
 class HelpText():
     def __init__(self,

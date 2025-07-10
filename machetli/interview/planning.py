@@ -8,6 +8,7 @@ import sys
 
 from Cheetah.Template import Template
 import questionary
+from questionary import constants, Style
 
 from machetli import sas, pddl
 from machetli.pddl.files import find_domain_path
@@ -23,6 +24,7 @@ EVALUATOR_TYPE_OUTPUT = "output"
 EVALUATOR_TYPE_EXIT_CODE_DIFF = "exit code difference"
 EVALUATOR_TYPE_OUTPUT_DIFF = "output difference"
 
+NON_REVERSED_SELECTION = Style([('selected', 'noreverse')])
 
 def get_questions() -> list[Question|HelpText]:
     return [
@@ -290,6 +292,7 @@ def get_questions() -> list[Question|HelpText]:
             ],
             validate=_validate_at_least_one,
             show_description=True,
+            style=NON_REVERSED_SELECTION,
         ),
         Question(
             key="sas_generators",
@@ -302,6 +305,7 @@ def get_questions() -> list[Question|HelpText]:
             ],
             validate=_validate_at_least_one,
             show_description=True,
+            style=NON_REVERSED_SELECTION,
         ),
         Question(
             key="script_location",
