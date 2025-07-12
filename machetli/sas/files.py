@@ -2,6 +2,7 @@ import logging
 from pathlib import Path
 from pickle import PickleError
 import sys
+from typing import Union
 
 from machetli.sas.constants import KEY_IN_STATE
 from machetli.sas.sas_tasks import SASTask, SASVariables, SASMutexGroup, \
@@ -12,7 +13,7 @@ from machetli.evaluator import EXIT_CODE_CRITICAL, EXIT_CODE_BEHAVIOR_PRESENT, \
     EXIT_CODE_BEHAVIOR_NOT_PRESENT
 
 
-def generate_initial_state(sas_file: Path | str) -> dict:
+def generate_initial_state(sas_file: Union[Path, str]) -> dict:
     r"""
     Parse the SAS\ :sup:`+` task defined in the SAS\ :sup:`+` file
     `sas_file` and return an initial state containing the parsed
@@ -203,7 +204,7 @@ def _read_axioms(lines, num_axioms):
     return axioms
 
 
-def write_file(state: dict, path: Path | str):
+def write_file(state: dict, path: Union[Path, str]):
     """
     Write the problem represented in `state` to disk.
     """

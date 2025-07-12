@@ -2,7 +2,7 @@ import questionary
 import questionary.prompts.common
 import shutil
 import textwrap
-from typing import Any, Callable, Dict, Optional
+from typing import Any, Callable, Dict, Optional, Union
 
 STYLE_DISABLED = "fg:#858585 italic"
 
@@ -27,8 +27,8 @@ class Question():
     def __init__(self,
                  key: str,
                  prompt_fn: Callable[..., Any],
-                 default: Any | Callable[[Dict[str,Any]], Any] = None,
-                 bottom_toolbar: Optional[str | Callable[[Dict[str,Any]],str]] = None,
+                 default: Union[Any, Callable[[Dict[str,Any]], Any]] = None,
+                 bottom_toolbar: Union[str, Callable[[Dict[str,Any]],str], None] = None,
                  convert_data_to_input: Optional[Callable[[Any], Any]] = None,
                  convert_input_to_data: Optional[Callable[[Any], Any]] = None,
                  ask_if: Optional[Callable[[Dict[str,Any]], bool]] = None,
@@ -90,7 +90,7 @@ def print_separator():
     width = _get_terminal_width()
     questionary.print("-" * width, style=STYLE_DISABLED)
 
-def run_interview(questions: list[Question|HelpText], preanswers: Dict[str, Any]):
+def run_interview(questions: list[Union[Question, HelpText]], preanswers: Dict[str, Any]):
     print("Starting Interview. Press Ctrl+C to cancel a question and go back to the previous question.\n")
     index = 0
     history = []

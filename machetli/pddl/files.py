@@ -2,6 +2,7 @@ import logging
 from pathlib import Path
 from pickle import PickleError
 import sys
+from typing import Union
 
 from machetli.pddl.constants import KEY_IN_STATE
 from machetli.pddl.downward import pddl_parser
@@ -34,8 +35,8 @@ def find_domain_path(task_path: Path):
             return domain_path
 
 
-def generate_initial_state(domain_path: Path | str,
-                           task_path: Path | str) -> dict:
+def generate_initial_state(domain_path: Union[Path, str],
+                           task_path: Union[Path, str]) -> dict:
     """
     Parse the PDDL task defined in the given PDDL files. 
 
@@ -286,8 +287,8 @@ def _write_problem(task, path: Path):
         file.write(")\n")
 
 
-def write_files(state: dict, domain_path: Path | str,
-                problem_path: Path | str):
+def write_files(state: dict, domain_path: Union[Path, str],
+                problem_path: Union[Path, str]):
     """
     Write the domain and problem files represented in `state` to disk.
     """

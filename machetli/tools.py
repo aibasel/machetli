@@ -12,6 +12,7 @@ import resource
 import shutil
 import subprocess
 import sys
+from typing import Union
 
 
 DEFAULT_ENCODING = "utf-8"
@@ -105,14 +106,14 @@ def configure_logging(level=logging.INFO):
     root_logger.setLevel(level)
 
 
-def write_state(state, file_path: Path | str):
+def write_state(state, file_path: Union[Path, str]):
     """
     Use pickle to write a given state to disk.
     """
     Path(file_path).write_bytes(pickle.dumps(state))
 
 
-def read_state(file_path: Path | str):
+def read_state(file_path: Union[Path, str]):
     """
     Use pickle to read a state from disk.
     """

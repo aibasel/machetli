@@ -5,10 +5,11 @@ import re
 import shutil
 import stat
 import sys
+from typing import Union
 
 from Cheetah.Template import Template
 import questionary
-from questionary import constants, Style
+from questionary import Style
 
 from machetli import sas, pddl
 from machetli.pddl.files import find_domain_path
@@ -26,7 +27,7 @@ EVALUATOR_TYPE_OUTPUT_DIFF = "output difference"
 
 NON_REVERSED_SELECTION = Style([('selected', 'noreverse')])
 
-def get_questions() -> list[Question|HelpText]:
+def get_questions() -> list[Union[Question, HelpText]]:
     return [
         Question(
             key="input_type",
