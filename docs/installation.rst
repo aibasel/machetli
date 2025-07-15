@@ -25,3 +25,10 @@ install Machetli in a virtual Python environment.
 
     # Install Machetli in the virtual environment.
     pip install machetli
+
+
+.. figure:: install.gif
+    :width: 100%
+    :align: center
+    
+    Installing Machetli in a virtual environment

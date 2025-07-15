@@ -12,10 +12,19 @@ After installation, you can simply call ``machetli`` in a shell. Doing so
 starts an interactive dialogue in which Machetli asks some questions about what
 you would like to do. In the end, it automatically generates evaluator and
 search scripts for your use case, which you can then immediately run to simplify
-your problem. While it is convenient, this dialogue is limited to our most
-common use cases and you may need more elaborate evaluator and search scripts.
-In this case, you can either adapt the generated files or write your own
-following the guidelines below.
+your problem. 
+
+
+.. figure:: interview.gif
+    :width: 100%
+    :align: center
+    
+    Machetli's interview mode
+
+While the interactive dialogue is convenient, it is limited to our most common
+use cases and you may need more elaborate evaluator and search scripts. In this
+case, you can either adapt the generated files or write your own following the
+guidelines below.
 
 .. _usage-evaluator:
 
