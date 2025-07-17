@@ -23,13 +23,13 @@ from machetli import $module, tools
 PLANNER = "$get_abs_path($planner)"
 PLANNER_CMD_TEMPLATE = $planner_cmd
 #if has_reference_planner
-REFERNCE_PLANNER = "$get_abs_path($reference_planner)"
-REFERNCE_PLANNER_CMD_TEMPLATE = $reference_planner_cmd
+REFERENCE_PLANNER = "$get_abs_path($reference_planner)"
+REFERENCE_PLANNER_CMD_TEMPLATE = $reference_planner_cmd
 #end if
 TIME_LIMIT = "$time_limit"
 MEMORY_LIMIT = "$memory_limit"
 #if should_parse_value
-PARSED_VALUE_REGEX = re.compile(r$repr($parsed_value_regex))
+PARSED_VALUE_REGEX = r$repr($parsed_value_regex)
 #end if
 
 def run_planner(planner, $instance, cmd_template, logname):
@@ -39,28 +39,17 @@ def run_planner(planner, $instance, cmd_template, logname):
                      stdout_filename=f"{logname}.log",
                      stderr_filename=f"{logname}.err")
 
-#if should_parse_value
-def parse_value(result):
-#if $parsed_value_source == "stdout"
-    content = result.stdout
-#elif $parsed_value_source == "stderr"
-    content = result.stderr
-#else
-    content = Path("$parsed_value_source").readtext()
-#end if
-    for line in content.splitlines():
-        if m := re.match(PARSED_VALUE_REGEX, line):
-            value = m.group(1)
-            try:
-                return ${parsed_value_type}(value)
-            except ValueError:
-                return None
-#end if
-
 def evaluate($instance):
     result = run_planner(PLANNER, $instance, PLANNER_CMD_TEMPLATE, "planner")
 #if should_parse_value
-    value = parse_value(result)
+#if $parsed_value_source == "stdout"
+    value = tools.parse(result.stdout, PARSED_VALUE_REGEX, ${parsed_value_type})
+#elif $parsed_value_source == "stderr"
+    value = tools.parse(result.stderr, PARSED_VALUE_REGEX, ${parsed_value_type})
+#else
+    content = Path("$parsed_value_source").readtext()
+    value = tools.parse(content, PARSED_VALUE_REGEX, ${parsed_value_type})
+#end if
     if value is None:
         return False
 #else
@@ -68,9 +57,16 @@ def evaluate($instance):
 #end if
 
 #if has_reference_planner
-    reference_result = run_planner(REFERNCE_PLANNER, $instance, REFERNCE_PLANNER_CMD_TEMPLATE, "reference_planner")
+    reference_result = run_planner(REFERENCE_PLANNER, $instance, REFERENCE_PLANNER_CMD_TEMPLATE, "reference_planner")
 #if should_parse_value
-    reference_value = parse_value(reference_result)
+#if $parsed_value_source == "stdout"
+    reference_value = tools.parse(reference_result.stdout, PARSED_VALUE_REGEX, ${parsed_value_type})
+#elif $parsed_value_source == "stderr"
+    reference_value = tools.parse(reference_result.stderr, PARSED_VALUE_REGEX, ${parsed_value_type})
+#else
+    content = Path("$parsed_value_source").readtext()
+    reference_value = tools.parse(content, PARSED_VALUE_REGEX, ${parsed_value_type})
+#end if
     if reference_value is None:
         return False
 #else
