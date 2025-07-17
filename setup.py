@@ -17,7 +17,7 @@ long_description = Path("README.rst").read_text(encoding="utf-8")
 
 setup(
     name="machetli",
-    version="0.10",
+    version="0.11",
     description="Locate bugs in your program",
     long_description=long_description,
     long_description_content_type="text/x-rst",
