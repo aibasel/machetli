@@ -29,7 +29,7 @@ REFERENCE_PLANNER_CMD_TEMPLATE = $reference_planner_cmd
 TIME_LIMIT = "$time_limit"
 MEMORY_LIMIT = "$memory_limit"
 #if should_parse_value
-PARSED_VALUE_REGEX = r$repr($parsed_value_regex)
+PARSED_VALUE_REGEX = $repr($parsed_value_regex)
 #end if
 
 def run_planner(planner, $instance, cmd_template, logname):
