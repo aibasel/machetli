@@ -216,8 +216,8 @@ def get_questions() -> list[Union[Question, HelpText]]:
             message="Please write a regular expression matching the line you want to parse.",
             bottom_toolbar=
                 "The first match of the line will be used and the first group in the regex "
-                "will be used to parse the value. For example use 'Total time: (\\d+)s' to "
-                "parse the number of seconds after 'Total time:'.",
+                "will be used to parse the value. For example use 'Plan cost: (\\d+)' to "
+                "parse the number after 'Plan cost:'.",
             validate=_validate_regex,
         ),
         Question(
